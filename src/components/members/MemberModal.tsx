@@ -1,0 +1,139 @@
+import React, { useState, useEffect } from 'react'
+import { X, User, Phone, Users, Link, Church as ChurchIcon, Settings } from 'lucide-react'
+import type { Member, MemberFamily } from '../../types'
+import { mockChurches } from '../../lib/mockData'
+import TabPerfil from './tabs/TabPerfil'
+import TabContatos from './tabs/TabContatos'
+import TabFamilia from './tabs/TabFamilia'
+import TabConexao from './tabs/TabConexao'
+import TabMinisterio from './tabs/TabMinisterio'
+import TabAdministrativo from './tabs/TabAdministrativo'
+
+interface Props {
+  member: Member | null
+  onClose: () => void
+  onSave: (data: Partial<Member>) => void
+}
+
+const tabs = [
+  { id: 'perfil', label: 'Perfil', icon: <User size={13} /> },
+  { id: 'contatos', label: 'Contatos', icon: <Phone size={13} /> },
+  { id: 'familia', label: 'Família', icon: <Users size={13} /> },
+  { id: 'conexao', label: 'Conexão', icon: <Link size={13} /> },
+  { id: 'ministerio', label: 'Ministério', icon: <ChurchIcon size={13} /> },
+  { id: 'administrativo', label: 'Administrativo', icon: <Settings size={13} /> },
+]
+
+const defaultForm: Partial<Member> = {
+  status: 'ativo',
+  sex: 'masculino',
+  nationality: 'Brasil',
+  church_id: mockChurches[0].id,
+}
+
+const defaultFamily: Partial<MemberFamily> = {
+  children: [],
+}
+
+export default function MemberModal({ member, onClose, onSave }: Props) {
+  const [activeTab, setActiveTab] = useState('perfil')
+  const [form, setForm] = useState<Partial<Member>>(member ?? defaultForm)
+  const [contacts, setContacts] = useState<Partial<import('../../types').MemberContact>>(member?.contacts ?? { emails: [''], phones: [''] })
+  const [ministry, setMinistry] = useState<Partial<import('../../types').MemberMinistry>>(member?.ministry ?? { titles: [], ministries: [], departments: [], functions: [] })
+  const [family, setFamily] = useState<Partial<MemberFamily>>(member?.family ?? defaultFamily)
+
+  useEffect(() => {
+    setForm(member ?? defaultForm)
+    setContacts(member?.contacts ?? { emails: [''], phones: [''] })
+    setMinistry(member?.ministry ?? { titles: [], ministries: [], departments: [], functions: [] })
+    setFamily(member?.family ?? defaultFamily)
+    setActiveTab('perfil')
+  }, [member])
+
+  const isEditing = !!member
+
+  const handleSave = () => {
+    onSave({ ...form, contacts, ministry, family })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+          <div>
+            <h2 className="font-semibold text-gray-800">
+              {isEditing ? `Editar membro: ${member.name}` : 'Adicionar membro'}
+            </h2>
+            <p className="text-xs text-gray-500">Secretaria / Membros</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 overflow-x-auto px-4 pt-2 gap-0.5">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md transition-colors whitespace-nowrap ${
+                activeTab === t.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {activeTab === 'perfil' && (
+            <TabPerfil form={form} onChange={setForm} editingId={member?.id} />
+          )}
+          {activeTab === 'contatos' && (
+            <TabContatos contacts={contacts} onChange={setContacts} />
+          )}
+          {activeTab === 'familia' && (
+            <TabFamilia family={family} onChange={setFamily} editingId={member?.id} />
+          )}
+          {activeTab === 'conexao' && (
+            <TabConexao family={family} />
+          )}
+          {activeTab === 'ministerio' && (
+            <TabMinisterio ministry={ministry} onChange={setMinistry} />
+          )}
+          {activeTab === 'administrativo' && (
+            <TabAdministrativo form={form} onChange={setForm} />
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+          <button onClick={onClose} className="btn-secondary">Fechar</button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setForm(member ?? defaultForm); setFamily(defaultFamily) }}
+              className="btn-outline"
+            >
+              Limpar
+            </button>
+            {isEditing && (
+              <button
+                className="btn-danger"
+                onClick={() => { if (confirm('Excluir este membro?')) { onSave({ ...form, status: 'deleted' }); onClose() } }}
+              >
+                Excluir
+              </button>
+            )}
+            <button onClick={handleSave} className="btn-primary">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
