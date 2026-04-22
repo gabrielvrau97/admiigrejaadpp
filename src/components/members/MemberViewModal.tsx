@@ -50,7 +50,7 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
         <div className="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">{icon}</div>
         <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
         {children}
       </div>
     </div>
@@ -62,34 +62,34 @@ export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Pr
   const age = m.birth_date ? differenceInYears(new Date(), new Date(m.birth_date + 'T00:00:00')) : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
+      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 sm:rounded-t-xl">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-md shrink-0">
               {m.name?.[0] ?? '?'}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-gray-800 text-base">{m.name}</h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-semibold text-gray-800 text-sm sm:text-base truncate">{m.name}</h2>
                 <span className={statusBadgeClass(m.status)}>{statusLabel(m.status)}</span>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 truncate">
                 Visualização de cadastro
                 {m.church?.name && <> · {m.church.name}</>}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onPrint && (
-              <button onClick={onPrint} className="btn-outline flex items-center gap-1.5" title="Imprimir cadastro">
+              <button onClick={onPrint} className="btn-outline hidden sm:flex items-center gap-1.5" title="Imprimir cadastro">
                 <Printer size={14} />
                 <span>Imprimir</span>
               </button>
             )}
             {onEdit && (
-              <button onClick={onEdit} className="btn-primary flex items-center gap-1.5" title="Editar cadastro">
+              <button onClick={onEdit} className="btn-primary hidden sm:flex items-center gap-1.5" title="Editar cadastro">
                 <span>Editar</span>
               </button>
             )}
@@ -100,7 +100,7 @@ export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Pr
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 bg-gray-50">
           <Section icon={<User size={14} />} title="Identificação">
             <Field label="Nome completo" value={m.name} />
             <Field label="Data de nascimento" value={fmtDate(m.birth_date)} />
@@ -179,12 +179,13 @@ export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Pr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-white rounded-b-xl">
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-white sm:rounded-b-xl flex-wrap">
           <button onClick={onClose} className="btn-secondary">Fechar</button>
           {onPrint && (
             <button onClick={onPrint} className="btn-outline flex items-center gap-1.5">
               <Printer size={14} />
-              <span>Imprimir cadastro</span>
+              <span className="hidden sm:inline">Imprimir cadastro</span>
+              <span className="sm:hidden">Imprimir</span>
             </button>
           )}
           {onEdit && (

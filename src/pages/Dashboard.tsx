@@ -275,7 +275,7 @@ export default function Dashboard() {
       </div>
 
       {/* Segmentação por faixa etária */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {segCards.map(c => (
           <div key={c.label} className="bg-white rounded-xl border border-gray-200/80 px-4 py-3.5 flex items-center gap-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div className={`w-1.5 self-stretch rounded-full ${c.color} shrink-0`} />

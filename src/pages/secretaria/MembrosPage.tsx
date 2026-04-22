@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import {
   Plus, Search, Printer, Settings2, ChevronDown, Download,
   MessageCircle, Trash2, Edit2, MapPin, Filter, X, ChevronLeft, ChevronRight,
-  Check, Eye
+  Check, Eye, MoreHorizontal
 } from 'lucide-react'
 import { mockChurches } from '../../lib/mockData'
 import type { Member } from '../../types'
@@ -132,8 +132,8 @@ function ColConfigPanel({
   const reset = () => setLocal(DEFAULT_COLS)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-12 px-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:pt-12 sm:px-4">
+      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div>
@@ -160,7 +160,7 @@ function ColConfigPanel({
           {Object.entries(groups).map(([group, cols]) => (
             <div key={group}>
               <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">{group}</h3>
-              <div className="grid grid-cols-3 gap-x-4 gap-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1.5">
                 {cols.map(col => {
                   const checked = local.includes(col.key)
                   const disabled = !checked && local.length >= MAX_COLS
@@ -254,6 +254,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   const [advSel, setAdvSel] = useState<SelectionFilters>(EMPTY_SELECTION)
   const [advSim, setAdvSim] = useState<SimilarityFilters>(EMPTY_SIMILARITY)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [colConfigOpen, setColConfigOpen] = useState(false)
   const [activeCols, setActiveCols] = useState<ColKey[]>(() => {
     try {
@@ -911,20 +912,21 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         {/* Toolbar */}
         <div className="p-3 border-b border-gray-100 flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-48">
+          <div className="relative flex-1 min-w-0 sm:min-w-48 w-full sm:w-auto order-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
               placeholder="Buscar por nome ou CPF..."
-              className="form-input pl-8"
+              className="form-input pl-8 w-full"
             />
           </div>
 
-          <div className="relative">
+          <div className="relative order-3 sm:order-2">
             <button onClick={() => setShowQuickFilter(p => !p)} className="btn-outline flex items-center gap-1">
               <Filter size={13} />
-              <span>Filtros rápidos</span>
+              <span className="hidden sm:inline">Filtros rápidos</span>
+              <span className="sm:hidden">Filtros</span>
               <ChevronDown size={12} />
             </button>
             {showQuickFilter && (
@@ -944,7 +946,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
 
           <button
             onClick={() => setAdvOpen(true)}
-            className={`btn-outline flex items-center gap-1.5 ${advActive ? 'border-blue-500 text-blue-600 bg-blue-50' : ''}`}
+            className={`btn-outline items-center gap-1.5 hidden md:flex ${advActive ? 'border-blue-500 text-blue-600 bg-blue-50' : ''}`}
           >
             <Search size={13} />
             <span>Pesquisa avançada</span>
@@ -955,29 +957,77 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
             )}
           </button>
 
-          <div className="flex-1" />
+          <div className="hidden sm:block flex-1" />
 
-          <button onClick={handleOpenAdd} className="btn-primary">
+          <button onClick={handleOpenAdd} className="btn-primary order-2 sm:order-3">
             <Plus size={14} />
             <span>Adicionar</span>
           </button>
-          <button onClick={handlePrint} className="btn-outline" title="Imprimir lista">
+          <button onClick={handlePrint} className="btn-outline hidden md:inline-flex" title="Imprimir lista">
             <Printer size={14} />
           </button>
-          <button onClick={handlePrintBlankForm} className="btn-outline flex items-center gap-1.5" title="Gerar ficha de cadastro física para impressão">
+          <button onClick={handlePrintBlankForm} className="btn-outline items-center gap-1.5 hidden lg:flex" title="Gerar ficha de cadastro física para impressão">
             <Printer size={14} />
             <span>Ficha física</span>
           </button>
-          <button onClick={() => setColConfigOpen(true)} className="btn-outline" title="Configurar colunas">
+          <button onClick={() => setColConfigOpen(true)} className="btn-outline hidden md:inline-flex" title="Configurar colunas">
             <Settings2 size={14} />
           </button>
-          <div className="relative">
+
+          {/* "Mais" (só mobile): agrupa pesquisa avançada + ficha física + config colunas + imprimir lista */}
+          <div className="relative order-4 md:hidden">
+            <button
+              onClick={() => setMoreMenuOpen(p => !p)}
+              className={`btn-outline flex items-center gap-1 ${moreMenuOpen ? 'bg-gray-100' : ''}`}
+              title="Mais ações"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {moreMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setMoreMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 w-60 bg-white border border-gray-200 rounded-lg shadow-xl z-30 py-1.5">
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); setAdvOpen(true) }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <Search size={14} className="text-blue-600" />
+                    <span>Pesquisa avançada{advActive ? ' •' : ''}</span>
+                  </button>
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); setColConfigOpen(true) }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <Settings2 size={14} className="text-gray-500" />
+                    <span>Configurar colunas</span>
+                  </button>
+                  <div className="border-t border-gray-100 my-1" />
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); handlePrint() }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <Printer size={14} className="text-gray-500" />
+                    <span>Imprimir lista</span>
+                  </button>
+                  <button
+                    onClick={() => { setMoreMenuOpen(false); handlePrintBlankForm() }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+                  >
+                    <Printer size={14} className="text-gray-500" />
+                    <span>Ficha física</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="relative order-5">
             <button
               onClick={() => setExportMenuOpen(p => !p)}
               className={`btn-outline flex items-center gap-1 ${exportMenuOpen ? 'bg-gray-100' : ''}`}
             >
               <Download size={14} />
-              <span>Exportar</span>
+              <span className="hidden sm:inline">Exportar</span>
               <ChevronDown size={12} className={`transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {exportMenuOpen && (
@@ -1027,8 +1077,8 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Table (desktop/tablet) */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -1126,12 +1176,87 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
           </table>
         </div>
 
+        {/* Cards (mobile) */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {paginated.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">Nenhum registro encontrado</div>
+          ) : paginated.map(m => {
+            const extra = activeCols
+              .filter(k => k !== 'nome' && k !== 'status')
+              .slice(0, 3)
+              .map(k => {
+                const col = ALL_COLUMNS.find(c => c.key === k)!
+                const val = col.render(m)
+                return { label: col.label, value: typeof val === 'string' ? val : String(val ?? '—') }
+              })
+            return (
+              <div key={m.id} className="p-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(m.id)}
+                    onChange={() => toggleSelect(m.id)}
+                    className="rounded mt-1 shrink-0"
+                  />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    {m.name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <button onClick={() => handleOpenEdit(m)} className="font-semibold text-blue-600 text-sm text-left leading-tight truncate">
+                        {m.name}
+                      </button>
+                      {statusBadge(m.status)}
+                    </div>
+                    {extra.length > 0 && (
+                      <div className="mt-1.5 space-y-0.5">
+                        {extra.map(e => (
+                          <div key={e.label} className="text-xs text-gray-500 flex gap-1.5">
+                            <span className="text-gray-400 shrink-0">{e.label}:</span>
+                            <span className="text-gray-700 truncate">{e.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-1 flex-wrap">
+                      <button onClick={() => setViewingMember(m)} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded hover:bg-blue-100" title="Visualizar">
+                        <Eye size={12} /> Ver
+                      </button>
+                      <button onClick={() => handleOpenEdit(m)} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-700 bg-gray-100 rounded hover:bg-gray-200" title="Editar">
+                        <Edit2 size={12} /> Editar
+                      </button>
+                      <button onClick={() => handlePrintIndividual(m)} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-indigo-600 bg-indigo-50 rounded hover:bg-indigo-100" title="Imprimir">
+                        <Printer size={12} /> Imprimir
+                      </button>
+                      {m.contacts?.phones?.[0] && (
+                        <a
+                          href={`https://wa.me/55${m.contacts.phones[0].replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-green-700 bg-green-50 rounded hover:bg-green-100"
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={12} /> WhatsApp
+                        </a>
+                      )}
+                      <button onClick={() => handleDelete(m.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs text-red-600 bg-red-50 rounded hover:bg-red-100 ml-auto" title="Excluir">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
         {/* Pagination */}
-        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span>Exibindo {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} a {Math.min(page * pageSize, filtered.length)} de {filtered.length} registros</span>
-            <span>|</span>
-            <span>Por página:</span>
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-100 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+            <span className="hidden sm:inline">Exibindo {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1} a {Math.min(page * pageSize, filtered.length)} de {filtered.length} registros</span>
+            <span className="sm:hidden">{filtered.length} registros</span>
+            <span className="hidden sm:inline">|</span>
+            <span className="hidden sm:inline">Por página:</span>
             <select
               value={pageSize}
               onChange={e => { setPageSize(+e.target.value); setPage(1) }}

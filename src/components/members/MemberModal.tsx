@@ -57,10 +57,10 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
+      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gray-50 sm:rounded-t-xl">
           <div>
             <h2 className="font-semibold text-gray-800">
               {isEditing ? `Editar membro: ${member.name}` : 'Adicionar membro'}
@@ -91,7 +91,7 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5">
           {activeTab === 'perfil' && (
             <TabPerfil form={form} onChange={setForm} editingId={member?.id} />
           )}
@@ -113,12 +113,12 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl flex-wrap">
           <button onClick={onClose} className="btn-secondary">Fechar</button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => { setForm(member ?? defaultForm); setFamily(defaultFamily) }}
-              className="btn-outline"
+              className="btn-outline hidden sm:inline-flex"
             >
               Limpar
             </button>

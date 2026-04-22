@@ -58,7 +58,7 @@ export default function UsuariosPage() {
       </div>
 
       {/* Resumo por perfil */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(Object.keys(roleConfig) as UserRole[]).map(role => {
           const cfg = roleConfig[role]
           const count = users.filter(u => u.role === role).length
@@ -76,10 +76,11 @@ export default function UsuariosPage() {
 
       {/* Tabela */}
       <div className="bg-white rounded-xl border border-gray-200/80 overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
           <Users size={14} className="text-gray-400" />
           <span className="text-sm font-semibold text-gray-700">{users.length} usuários cadastrados</span>
         </div>
+        <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
@@ -133,6 +134,43 @@ export default function UsuariosPage() {
             })}
           </tbody>
         </table>
+        </div>
+
+        {/* Cards (mobile) */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {users.map(u => {
+            const cfg = roleConfig[u.role]
+            return (
+              <div key={u.id} className="p-3 flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                  style={{ background: cfg.avatarBg }}
+                >
+                  {u.name?.[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-800 text-sm truncate">{u.name}</div>
+                  <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.badge}`}>
+                      <Shield size={9} />
+                      {cfg.label}
+                    </span>
+                    <span className="text-[10px] text-gray-400">Todas as igrejas</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                    <Edit2 size={14} />
+                  </button>
+                  <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

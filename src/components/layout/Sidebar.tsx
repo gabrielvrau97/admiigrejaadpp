@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCheck, Baby, Heart,
   BarChart2, Settings, Church, UserCog, Database,
-  ChevronDown, ChevronRight, Shield
+  ChevronDown, Shield, X
 } from 'lucide-react'
 
 interface NavItem {
@@ -40,7 +40,7 @@ const controleItems: NavItem[] = [
   { label: 'Configurações', path: '/controle/configuracoes', icon: <Settings size={14} /> },
 ]
 
-function NavGroup({ items, title }: { items: NavItem[]; title: string }) {
+function NavGroup({ items, title, onNavigate }: { items: NavItem[]; title: string; onNavigate?: () => void }) {
   const location = useLocation()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ 'Pessoas': true })
 
@@ -81,6 +81,7 @@ function NavGroup({ items, title }: { items: NavItem[]; title: string }) {
                       <NavLink
                         key={child.path}
                         to={child.path}
+                        onClick={onNavigate}
                         className={({ isActive }) =>
                           `sidebar-item text-[0.8rem] ${isActive ? 'active' : 'text-blue-200/60'}`
                         }
@@ -99,6 +100,7 @@ function NavGroup({ items, title }: { items: NavItem[]; title: string }) {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `sidebar-item ${isActive ? 'active' : 'text-blue-100/70'}`
             }
@@ -112,37 +114,64 @@ function NavGroup({ items, title }: { items: NavItem[]; title: string }) {
   )
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen: boolean
+  onClose: () => void
+}
+
+export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-56 flex flex-col z-30 overflow-y-auto"
-      style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1a2238 60%, #1e2a45 100%)' }}>
-
-      {/* Linha decorativa topo */}
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #2563eb, #7c3aed, #2563eb)' }} />
-
-      {/* Logo */}
-      <div className="px-3 py-3 border-b border-white/6">
+    <>
+      {/* Overlay (só aparece no mobile quando aberta) */}
+      {mobileOpen && (
         <div
-          className="rounded-lg flex items-center justify-center px-2 py-2"
-          style={{ background: 'rgba(255,255,255,0.96)', boxShadow: '0 2px 10px rgba(37,99,235,0.25)' }}
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed left-0 top-0 bottom-0 w-64 lg:w-56 flex flex-col z-40 overflow-y-auto transition-transform duration-300 ease-out lg:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+        style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1a2238 60%, #1e2a45 100%)' }}
+      >
+        {/* Linha decorativa topo */}
+        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #2563eb, #7c3aed, #2563eb)' }} />
+
+        {/* Botão de fechar (só mobile) */}
+        <button
+          onClick={onClose}
+          className="lg:hidden absolute top-3 right-3 p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-md z-10"
+          aria-label="Fechar menu"
         >
-          <img src="/brand/logo.png" alt="AD Piracanjuba" className="w-full h-auto object-contain" style={{ maxHeight: 56 }} />
-        </div>
-        <div className="text-center mt-2">
-          <div className="text-blue-400/60 text-[9px] tracking-widest uppercase">Igreja Digital</div>
-        </div>
-      </div>
+          <X size={18} />
+        </button>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 px-1.5 space-y-0.5">
-        <NavGroup title="Secretaria" items={secretariaItems} />
-        <NavGroup title="Controle" items={controleItems} />
-      </nav>
+        {/* Logo */}
+        <div className="px-3 py-3 border-b border-white/6">
+          <div
+            className="rounded-lg flex items-center justify-center px-2 py-2"
+            style={{ background: 'rgba(255,255,255,0.96)', boxShadow: '0 2px 10px rgba(37,99,235,0.25)' }}
+          >
+            <img src="/brand/logo.png" alt="AD Piracanjuba" className="w-full h-auto object-contain" style={{ maxHeight: 56 }} />
+          </div>
+          <div className="text-center mt-2">
+            <div className="text-blue-400/60 text-[9px] tracking-widest uppercase">Igreja Digital</div>
+          </div>
+        </div>
 
-      {/* Rodapé sidebar */}
-      <div className="px-4 py-3 border-t border-white/6">
-        <p className="text-[9px] text-blue-400/30 text-center tracking-wider">v1.0.0 · Igreja Digital</p>
-      </div>
-    </aside>
+        {/* Navigation */}
+        <nav className="flex-1 py-4 px-1.5 space-y-0.5">
+          <NavGroup title="Secretaria" items={secretariaItems} onNavigate={onClose} />
+          <NavGroup title="Controle" items={controleItems} onNavigate={onClose} />
+        </nav>
+
+        {/* Rodapé sidebar */}
+        <div className="px-4 py-3 border-t border-white/6">
+          <p className="text-[9px] text-blue-400/30 text-center tracking-wider">v1.0.0 · Igreja Digital</p>
+        </div>
+      </aside>
+    </>
   )
 }

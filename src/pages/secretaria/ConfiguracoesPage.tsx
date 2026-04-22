@@ -157,8 +157,8 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="p-2 sm:p-6 max-w-6xl mx-auto">
+      <div className="flex items-center gap-3 mb-4 sm:mb-6">
         <Settings size={20} className="text-blue-600" />
         <div>
           <h1 className="text-lg font-semibold text-gray-800">Configurações</h1>
@@ -166,8 +166,8 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      <div className="flex gap-5">
-        <aside className="w-52 shrink-0">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
+        <aside className="w-full lg:w-52 lg:shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Seções</p>
@@ -193,24 +193,24 @@ export default function ConfiguracoesPage() {
 
         <div className="flex-1">
           <div className="bg-white rounded-xl border border-gray-200">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-600">{currentSection.icon}</span>
-                <div>
-                  <h2 className="font-semibold text-gray-800">{currentSection.label}</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">{descriptions[active]}</p>
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-blue-600 shrink-0">{currentSection.icon}</span>
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-gray-800 truncate">{currentSection.label}</h2>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{descriptions[active]}</p>
                 </div>
               </div>
               {active !== 'status' && (
                 <button
                   onClick={handleSave}
-                  className={`btn-primary flex items-center gap-1.5 transition-all ${saved ? '!bg-green-600' : ''}`}
+                  className={`btn-primary flex items-center gap-1.5 transition-all shrink-0 ${saved ? '!bg-green-600' : ''}`}
                 >
-                  {saved ? 'Salvo!' : 'Salvar alterações'}
+                  {saved ? 'Salvo!' : 'Salvar'}
                 </button>
               )}
             </div>
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
               <ListEditor
                 items={currentItems}
                 onChange={handleChange}

@@ -192,6 +192,25 @@
     color: #9ca3af;
   }
 
+  /* Mobile: touch targets maiores + font-size 16px impede zoom no iOS */
+  @media (max-width: 640px) {
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .btn-outline {
+      padding: 0.55rem 1rem;
+      font-size: 0.875rem;
+      min-height: 40px;
+    }
+    .form-input,
+    .form-select {
+      padding: 0.55rem 0.875rem;
+      font-size: 16px;
+      min-height: 40px;
+    }
+  }
+
   .form-label {
     display: block;
     font-size: 0.75rem;

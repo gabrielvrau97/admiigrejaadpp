@@ -29,7 +29,7 @@ export default function IgrejasPage() {
       </div>
 
       {/* Resumo */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Total de igrejas', value: churches.length, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
           { label: 'Sede', value: sede.length, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-100' },
