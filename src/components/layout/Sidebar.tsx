@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCheck, Baby, Heart,
   BarChart2, Settings, Church, UserCog, Database,
-  ChevronDown, Shield, X
+  ChevronDown, Shield, X, GraduationCap, IdCard, Award
 } from 'lucide-react'
 
 interface NavItem {
@@ -29,6 +29,15 @@ const secretariaItems: NavItem[] = [
   },
   { label: 'Gráficos', path: '/secretaria/graficos', icon: <BarChart2 size={14} /> },
   { label: 'Configurações', path: '/secretaria/configuracoes', icon: <Settings size={14} /> },
+]
+
+const academicoItems: NavItem[] = [
+  { label: 'Seminários', path: '/seminarios', icon: <GraduationCap size={14} /> },
+  { label: 'Certificados', path: '/certificados', icon: <Award size={14} /> },
+]
+
+const documentosItems: NavItem[] = [
+  { label: 'Carteirinhas', path: '/carteirinhas', icon: <IdCard size={14} /> },
 ]
 
 const controleItems: NavItem[] = [
@@ -164,6 +173,8 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 py-4 px-1.5 space-y-0.5">
           <NavGroup title="Secretaria" items={secretariaItems} onNavigate={onClose} />
+          <NavGroup title="Acadêmico" items={academicoItems} onNavigate={onClose} />
+          <NavGroup title="Documentos" items={documentosItems} onNavigate={onClose} />
           <NavGroup title="Controle" items={controleItems} onNavigate={onClose} />
         </nav>
 

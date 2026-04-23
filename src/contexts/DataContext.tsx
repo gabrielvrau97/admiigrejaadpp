@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState } from 'react'
-import type { Member } from '../types'
-import { mockMembers, mockVisitantes } from '../lib/mockData'
+import type { Member, Seminario, Matricula, Carteirinha, Certificado } from '../types'
+import {
+  mockMembers, mockVisitantes,
+  mockSeminarios, mockMatriculas,
+  mockCarteirinhas, mockCertificados,
+} from '../lib/mockData'
 import { differenceInYears } from 'date-fns'
 
 interface DataContextType {
@@ -8,6 +12,14 @@ interface DataContextType {
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>
   visitantes: Member[]
   setVisitantes: React.Dispatch<React.SetStateAction<Member[]>>
+  seminarios: Seminario[]
+  setSeminarios: React.Dispatch<React.SetStateAction<Seminario[]>>
+  matriculas: Matricula[]
+  setMatriculas: React.Dispatch<React.SetStateAction<Matricula[]>>
+  carteirinhas: Carteirinha[]
+  setCarteirinhas: React.Dispatch<React.SetStateAction<Carteirinha[]>>
+  certificados: Certificado[]
+  setCertificados: React.Dispatch<React.SetStateAction<Certificado[]>>
 }
 
 const DataContext = createContext<DataContextType>({
@@ -15,13 +27,34 @@ const DataContext = createContext<DataContextType>({
   setMembers: () => {},
   visitantes: [],
   setVisitantes: () => {},
+  seminarios: [],
+  setSeminarios: () => {},
+  matriculas: [],
+  setMatriculas: () => {},
+  carteirinhas: [],
+  setCarteirinhas: () => {},
+  certificados: [],
+  setCertificados: () => {},
 })
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [members, setMembers] = useState<Member[]>(mockMembers)
   const [visitantes, setVisitantes] = useState<Member[]>(mockVisitantes)
+  const [seminarios, setSeminarios] = useState<Seminario[]>(mockSeminarios)
+  const [matriculas, setMatriculas] = useState<Matricula[]>(mockMatriculas)
+  const [carteirinhas, setCarteirinhas] = useState<Carteirinha[]>(mockCarteirinhas)
+  const [certificados, setCertificados] = useState<Certificado[]>(mockCertificados)
   return (
-    <DataContext.Provider value={{ members, setMembers, visitantes, setVisitantes }}>
+    <DataContext.Provider
+      value={{
+        members, setMembers,
+        visitantes, setVisitantes,
+        seminarios, setSeminarios,
+        matriculas, setMatriculas,
+        carteirinhas, setCarteirinhas,
+        certificados, setCertificados,
+      }}
+    >
       {children}
     </DataContext.Provider>
   )

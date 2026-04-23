@@ -51,7 +51,7 @@ function civilLabel(cs?: string) {
 const ALL_COLUMNS: ColDef[] = [
   // Perfil
   { key: 'nome', label: 'Nome', group: 'Perfil', render: m => m.name },
-  { key: 'apelido', label: 'Apelido', group: 'Perfil', render: _ => '—' },
+  { key: 'apelido', label: 'Apelido', group: 'Perfil', render: m => m.apelido ?? '—' },
   { key: 'idade', label: 'Idade', group: 'Perfil', render: m => m.birth_date ? `${differenceInYears(new Date(), new Date(m.birth_date + 'T00:00:00'))} anos` : '—' },
   { key: 'sexo', label: 'Sexo', group: 'Perfil', render: m => m.sex === 'masculino' ? 'Masculino' : m.sex === 'feminino' ? 'Feminino' : '—' },
   { key: 'estado_civil', label: 'Estado civil', group: 'Perfil', render: m => civilLabel(m.civil_status) },

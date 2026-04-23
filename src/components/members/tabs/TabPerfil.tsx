@@ -160,6 +160,15 @@ export default function TabPerfil({ form, onChange, editingId }: Props) {
           {nameWarn && <p className="text-xs text-yellow-600 mt-0.5">{nameWarn}</p>}
         </Field>
 
+        <Field label="Apelido">
+          <input
+            className="form-input"
+            value={form.apelido ?? ''}
+            onChange={set('apelido')}
+            placeholder="Ex: Juninho"
+          />
+        </Field>
+
         <Field label="Sexo" required>
           <select className="form-select" value={form.sex ?? 'masculino'} onChange={set('sex')}>
             <option value="masculino">Masculino</option>

@@ -25,9 +25,10 @@ export interface Church {
 export interface Member {
   id: string
   church_id: string
-  member_type?: 'membro' | 'visitante'
+  member_type?: 'membro' | 'visitante' | 'seminarista'
   status: MemberStatus
   name: string
+  apelido?: string
   sex?: Sex
   birth_date?: string
   civil_status?: CivilStatus
@@ -140,4 +141,85 @@ export type MemberType = 'membros' | 'visitantes' | 'congregados' | 'criancas' |
 export interface BaptismYearStat {
   year: number
   count: number
+}
+
+// ── Seminários ────────────────────────────────────────────────────────────
+export type SeminarioStatus = 'em_andamento' | 'concluido' | 'cancelado' | 'planejado'
+export type MatriculaSituacao = 'cursando' | 'concluido' | 'desistente' | 'reprovado' | 'trancado'
+
+export interface Seminario {
+  id: string
+  nome: string
+  descricao?: string
+  instrutor?: string
+  data_inicio: string
+  data_fim?: string
+  carga_horaria: number
+  local?: string
+  church_id?: string
+  status: SeminarioStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface Matricula {
+  id: string
+  seminario_id: string
+  // Se vinculado a um membro existente, guarda o ID. Caso contrário, dados avulsos.
+  member_id?: string
+  // Dados do aluno (snapshot — se member_id existir, são espelhados do membro no momento da matrícula)
+  nome: string
+  apelido?: string
+  cpf?: string
+  birth_date?: string
+  sex?: Sex
+  email?: string
+  telefone?: string
+  cidade?: string
+  estado?: string
+  church_id?: string
+  situacao: MatriculaSituacao
+  nota_final?: number
+  frequencia?: number  // 0-100
+  data_matricula: string
+  data_conclusao?: string
+  observacoes?: string
+  created_at: string
+  updated_at: string
+}
+
+// ── Carteirinhas ──────────────────────────────────────────────────────────
+export type CarteirinhaMotivo = 'primeira_via' | 'renovacao' | 'segunda_via' | 'atualizacao_dados'
+export type CarteirinhaStatus = 'ativa' | 'vencida' | 'cancelada' | 'substituida'
+
+export interface Carteirinha {
+  id: string
+  member_id: string
+  numero: string  // ex: ADP-2026-0001
+  motivo: CarteirinhaMotivo
+  emitida_em: string
+  valida_ate: string  // geralmente 2 anos após emissão
+  emitida_por?: string  // nome do usuário que gerou
+  status: CarteirinhaStatus
+  observacoes?: string
+  created_at: string
+}
+
+// ── Certificados ──────────────────────────────────────────────────────────
+export type CertificadoStatus = 'emitido' | 'cancelado' | 'reemitido'
+
+export interface Certificado {
+  id: string
+  matricula_id: string
+  seminario_id: string
+  numero: string  // ex: CERT-2026-0001
+  nome_aluno: string
+  nome_seminario: string
+  carga_horaria: number
+  data_conclusao: string
+  emitido_em: string
+  emitido_por?: string
+  status: CertificadoStatus
+  observacoes?: string
+  created_at: string
 }

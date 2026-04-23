@@ -14,6 +14,10 @@ import IgrejasPage from './pages/controle/IgrejasPage'
 import UsuariosPage from './pages/controle/UsuariosPage'
 import BackupPage from './pages/controle/BackupPage'
 import MeuPerfilPage from './pages/controle/MeuPerfilPage'
+import SeminariosPage from './pages/seminarios/SeminariosPage'
+import SeminarioDetailPage from './pages/seminarios/SeminarioDetailPage'
+import CarteirinhasPage from './pages/carteirinhas/CarteirinhasPage'
+import CertificadosPage from './pages/certificados/CertificadosPage'
 import NotFound from './pages/NotFound'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +65,14 @@ function AppRoutes() {
         <Route path="/controle/backup" element={<BackupPage />} />
         <Route path="/controle/meu-perfil" element={<MeuPerfilPage />} />
         <Route path="/controle/*" element={<NotFound />} />
+
+        {/* Seminários */}
+        <Route path="/seminarios" element={<SeminariosPage />} />
+        <Route path="/seminarios/:id" element={<SeminarioDetailPage />} />
+
+        {/* Carteirinhas e Certificados */}
+        <Route path="/carteirinhas" element={<CarteirinhasPage />} />
+        <Route path="/certificados" element={<CertificadosPage />} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

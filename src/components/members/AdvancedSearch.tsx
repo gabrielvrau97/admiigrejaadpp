@@ -130,32 +130,56 @@ export function applySelectionFilters(data: Member[], f: SelectionFilters): Memb
 }
 
 export function applySimilarityFilters(data: Member[], f: SimilarityFilters): Member[] {
-  const has = (val: string | undefined, q: string) =>
-    q.trim() === '' || (val ?? '').toLowerCase().includes(q.toLowerCase())
+  // Só aplica filtro se o usuário digitou algo (trim !== '')
+  // Se valor do cadastro é undefined/null, considera como não-match (exceto se query vazia)
+  const matches = (val: string | undefined | null, q: string) => {
+    if (q.trim() === '') return true
+    if (val === undefined || val === null || val === '') return false
+    return val.toString().toLowerCase().includes(q.toLowerCase().trim())
+  }
+
+  const matchesDigits = (val: string | undefined | null, q: string) => {
+    const qd = q.replace(/\D/g, '')
+    if (qd === '') return true
+    if (val === undefined || val === null || val === '') return false
+    return val.replace(/\D/g, '').includes(qd)
+  }
 
   return data.filter(m => {
-    if (!has(m.name, f.nome)) return false
-    if (!has(m.naturalidade, f.naturalidade)) return false
-    if (!has((m.cpf ?? '').replace(/\D/g, ''), f.cpf.replace(/\D/g, ''))) return false
-    if (!has(m.occupation, f.profissao)) return false
-    if (!has(m.origin_church, f.origem_igreja)) return false
-    if (f.email && !(m.contacts?.emails ?? []).some(e => e.toLowerCase().includes(f.email.toLowerCase()))) return false
-    if (f.telefone) {
-      const q = f.telefone.replace(/\D/g, '')
-      const phones = (m.contacts?.phones ?? []).map(p => p.replace(/\D/g, ''))
-      if (!phones.some(p => p.includes(q))) return false
+    if (!matches(m.name, f.nome)) return false
+    if (!matches(m.apelido, f.apelido)) return false
+    if (!matches(m.naturalidade, f.naturalidade)) return false
+    if (!matchesDigits(m.cpf, f.cpf)) return false
+    if (!matches(m.occupation, f.profissao)) return false
+    if (!matches(m.origin_church, f.origem_igreja)) return false
+    if (f.email.trim()) {
+      const q = f.email.toLowerCase().trim()
+      const emails = m.contacts?.emails ?? []
+      if (!emails.some(e => (e ?? '').toLowerCase().includes(q))) return false
     }
-    if (f.celular) {
-      const q = f.celular.replace(/\D/g, '')
-      const cell = (m.contacts?.cellphone1 ?? '').replace(/\D/g, '')
-      if (!cell.includes(q)) return false
+    if (f.telefone.trim()) {
+      const qd = f.telefone.replace(/\D/g, '')
+      if (qd) {
+        const phones = (m.contacts?.phones ?? []).map(p => (p ?? '').replace(/\D/g, ''))
+        if (!phones.some(p => p.includes(qd))) return false
+      }
     }
-    if (!has(m.family?.father_name, f.nome_pai)) return false
-    if (!has(m.family?.mother_name, f.nome_mae)) return false
-    if (!has(m.family?.spouse_name, f.nome_conjuge)) return false
-    if (!has(m.contacts?.address, f.endereco)) return false
-    if (!has(m.contacts?.neighborhood, f.bairro)) return false
-    if (!has(m.contacts?.city, f.cidade)) return false
+    if (f.celular.trim()) {
+      const qd = f.celular.replace(/\D/g, '')
+      if (qd) {
+        const candidates = [
+          (m.contacts?.cellphone1 ?? '').replace(/\D/g, ''),
+          ...((m.contacts?.phones ?? []).map(p => (p ?? '').replace(/\D/g, ''))),
+        ].filter(Boolean)
+        if (!candidates.some(c => c.includes(qd))) return false
+      }
+    }
+    if (!matches(m.family?.father_name, f.nome_pai)) return false
+    if (!matches(m.family?.mother_name, f.nome_mae)) return false
+    if (!matches(m.family?.spouse_name, f.nome_conjuge)) return false
+    if (!matches(m.contacts?.address, f.endereco)) return false
+    if (!matches(m.contacts?.neighborhood, f.bairro)) return false
+    if (!matches(m.contacts?.city, f.cidade)) return false
     return true
   })
 }
