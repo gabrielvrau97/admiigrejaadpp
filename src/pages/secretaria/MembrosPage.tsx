@@ -159,7 +159,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va)
     })
     return data
-  }, [baseData, search, activeFilter, sortField, sortAsc])
+  }, [baseData, search, activeFilter, sortField, sortAsc, advActive, advSel, advSim])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)

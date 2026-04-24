@@ -38,6 +38,41 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* ── Cursor pointer em qualquer coisa clicável ─────────────── */
+  button,
+  a,
+  summary,
+  label[for],
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"],
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  [role="link"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="switch"],
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+
+  /* Estados desabilitados sobrescrevem o pointer */
+  button:disabled,
+  button[disabled],
+  a[aria-disabled="true"],
+  select:disabled,
+  input:disabled,
+  [aria-disabled="true"],
+  [data-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   /* Scrollbar refinada */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
