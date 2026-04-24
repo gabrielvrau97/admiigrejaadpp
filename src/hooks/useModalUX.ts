@@ -8,9 +8,11 @@ import { useEffect, useRef } from 'react'
  * Uso:
  *   const containerRef = useModalUX({ onClose })
  *   return <div ref={containerRef}>...</div>
+ *
+ * Use o genérico pra tipar o elemento (ex: useModalUX<HTMLFormElement>({ onClose }))
  */
-export function useModalUX({ onClose }: { onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null)
+export function useModalUX<T extends HTMLElement = HTMLDivElement>({ onClose }: { onClose: () => void }) {
+  const ref = useRef<T>(null)
 
   // Esc fecha
   useEffect(() => {
@@ -23,13 +25,14 @@ export function useModalUX({ onClose }: { onClose: () => void }) {
 
   // Foco automático no primeiro campo focável
   useEffect(() => {
-    if (!ref.current) return
+    const current = ref.current
+    if (!current) return
     const selector = [
       'input:not([type="hidden"]):not([disabled]):not([readonly])',
       'textarea:not([disabled]):not([readonly])',
       'select:not([disabled])',
     ].join(',')
-    const first = ref.current.querySelector<HTMLElement>(selector)
+    const first = current.querySelector<HTMLElement>(selector)
     // timeout pra não conflitar com animações de entrada
     const t = setTimeout(() => first?.focus(), 50)
     return () => clearTimeout(t)

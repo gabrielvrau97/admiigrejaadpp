@@ -59,7 +59,7 @@ export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Pr
   const age = getAge(m.birth_date)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50" role="dialog" aria-modal="true" aria-labelledby="member-view-modal-title">
       <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 sm:rounded-t-xl">
@@ -69,7 +69,7 @@ export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Pr
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-semibold text-gray-800 text-sm sm:text-base truncate">{m.name}</h2>
+                <h2 id="member-view-modal-title" className="font-semibold text-gray-800 text-sm sm:text-base truncate">{m.name}</h2>
                 <span className={statusBadgeClass(m.status)}>{statusLabel(m.status)}</span>
               </div>
               <p className="text-xs text-gray-500 truncate">

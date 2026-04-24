@@ -27,20 +27,9 @@ const churchPrefixes: Record<string, string> = {
   'ch-8': 'HDL',
 }
 
-function validateCPF(cpf: string): boolean {
-  const c = cpf.replace(/\D/g, '')
-  if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false
-  let sum = 0
-  for (let i = 0; i < 9; i++) sum += parseInt(c[i]) * (10 - i)
-  let r = (sum * 10) % 11
-  if (r === 10 || r === 11) r = 0
-  if (r !== parseInt(c[9])) return false
-  sum = 0
-  for (let i = 0; i < 10; i++) sum += parseInt(c[i]) * (11 - i)
-  r = (sum * 10) % 11
-  if (r === 10 || r === 11) r = 0
-  return r === parseInt(c[10])
-}
+// validateCPF centralizado em src/schemas/member.ts
+import { isValidCPF } from '../../../schemas/member'
+const validateCPF = isValidCPF
 
 function validateRG(rg: string): boolean {
   const c = rg.replace(/\D/g, '')

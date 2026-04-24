@@ -109,8 +109,8 @@ function TabPerfilVisitante({ form, onChange }: { form: Partial<Member>; onChang
             className="form-input resize-none"
             rows={2}
             placeholder="Anotações sobre o visitante..."
-            value={(form as any).notes ?? ''}
-            onChange={e => onChange({ ...form, ...(({ notes: e.target.value }) as any) })}
+            value={form.notes ?? ''}
+            onChange={e => onChange({ ...form, notes: e.target.value })}
           />
         </Field>
       </div>

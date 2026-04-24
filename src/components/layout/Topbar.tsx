@@ -106,6 +106,9 @@ export default function Topbar({ onOpenSidebar }: TopbarProps) {
         <button
           onClick={() => setShowNotif(p => !p)}
           className="relative p-1.5 text-gray-400 hover:text-blue-600 transition-all duration-150 hover:bg-blue-50 rounded-md"
+          aria-label="Abrir notificações"
+          aria-haspopup="true"
+          aria-expanded={showNotif}
         >
           <Bell size={17} />
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">3</span>
@@ -140,7 +143,10 @@ export default function Topbar({ onOpenSidebar }: TopbarProps) {
       </div>
 
       {/* Mail (esconde no mobile) */}
-      <button className="hidden sm:inline-flex p-1.5 text-gray-400 hover:text-blue-600 transition-all duration-150 hover:bg-blue-50 rounded-md">
+      <button
+        className="hidden sm:inline-flex p-1.5 text-gray-400 hover:text-blue-600 transition-all duration-150 hover:bg-blue-50 rounded-md"
+        aria-label="Caixa de mensagens"
+      >
         <Mail size={17} />
       </button>
 
@@ -165,6 +171,7 @@ export default function Topbar({ onOpenSidebar }: TopbarProps) {
         onClick={logout}
         className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all duration-150 rounded-md"
         title="Sair"
+        aria-label="Sair"
       >
         <LogOut size={15} />
       </button>

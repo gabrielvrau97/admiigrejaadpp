@@ -55,6 +55,7 @@ export interface Member {
   baptism_spirit_date?: string
   conversion?: boolean
   conversion_date?: string
+  notes?: string
   created_at: string
   updated_at: string
   // joined relations

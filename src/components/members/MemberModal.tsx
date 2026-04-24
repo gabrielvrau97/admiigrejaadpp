@@ -61,17 +61,17 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50" role="dialog" aria-modal="true" aria-labelledby="member-modal-title">
       <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gray-50 sm:rounded-t-xl">
           <div>
-            <h2 className="font-semibold text-gray-800">
+            <h2 id="member-modal-title" className="font-semibold text-gray-800">
               {isEditing ? `Editar membro: ${member.name}` : 'Adicionar membro'}
             </h2>
             <p className="text-xs text-gray-500">Secretaria / Membros</p>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors" aria-label="Fechar modal">
             <X size={16} />
           </button>
         </div>
