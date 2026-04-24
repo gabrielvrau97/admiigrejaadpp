@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle } from 'lucide-react'
+import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle, Layers } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Carteirinha, CarteirinhaMotivo, Member } from '../../types'
 import CarteirinhaGerarModal from './CarteirinhaGerarModal'
-import { printCarteirinha } from './printCarteirinha'
+import { printCarteirinha, printCarteirinhasLote } from './printCarteirinha'
 
 const MOTIVO_LABEL: Record<CarteirinhaMotivo, string> = {
   primeira_via: 'Primeira via',
@@ -35,6 +35,7 @@ export default function CarteirinhasPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'todas' | 'ativas' | 'vencidas' | 'vencendo'>('todas')
   const [modalOpen, setModalOpen] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const getMember = (id: string): Member | undefined => members.find(m => m.id === id)
 
@@ -80,6 +81,36 @@ export default function CarteirinhasPage() {
       return
     }
     printCarteirinha(c, m)
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllVisible = () => {
+    const visibleIds = filtered.map(x => x.c.id)
+    const allSelected = visibleIds.every(id => selected.has(id))
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (allSelected) visibleIds.forEach(id => next.delete(id))
+      else visibleIds.forEach(id => next.add(id))
+      return next
+    })
+  }
+
+  const handlePrintLote = () => {
+    const items = filtered
+      .filter(x => selected.has(x.c.id) && x.member)
+      .map(x => ({ c: x.c, m: x.member! }))
+    if (items.length === 0) {
+      alert('Selecione pelo menos uma carteirinha para imprimir.')
+      return
+    }
+    printCarteirinhasLote(items)
   }
 
   const handleGenerate = (memberId: string, motivo: CarteirinhaMotivo, validadeAnos: number) => {
@@ -139,9 +170,16 @@ export default function CarteirinhasPage() {
             <p className="text-sm text-gray-500">Gestão, histórico e impressão</p>
           </div>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary">
-          <Plus size={14} /> Gerar nova
-        </button>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button onClick={handlePrintLote} className="btn-outline flex items-center gap-1.5 border-indigo-400 text-indigo-700 bg-indigo-50">
+              <Layers size={14} /> Imprimir {selected.size} <span className="hidden sm:inline">selecionada{selected.size > 1 ? 's' : ''}</span>
+            </button>
+          )}
+          <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <Plus size={14} /> Gerar nova
+          </button>
+        </div>
       </div>
 
       {/* Resumo */}
@@ -182,6 +220,14 @@ export default function CarteirinhasPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="w-8 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={filtered.length > 0 && filtered.every(x => selected.has(x.c.id))}
+                    onChange={toggleSelectAllVisible}
+                  />
+                </th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Nº Carteirinha</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Membro</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Emitida em</th>
@@ -193,9 +239,17 @@ export default function CarteirinhasPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-400">Nenhuma carteirinha encontrada</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-400">Nenhuma carteirinha encontrada</td></tr>
               ) : filtered.map(({ c, info, member }) => (
-                <tr key={c.id} className="hover:bg-blue-50/30">
+                <tr key={c.id} className={`hover:bg-blue-50/30 ${selected.has(c.id) ? 'bg-blue-50/50' : ''}`}>
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={selected.has(c.id)}
+                      onChange={() => toggleSelect(c.id)}
+                    />
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs text-blue-700">{c.numero}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
@@ -237,7 +291,13 @@ export default function CarteirinhasPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">Nenhuma carteirinha encontrada</div>
           ) : filtered.map(({ c, info, member }) => (
-            <div key={c.id} className="p-3 flex items-start gap-3">
+            <div key={c.id} className={`p-3 flex items-start gap-3 ${selected.has(c.id) ? 'bg-blue-50/50' : ''}`}>
+              <input
+                type="checkbox"
+                className="rounded mt-3 shrink-0"
+                checked={selected.has(c.id)}
+                onChange={() => toggleSelect(c.id)}
+              />
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
                 {(member?.name ?? '?')[0]}
               </div>

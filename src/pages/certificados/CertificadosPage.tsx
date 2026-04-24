@@ -2,11 +2,11 @@ import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Award, Search, Printer, Trash2, Plus } from 'lucide-react'
+import { Award, Search, Printer, Trash2, Plus, Layers } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Certificado } from '../../types'
 import CertificadoGerarModal from './CertificadoGerarModal'
-import { printCertificado } from './printCertificado'
+import { printCertificado, printCertificadosLote } from './printCertificado'
 
 function fmtDate(d?: string) {
   if (!d) return '—'
@@ -20,6 +20,7 @@ export default function CertificadosPage() {
   const [search, setSearch] = useState('')
   const [seminarioFilter, setSeminarioFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   // Scroll até o highlight se veio da página de seminário
   useEffect(() => {
@@ -57,6 +58,34 @@ export default function CertificadosPage() {
     printCertificado(c)
   }
 
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllVisible = () => {
+    const visibleIds = filtered.map(c => c.id)
+    const allSelected = visibleIds.every(id => selected.has(id))
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (allSelected) visibleIds.forEach(id => next.delete(id))
+      else visibleIds.forEach(id => next.add(id))
+      return next
+    })
+  }
+
+  const handlePrintLote = () => {
+    const lote = filtered.filter(c => selected.has(c.id))
+    if (lote.length === 0) {
+      alert('Selecione pelo menos um certificado para imprimir.')
+      return
+    }
+    printCertificadosLote(lote)
+  }
+
   const handleCancel = (id: string) => {
     if (!confirm('Cancelar este certificado? A ação pode ser revertida marcando como reemitido.')) return
     setCertificados(list => list.map(c => c.id === id ? { ...c, status: 'cancelado' as const } : c))
@@ -79,9 +108,16 @@ export default function CertificadosPage() {
             <p className="text-sm text-gray-500">Emissão e histórico de diplomas de seminários</p>
           </div>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary">
-          <Plus size={14} /> Emitir novo
-        </button>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button onClick={handlePrintLote} className="btn-outline flex items-center gap-1.5 border-amber-400 text-amber-700 bg-amber-50">
+              <Layers size={14} /> Imprimir {selected.size} <span className="hidden sm:inline">selecionado{selected.size > 1 ? 's' : ''}</span>
+            </button>
+          )}
+          <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <Plus size={14} /> Emitir novo
+          </button>
+        </div>
       </div>
 
       {/* Resumo */}
@@ -129,6 +165,14 @@ export default function CertificadosPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="w-8 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={filtered.length > 0 && filtered.every(c => selected.has(c.id))}
+                    onChange={toggleSelectAllVisible}
+                  />
+                </th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Nº Certificado</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Aluno</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Seminário</th>
@@ -140,13 +184,21 @@ export default function CertificadosPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-400">Nenhum certificado encontrado</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-400">Nenhum certificado encontrado</td></tr>
               ) : filtered.map(c => (
                 <tr
                   key={c.id}
                   id={`cert-row-${c.id}`}
-                  className={`hover:bg-amber-50/30 ${highlight === c.id ? 'bg-amber-50' : ''}`}
+                  className={`hover:bg-amber-50/30 ${highlight === c.id ? 'bg-amber-50' : ''} ${selected.has(c.id) ? 'bg-amber-50/60' : ''}`}
                 >
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={selected.has(c.id)}
+                      onChange={() => toggleSelect(c.id)}
+                    />
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs text-amber-700">{c.numero}</td>
                   <td className="px-3 py-2">
                     <div className="font-medium text-gray-800">{c.nome_aluno}</div>
@@ -191,8 +243,14 @@ export default function CertificadosPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">Nenhum certificado encontrado</div>
           ) : filtered.map(c => (
-            <div key={c.id} id={`cert-row-m-${c.id}`} className={`p-3 ${highlight === c.id ? 'bg-amber-50' : ''}`}>
-              <div className="flex items-start justify-between gap-2">
+            <div key={c.id} id={`cert-row-m-${c.id}`} className={`p-3 ${highlight === c.id ? 'bg-amber-50' : ''} ${selected.has(c.id) ? 'bg-amber-50/60' : ''}`}>
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="rounded mt-1 shrink-0"
+                  checked={selected.has(c.id)}
+                  onChange={() => toggleSelect(c.id)}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-gray-800 text-sm">{c.nome_aluno}</div>
                   <div className="text-xs text-gray-500 truncate">{c.nome_seminario} · {c.carga_horaria}h</div>
