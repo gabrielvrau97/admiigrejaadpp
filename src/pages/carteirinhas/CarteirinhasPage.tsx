@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { format, differenceInDays } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { differenceInDays } from 'date-fns'
+import { fmtDate } from '../../lib/format'
 import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle, Layers } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Carteirinha, CarteirinhaMotivo, Member } from '../../types'
@@ -13,11 +13,6 @@ const MOTIVO_LABEL: Record<CarteirinhaMotivo, string> = {
   renovacao: 'Renovação',
   segunda_via: 'Segunda via',
   atualizacao_dados: 'Atualização de dados',
-}
-
-function fmtDate(d?: string) {
-  if (!d) return '—'
-  try { return format(new Date(d + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) } catch { return d }
 }
 
 function statusInfo(c: Carteirinha): { label: string; badge: string; icon: React.ReactNode } {

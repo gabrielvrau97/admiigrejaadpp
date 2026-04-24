@@ -1,13 +1,6 @@
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import type { Certificado } from '../../types'
-
-function fmtLongo(d?: string) {
-  if (!d) return '—'
-  try {
-    return format(new Date(d + 'T00:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-  } catch { return d }
-}
+import { openPrintWindow } from '../../lib/print'
+import { fmtDateLongo as fmtLongo } from '../../lib/format'
 
 const certStyles = `
   *{box-sizing:border-box;margin:0;padding:0}
@@ -96,7 +89,7 @@ function buildCert(c: Certificado, origin: string): string {
       <div class="corner br"></div>
 
       <div class="header">
-        <img src="${origin}/brand/logo.png" alt="ADP"/>
+        <img src="${origin}/brand/logo.png" alt="ADP" onerror="this.style.display='none'"/>
         <div class="titles">
           <h1>Assembleia de Deus</h1>
           <p>ADP Piracanjuba · Igreja Digital</p>
@@ -156,11 +149,7 @@ export function printCertificado(c: Certificado) {
     ${buildCert(c, origin)}
   </body></html>`
 
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
+  openPrintWindow(html, `Certificado — ${c.nome_aluno}`)
 }
 
 export function printCertificadosLote(certs: Certificado[]) {
@@ -179,9 +168,5 @@ export function printCertificadosLote(certs: Certificado[]) {
     ${pages}
   </body></html>`
 
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
+  openPrintWindow(html, `Certificados em lote (${certs.length})`)
 }

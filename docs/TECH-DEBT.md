@@ -48,11 +48,11 @@ A base está saudável. Os pontos abaixo são melhorias incrementais, não bugs 
 
 **Objetivo:** eliminar 90% dos riscos de tela branca e bugs silenciosos.
 
-- [ ] **1.1** Criar `<ErrorBoundary>` global em `src/components/ErrorBoundary.tsx` e envolver `<Outlet />` no `AppLayout`. Mostrar card "Algo deu errado" + botão "Voltar" + botão "Recarregar".
-- [ ] **1.2** Criar helper `openPrintWindow(html, title)` em `src/lib/print.ts` com checagem de pop-up bloqueado (toast/alert amigável). Substituir os 6 `window.open` espalhados.
-- [ ] **1.3** Adicionar `onError` nas `<img>`: esconde a tag ou mostra fallback texto. Locais: `Sidebar.tsx`, `MembrosPage.tsx` (3 prints), `printCarteirinha.ts`, `printCertificado.ts`.
-- [ ] **1.4** Criar `src/lib/format.ts` com `parseISODate(s)` e `fmtDate(s, pattern?)`. Substituir as 7 implementações duplicadas. Centraliza o bug de GMT-3.
-- [ ] Validar: type-check + build + testar fluxo de impressão + forçar erro em uma página pra ver ErrorBoundary
+- [x] **1.1** Criar `<ErrorBoundary>` global em `src/components/ErrorBoundary.tsx` e envolver `<Outlet />` no `AppLayout`. Mostrar card "Algo deu errado" + botão "Voltar" + botão "Recarregar".
+- [x] **1.2** Criar helper `openPrintWindow(html, title)` em `src/lib/print.ts` com checagem de pop-up bloqueado (toast/alert amigável). Substituir os 6 `window.open` espalhados.
+- [x] **1.3** Adicionar `onError` nas `<img>`: esconde a tag ou mostra fallback texto. Locais: `Sidebar.tsx`, `MembrosPage.tsx` (3 prints), `printCarteirinha.ts`, `printCertificado.ts`.
+- [x] **1.4** Criar `src/lib/format.ts` com `parseISODate(s)` e `fmtDate(s, pattern?)`. Substituir as 7 implementações duplicadas. Centraliza o bug de GMT-3.
+- [x] Validar: type-check + build + testar fluxo de impressão + forçar erro em uma página pra ver ErrorBoundary
 
 **Gatilho:** "vamos começar o Sprint 1"
 
@@ -121,3 +121,4 @@ A base está saudável. Os pontos abaixo são melhorias incrementais, não bugs 
 <!-- O Dex registra aqui quando cada sprint for concluído -->
 
 - [x] **2026-04-23** — Auditoria técnica inicial realizada. Plano criado.
+- [x] **2026-04-24** — **Sprint 1 concluído.** ErrorBoundary global, `lib/print.ts` com fallback de pop-up, `onError` em todas as imagens, `lib/format.ts` centralizando `parseISODate`/`fmtDate`/`fmtDateLongo`/`getAge`/`fmtIdade`. Removidas 7 implementações duplicadas de `fmtDate`. Type-check e build limpos.

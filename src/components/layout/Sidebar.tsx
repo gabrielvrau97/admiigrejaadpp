@@ -163,7 +163,13 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             className="rounded-lg flex items-center justify-center px-2 py-2"
             style={{ background: 'rgba(255,255,255,0.96)', boxShadow: '0 2px 10px rgba(37,99,235,0.25)' }}
           >
-            <img src="/brand/logo.png" alt="AD Piracanjuba" className="w-full h-auto object-contain" style={{ maxHeight: 56 }} />
+            <img
+              src="/brand/logo.png"
+              alt="AD Piracanjuba"
+              className="w-full h-auto object-contain"
+              style={{ maxHeight: 56 }}
+              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+            />
           </div>
           <div className="text-center mt-2">
             <div className="text-blue-400/60 text-[9px] tracking-widest uppercase">Igreja Digital</div>

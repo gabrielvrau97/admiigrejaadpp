@@ -1,22 +1,16 @@
 import { useMemo, useState } from 'react'
 import { GraduationCap, Plus, Search, Users, Calendar, Clock, MapPin, Pencil, Eye, Trash2 } from 'lucide-react'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../../contexts/DataContext'
 import type { Seminario, SeminarioStatus } from '../../types'
 import SeminarioModal from './SeminarioModal'
+import { fmtDate } from '../../lib/format'
 
 const STATUS_CONFIG: Record<SeminarioStatus, { label: string; badge: string; dot: string }> = {
   planejado: { label: 'Planejado', badge: 'badge-yellow', dot: 'bg-yellow-500' },
   em_andamento: { label: 'Em andamento', badge: 'badge-blue', dot: 'bg-blue-500' },
   concluido: { label: 'Concluído', badge: 'badge-green', dot: 'bg-emerald-500' },
   cancelado: { label: 'Cancelado', badge: 'badge-red', dot: 'bg-red-500' },
-}
-
-function fmtDate(d?: string) {
-  if (!d) return '—'
-  try { return format(new Date(d + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) } catch { return d }
 }
 
 export default function SeminariosPage() {

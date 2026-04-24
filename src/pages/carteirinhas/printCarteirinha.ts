@@ -1,11 +1,8 @@
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import type { Carteirinha, Member } from '../../types'
+import { openPrintWindow } from '../../lib/print'
+import { fmtDate, fmtDateLongo } from '../../lib/format'
 
-function fmt(d?: string) {
-  if (!d) return '—'
-  try { return format(new Date(d + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) } catch { return d }
-}
+const fmt = (d?: string | null) => fmtDate(d)
 
 // ── CSS compartilhado ─────────────────────────────────────────────────────
 const sharedStyles = (origin: string) => `
@@ -145,7 +142,7 @@ function buildFrente(c: Carteirinha, m: Member, origin: string): string {
   return `
     <div class="card front">
       <div class="front-header">
-        <img src="${origin}/brand/logo.png" alt="ADP"/>
+        <img src="${origin}/brand/logo.png" alt="ADP" onerror="this.style.display='none'"/>
         <div class="titles">
           <div class="t1">Assembleia de Deus</div>
           <div class="t2">Igreja Digital · ADP</div>
@@ -190,7 +187,7 @@ function buildVerso(c: Carteirinha, m: Member, hoje: string): string {
 // ── Impressão INDIVIDUAL (frente + verso lado a lado) ─────────────────────
 export function printCarteirinha(c: Carteirinha, m: Member) {
   const origin = window.location.origin
-  const hoje = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+  const hoje = fmtDateLongo(new Date().toISOString().slice(0, 10))
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
   <title>Carteirinha — ${m.name}</title>
@@ -207,11 +204,7 @@ export function printCarteirinha(c: Carteirinha, m: Member) {
     </div>
   </body></html>`
 
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
+  openPrintWindow(html, `Carteirinha — ${m.name}`)
 }
 
 // ── Impressão em LOTE: 4 carteirinhas por folha A4 retrato ────────────────
@@ -223,7 +216,7 @@ export function printCarteirinha(c: Carteirinha, m: Member) {
 export function printCarteirinhasLote(items: Array<{ c: Carteirinha; m: Member }>) {
   if (items.length === 0) return
   const origin = window.location.origin
-  const hoje = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+  const hoje = fmtDateLongo(new Date().toISOString().slice(0, 10))
 
   // Agrupa em folhas de 4
   const folhas: Array<Array<{ c: Carteirinha; m: Member }>> = []
@@ -265,9 +258,5 @@ export function printCarteirinhasLote(items: Array<{ c: Carteirinha; m: Member }
     ${sheetsHtml}
   </body></html>`
 
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
+  openPrintWindow(html, `Carteirinhas em lote (${items.length})`)
 }

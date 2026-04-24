@@ -1,6 +1,6 @@
 import { X, User, Phone, Users, Church as ChurchIcon, Settings, Heart, Printer } from 'lucide-react'
-import { format, differenceInYears } from 'date-fns'
 import type { Member } from '../../types'
+import { fmtDate, getAge } from '../../lib/format'
 
 interface Props {
   member: Member
@@ -15,11 +15,6 @@ function civilLabel(cs?: string) {
     viuvo: 'Viúvo(a)', divorciado: 'Divorciado(a)', uniao_estavel: 'União Estável',
   }
   return cs ? (map[cs] ?? cs) : '—'
-}
-
-function fmtDate(d?: string) {
-  if (!d) return '—'
-  try { return format(new Date(d + (d.length === 10 ? 'T00:00:00' : '')), 'dd/MM/yyyy') } catch { return d }
 }
 
 function statusLabel(s?: string) {
@@ -59,7 +54,7 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 
 export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Props) {
   const m = member
-  const age = m.birth_date ? differenceInYears(new Date(), new Date(m.birth_date + 'T00:00:00')) : null
+  const age = getAge(m.birth_date)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">

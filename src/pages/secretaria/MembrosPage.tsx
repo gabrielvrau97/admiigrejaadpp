@@ -19,6 +19,7 @@ import AdvancedSearch, {
   EMPTY_SELECTION, EMPTY_SIMILARITY,
   applySelectionFilters, applySimilarityFilters,
 } from '../../components/members/AdvancedSearch'
+import { openPrintWindow } from '../../lib/print'
 
 // ──────────────────────────────────────────────
 // Definição de colunas disponíveis
@@ -468,7 +469,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
         <button onclick="window.print()" style="background:#1d4ed8;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px">🖨️ Imprimir</button>
         <button onclick="window.close()" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px">✕ Fechar</button>
       </div>
-      <div class="brand-header"><img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba"/></div>
+      <div class="brand-header"><img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" onerror="this.style.display='none'"/></div>
       <div class="title-bar">
         <h1>${pageTitle}</h1>
         <p class="sub">Gerado em ${dateStr} · <strong>${filtered.length}</strong> registro(s)${pageSub ? ' · ' + pageSub : ''}</p>
@@ -481,11 +482,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       <p class="footer">Igreja Digital · ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
       </body></html>`
 
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
+    openPrintWindow(html, `${pageTitle} — Lista`)
     setExportMenuOpen(false)
   }
 
@@ -510,7 +507,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       <div class="ficha">
         <!-- Cabeçalho -->
         <div style="width:100%;display:flex;justify-content:center;margin-bottom:4px">
-          <img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" style="max-width:100%;max-height:60px;object-fit:contain"/>
+          <img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" style="max-width:100%;max-height:60px;object-fit:contain" onerror="this.style.display='none'"/>
         </div>
         <div class="header">
           <div class="header-title">
@@ -639,11 +636,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
     ${ficha()}
     </body></html>`
 
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
+    openPrintWindow(html, 'Ficha de Cadastro')
   }
 
   const handlePrintIndividual = (m: Member) => {
@@ -759,7 +752,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
         <button onclick="window.print()" style="background:#1d4ed8;color:white;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:11px;margin-left:auto">🖨️ Imprimir</button>
         <button onclick="window.close()" style="background:#f3f4f6;border:1px solid #d1d5db;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:11px">✕ Fechar</button>
       </div>
-      <div class="brand-header"><img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba"/></div>
+      <div class="brand-header"><img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" onerror="this.style.display='none'"/></div>
       <div class="title-bar">
         <h1>${m.name ?? '—'}<span class="status">${statusTxt}</span></h1>
         <div class="meta">${m.church?.name ?? ''}${m.church?.name ? '<br/>' : ''}Gerado em ${dateStr}</div>
@@ -773,11 +766,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       <div class="footer">Igreja Digital · ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
       </body></html>`
 
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
+    openPrintWindow(html, `Cadastro — ${m.name}`)
   }
 
   const toggleSort = (field: SortField) => {

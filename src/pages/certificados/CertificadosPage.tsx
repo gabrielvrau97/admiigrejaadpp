@@ -1,18 +1,12 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { Award, Search, Printer, Trash2, Plus, Layers } from 'lucide-react'
+import { fmtDate } from '../../lib/format'
 import { useData } from '../../contexts/DataContext'
 import type { Certificado } from '../../types'
 import CertificadoGerarModal from './CertificadoGerarModal'
 import CertificadoLoteModal from './CertificadoLoteModal'
 import { printCertificado, printCertificadosLote } from './printCertificado'
-
-function fmtDate(d?: string) {
-  if (!d) return '—'
-  try { return format(new Date(d + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) } catch { return d }
-}
 
 export default function CertificadosPage() {
   const { certificados, setCertificados, seminarios, matriculas } = useData()

@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { format, differenceInYears } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import {
   ArrowLeft, GraduationCap, UserPlus, Calendar, Clock, MapPin, Users,
   Eye, Pencil, Trash2, Search, Award, FileText
@@ -9,6 +7,7 @@ import {
 import { useData } from '../../contexts/DataContext'
 import type { Matricula, MatriculaSituacao, Certificado } from '../../types'
 import MatriculaModal from './MatriculaModal'
+import { fmtDate, fmtIdade } from '../../lib/format'
 
 const SITUACAO_CONFIG: Record<MatriculaSituacao, { label: string; badge: string }> = {
   cursando: { label: 'Cursando', badge: 'badge-blue' },
@@ -16,11 +15,6 @@ const SITUACAO_CONFIG: Record<MatriculaSituacao, { label: string; badge: string 
   desistente: { label: 'Desistente', badge: 'badge-red' },
   reprovado: { label: 'Reprovado', badge: 'badge-red' },
   trancado: { label: 'Trancado', badge: 'badge-yellow' },
-}
-
-function fmtDate(d?: string) {
-  if (!d) return '—'
-  try { return format(new Date(d + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) } catch { return d }
 }
 
 export default function SeminarioDetailPage() {
@@ -142,11 +136,6 @@ export default function SeminarioDetailPage() {
     navigate(`/certificados?highlight=${novo.id}`)
   }
 
-  const idadeStr = (dt?: string) => {
-    if (!dt) return '—'
-    try { return `${differenceInYears(new Date(), new Date(dt + 'T00:00:00'))} anos` } catch { return '—' }
-  }
-
   return (
     <div className="space-y-4">
       <button
@@ -263,7 +252,7 @@ export default function SeminarioDetailPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 text-xs">{idadeStr(m.birth_date)}</td>
+                    <td className="px-3 py-2 text-gray-600 text-xs">{fmtIdade(m.birth_date)}</td>
                     <td className="px-3 py-2 text-gray-600 text-xs">
                       <div>{m.telefone ?? '—'}</div>
                       <div className="text-gray-400">{m.email ?? ''}</div>
@@ -316,7 +305,7 @@ export default function SeminarioDetailPage() {
                   </div>
                   {m.member_id && <div className="text-[10px] text-blue-600">Vinculado a membro</div>}
                   <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                    <div>{idadeStr(m.birth_date)} · {m.telefone ?? '—'}</div>
+                    <div>{fmtIdade(m.birth_date)} · {m.telefone ?? '—'}</div>
                     <div>Freq: {m.frequencia != null ? `${m.frequencia}%` : '—'} · Nota: {m.nota_final != null ? m.nota_final.toFixed(1) : '—'}</div>
                   </div>
                   <div className="mt-2 flex items-center gap-1 flex-wrap">
