@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ChurchProvider } from './contexts/ChurchContext'
@@ -6,20 +6,25 @@ import { ConfigProvider } from './contexts/ConfigContext'
 import { DataProvider } from './contexts/DataContext'
 import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
+import PageLoader from './components/ui/PageLoader'
+
+// Eager (primeiro acesso): tela de login + dashboard + lista de membros
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import MembrosPage from './pages/secretaria/MembrosPage'
-import GraficosPage from './pages/secretaria/GraficosPage'
-import ConfiguracoesPage from './pages/secretaria/ConfiguracoesPage'
-import IgrejasPage from './pages/controle/IgrejasPage'
-import UsuariosPage from './pages/controle/UsuariosPage'
-import BackupPage from './pages/controle/BackupPage'
-import MeuPerfilPage from './pages/controle/MeuPerfilPage'
-import SeminariosPage from './pages/seminarios/SeminariosPage'
-import SeminarioDetailPage from './pages/seminarios/SeminarioDetailPage'
-import CarteirinhasPage from './pages/carteirinhas/CarteirinhasPage'
-import CertificadosPage from './pages/certificados/CertificadosPage'
 import NotFound from './pages/NotFound'
+
+// Lazy: páginas acessadas sob demanda
+const GraficosPage = lazy(() => import('./pages/secretaria/GraficosPage'))
+const ConfiguracoesPage = lazy(() => import('./pages/secretaria/ConfiguracoesPage'))
+const IgrejasPage = lazy(() => import('./pages/controle/IgrejasPage'))
+const UsuariosPage = lazy(() => import('./pages/controle/UsuariosPage'))
+const BackupPage = lazy(() => import('./pages/controle/BackupPage'))
+const MeuPerfilPage = lazy(() => import('./pages/controle/MeuPerfilPage'))
+const SeminariosPage = lazy(() => import('./pages/seminarios/SeminariosPage'))
+const SeminarioDetailPage = lazy(() => import('./pages/seminarios/SeminarioDetailPage'))
+const CarteirinhasPage = lazy(() => import('./pages/carteirinhas/CarteirinhasPage'))
+const CertificadosPage = lazy(() => import('./pages/certificados/CertificadosPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -56,24 +61,24 @@ function AppRoutes() {
         <Route path="/secretaria/adolescentes" element={<MembrosPage type="adolescentes" />} />
         <Route path="/secretaria/jovens" element={<MembrosPage type="jovens" />} />
         <Route path="/secretaria/novos-convertidos" element={<MembrosPage type="novos-convertidos" />} />
-        <Route path="/secretaria/graficos" element={<GraficosPage />} />
-        <Route path="/secretaria/configuracoes" element={<ConfiguracoesPage />} />
+        <Route path="/secretaria/graficos" element={<Suspense fallback={<PageLoader />}><GraficosPage /></Suspense>} />
+        <Route path="/secretaria/configuracoes" element={<Suspense fallback={<PageLoader />}><ConfiguracoesPage /></Suspense>} />
         <Route path="/secretaria/*" element={<NotFound />} />
 
         {/* Controle */}
-        <Route path="/controle/igrejas" element={<IgrejasPage />} />
-        <Route path="/controle/usuarios" element={<UsuariosPage />} />
-        <Route path="/controle/backup" element={<BackupPage />} />
-        <Route path="/controle/meu-perfil" element={<MeuPerfilPage />} />
+        <Route path="/controle/igrejas" element={<Suspense fallback={<PageLoader />}><IgrejasPage /></Suspense>} />
+        <Route path="/controle/usuarios" element={<Suspense fallback={<PageLoader />}><UsuariosPage /></Suspense>} />
+        <Route path="/controle/backup" element={<Suspense fallback={<PageLoader />}><BackupPage /></Suspense>} />
+        <Route path="/controle/meu-perfil" element={<Suspense fallback={<PageLoader />}><MeuPerfilPage /></Suspense>} />
         <Route path="/controle/*" element={<NotFound />} />
 
         {/* Seminários */}
-        <Route path="/seminarios" element={<SeminariosPage />} />
-        <Route path="/seminarios/:id" element={<SeminarioDetailPage />} />
+        <Route path="/seminarios" element={<Suspense fallback={<PageLoader />}><SeminariosPage /></Suspense>} />
+        <Route path="/seminarios/:id" element={<Suspense fallback={<PageLoader />}><SeminarioDetailPage /></Suspense>} />
 
         {/* Carteirinhas e Certificados */}
-        <Route path="/carteirinhas" element={<CarteirinhasPage />} />
-        <Route path="/certificados" element={<CertificadosPage />} />
+        <Route path="/carteirinhas" element={<Suspense fallback={<PageLoader />}><CarteirinhasPage /></Suspense>} />
+        <Route path="/certificados" element={<Suspense fallback={<PageLoader />}><CertificadosPage /></Suspense>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

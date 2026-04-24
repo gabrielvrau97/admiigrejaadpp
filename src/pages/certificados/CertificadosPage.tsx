@@ -46,12 +46,16 @@ export default function CertificadosPage() {
       .sort((a, b) => b.emitido_em.localeCompare(a.emitido_em))
   }, [certificados, search, seminarioFilter])
 
-  const counts = useMemo(() => ({
-    total: certificados.length,
-    esteAno: certificados.filter(c => c.emitido_em.startsWith(String(new Date().getFullYear()))).length,
-    emitidos: certificados.filter(c => c.status === 'emitido').length,
-    cancelados: certificados.filter(c => c.status === 'cancelado').length,
-  }), [certificados])
+  const counts = useMemo(() => {
+    const anoAtual = String(new Date().getFullYear())
+    let esteAno = 0, emitidos = 0, cancelados = 0
+    for (const c of certificados) {
+      if (c.emitido_em.startsWith(anoAtual)) esteAno++
+      if (c.status === 'emitido') emitidos++
+      else if (c.status === 'cancelado') cancelados++
+    }
+    return { total: certificados.length, esteAno, emitidos, cancelados }
+  }, [certificados])
 
   const handlePrint = (c: Certificado) => {
     printCertificado(c)

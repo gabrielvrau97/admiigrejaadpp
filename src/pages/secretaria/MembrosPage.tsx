@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { format, differenceInYears } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
 import {
   Plus, Search, Printer, Settings2, ChevronDown, Download,
   MessageCircle, Trash2, Edit2, MapPin, Filter, X, ChevronLeft, ChevronRight,
-  Check, Eye, MoreHorizontal
+  Eye, MoreHorizontal
 } from 'lucide-react'
 import { mockChurches } from '../../lib/mockData'
 import type { Member } from '../../types'
@@ -19,186 +18,13 @@ import AdvancedSearch, {
   EMPTY_SELECTION, EMPTY_SIMILARITY,
   applySelectionFilters, applySimilarityFilters,
 } from '../../components/members/AdvancedSearch'
-import { openPrintWindow } from '../../lib/print'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
-import { useModalUX } from '../../hooks/useModalUX'
+import { printMembrosList, buildFilterSummary } from '../../lib/print/membros/printMembrosList'
+import { printFichaFisica } from '../../lib/print/membros/printFichaFisica'
+import { printMembroIndividual } from '../../lib/print/membros/printMembroIndividual'
+import ColConfigPanel from './ColConfigPanel'
+import { ALL_COLUMNS, DEFAULT_COLS, type ColKey } from './membros-columns'
 
-// ──────────────────────────────────────────────
-// Definição de colunas disponíveis
-// ──────────────────────────────────────────────
-type ColKey =
-  | 'nome' | 'apelido' | 'idade' | 'sexo' | 'estado_civil' | 'nascimento'
-  | 'nacionalidade' | 'identidade' | 'cpf' | 'naturalidade' | 'escolaridade'
-  | 'profissao' | 'codigo' | 'historico' | 'credencial'
-  | 'email1' | 'email2' | 'telefone1' | 'telefone2' | 'celular1' | 'celular2'
-  | 'cep' | 'endereco' | 'numero' | 'complemento' | 'sub_bairro' | 'bairro' | 'cidade' | 'estado' | 'pais'
-  | 'titulo' | 'ministerio' | 'departamento' | 'funcao'
-  | 'batismo_aguas' | 'batismo_espirito' | 'conversao'
-  | 'igreja' | 'status'
-
-interface ColDef {
-  key: ColKey
-  label: string
-  group: string
-  render: (m: Member) => React.ReactNode
-}
-
-function civilLabel(cs?: string) {
-  const map: Record<string, string> = {
-    solteiro: 'Solteiro(a)', casado: 'Casado(a)',
-    viuvo: 'Viúvo(a)', divorciado: 'Divorciado(a)', uniao_estavel: 'União Estável',
-  }
-  return cs ? (map[cs] ?? cs) : '—'
-}
-
-const ALL_COLUMNS: ColDef[] = [
-  // Perfil
-  { key: 'nome', label: 'Nome', group: 'Perfil', render: m => m.name },
-  { key: 'apelido', label: 'Apelido', group: 'Perfil', render: m => m.apelido ?? '—' },
-  { key: 'idade', label: 'Idade', group: 'Perfil', render: m => m.birth_date ? `${differenceInYears(new Date(), new Date(m.birth_date + 'T00:00:00'))} anos` : '—' },
-  { key: 'sexo', label: 'Sexo', group: 'Perfil', render: m => m.sex === 'masculino' ? 'Masculino' : m.sex === 'feminino' ? 'Feminino' : '—' },
-  { key: 'estado_civil', label: 'Estado civil', group: 'Perfil', render: m => civilLabel(m.civil_status) },
-  { key: 'nascimento', label: 'Data de nascimento', group: 'Perfil', render: m => m.birth_date ? format(new Date(m.birth_date + 'T00:00:00'), 'dd/MM/yyyy') : '—' },
-  { key: 'nacionalidade', label: 'Nacionalidade', group: 'Perfil', render: m => m.nationality ?? '—' },
-  { key: 'identidade', label: 'Identidade', group: 'Perfil', render: m => m.identity ?? '—' },
-  { key: 'cpf', label: 'CPF', group: 'Perfil', render: m => m.cpf ?? '—' },
-  { key: 'naturalidade', label: 'Naturalidade', group: 'Perfil', render: m => m.naturalidade ?? '—' },
-  { key: 'escolaridade', label: 'Escolaridade', group: 'Perfil', render: m => m.schooling ?? '—' },
-  { key: 'profissao', label: 'Profissão', group: 'Perfil', render: m => m.occupation ?? '—' },
-  { key: 'codigo', label: 'Código auxiliar', group: 'Perfil', render: m => m.code ?? '—' },
-  { key: 'credencial', label: 'Credencial', group: 'Perfil', render: _ => '—' },
-  { key: 'historico', label: 'Histórico', group: 'Perfil', render: _ => '—' },
-  // Contatos
-  { key: 'email1', label: 'E-mail 1', group: 'Contatos', render: m => m.contacts?.emails?.[0] ?? '—' },
-  { key: 'email2', label: 'E-mail 2', group: 'Contatos', render: m => m.contacts?.emails?.[1] ?? '—' },
-  { key: 'telefone1', label: 'Telefone 1', group: 'Contatos', render: m => m.contacts?.phones?.[0] ?? '—' },
-  { key: 'telefone2', label: 'Telefone 2', group: 'Contatos', render: m => m.contacts?.phones?.[1] ?? '—' },
-  { key: 'celular1', label: 'Celular 1', group: 'Contatos', render: m => m.contacts?.cellphone1 ?? m.contacts?.phones?.[0] ?? '—' },
-  { key: 'celular2', label: 'Celular 2', group: 'Contatos', render: m => m.contacts?.phones?.[1] ?? '—' },
-  { key: 'cep', label: 'CEP', group: 'Contatos', render: m => m.contacts?.cep ?? '—' },
-  { key: 'endereco', label: 'Endereço', group: 'Contatos', render: m => m.contacts?.address ?? '—' },
-  { key: 'numero', label: 'Número', group: 'Contatos', render: m => m.contacts?.number ?? '—' },
-  { key: 'complemento', label: 'Complemento', group: 'Contatos', render: m => m.contacts?.complement ?? '—' },
-  { key: 'sub_bairro', label: 'Sub-bairro', group: 'Contatos', render: _ => '—' },
-  { key: 'bairro', label: 'Bairro', group: 'Contatos', render: m => m.contacts?.neighborhood ?? '—' },
-  { key: 'cidade', label: 'Cidade', group: 'Contatos', render: m => m.contacts?.city ?? '—' },
-  { key: 'estado', label: 'Estado', group: 'Contatos', render: m => m.contacts?.state ?? '—' },
-  { key: 'pais', label: 'País', group: 'Contatos', render: m => m.contacts?.country ?? 'Brasil' },
-  // Ministério
-  { key: 'titulo', label: 'Título', group: 'Ministério', render: m => m.ministry?.titles?.[0] ?? '—' },
-  { key: 'ministerio', label: 'Ministério', group: 'Ministério', render: m => m.ministry?.ministries?.[0] ?? '—' },
-  { key: 'departamento', label: 'Departamento', group: 'Ministério', render: m => m.ministry?.departments?.[0] ?? '—' },
-  { key: 'funcao', label: 'Função', group: 'Ministério', render: m => m.ministry?.functions?.[0] ?? '—' },
-  // Espiritual
-  { key: 'batismo_aguas', label: 'Batismo nas águas', group: 'Espiritual', render: m => m.baptism ? (m.baptism_date ? format(new Date(m.baptism_date), 'dd/MM/yyyy') : 'Sim') : 'Não' },
-  { key: 'batismo_espirito', label: 'Batismo no Espírito', group: 'Espiritual', render: m => m.baptism_spirit ? 'Sim' : 'Não' },
-  { key: 'conversao', label: 'Conversão', group: 'Espiritual', render: m => m.conversion ? (m.conversion_date ? format(new Date(m.conversion_date), 'dd/MM/yyyy') : 'Sim') : 'Não' },
-  // Admin
-  { key: 'igreja', label: 'Igreja', group: 'Administrativo', render: m => m.church?.name ?? '—' },
-  { key: 'status', label: 'Status', group: 'Administrativo', render: m => m.status },
-]
-
-const DEFAULT_COLS: ColKey[] = ['nome', 'nascimento', 'estado_civil', 'status', 'celular1', 'titulo', 'igreja']
-
-const MAX_COLS = 10
-
-function ColConfigPanel({
-  selected,
-  onChange,
-  onClose,
-}: {
-  selected: ColKey[]
-  onChange: (cols: ColKey[]) => void
-  onClose: () => void
-}) {
-  const containerRef = useModalUX({ onClose })
-  const [local, setLocal] = useState<ColKey[]>(selected)
-
-  const groups = useMemo(() => {
-    const map: Record<string, ColDef[]> = {}
-    ALL_COLUMNS.forEach(c => {
-      if (!map[c.group]) map[c.group] = []
-      map[c.group].push(c)
-    })
-    return map
-  }, [])
-
-  const toggle = (key: ColKey) => {
-    if (local.includes(key)) {
-      setLocal(l => l.filter(k => k !== key))
-    } else {
-      if (local.length >= MAX_COLS) return
-      setLocal(l => [...l, key])
-    }
-  }
-
-  const apply = () => { onChange(local); onClose() }
-  const reset = () => setLocal(DEFAULT_COLS)
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:pt-12 sm:px-4">
-      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <div>
-            <h2 className="font-semibold text-gray-800">Personalizar visualização</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Selecione até {MAX_COLS} itens para personalizar a visualização de dados no grid, na impressão e exportação.
-            </p>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded text-gray-400">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Info bar */}
-        <div className="px-5 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
-          <span className="text-xs text-blue-700">
-            <span className="font-semibold">{local.length}</span> de {MAX_COLS} colunas selecionadas
-          </span>
-          <button onClick={reset} className="text-xs text-blue-600 hover:underline">Restaurar padrão</button>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto flex-1 p-5 space-y-5">
-          {Object.entries(groups).map(([group, cols]) => (
-            <div key={group}>
-              <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">{group}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1.5">
-                {cols.map(col => {
-                  const checked = local.includes(col.key)
-                  const disabled = !checked && local.length >= MAX_COLS
-                  return (
-                    <label
-                      key={col.key}
-                      className={`flex items-center gap-2 text-sm cursor-pointer select-none ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:text-blue-700'}`}
-                    >
-                      <div
-                        onClick={() => !disabled && toggle(col.key)}
-                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                          checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
-                        }`}
-                      >
-                        {checked && <Check size={10} className="text-white" strokeWidth={3} />}
-                      </div>
-                      <span className="text-gray-700">{col.label}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-gray-200 flex justify-end gap-2">
-          <button onClick={onClose} className="btn-outline">Cancelar</button>
-          <button onClick={apply} className="btn-primary">Aplicar</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const quickFilters = [
   { key: 'ativos', label: 'Ativos' },
@@ -340,35 +166,21 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
 
   // ── Exportação / Impressão ──────────────────────────────────────────────
 
-  // Monta resumo legível dos filtros ativos
-  const filterSummary = (): string[] => {
-    const lines: string[] = []
-    if (search.trim()) lines.push(`Busca por texto: "${search}"`)
-    if (activeFilter) lines.push(`Filtro rápido: ${quickFilters.find(f => f.key === activeFilter)?.label ?? activeFilter}`)
-    const selLabels: Record<string, string> = {
-      status: 'Status', sexo: 'Sexo', estado_civil: 'Estado Civil', tem_filhos: 'Tem filhos',
-      escolaridade: 'Escolaridade', titulo: 'Título', funcao: 'Função',
-      motivo_entrada: 'Motivo de entrada', motivo_saida: 'Motivo de saída',
-      convertido: 'Convertido', batizado_aguas: 'Batizado nas águas', batizado_espirito: 'Batizado no Espírito',
-      igreja: 'Igreja',
-      nascimento_de: 'Nascimento de', nascimento_ate: 'Nascimento até',
-      registro_de: 'Registro de', registro_ate: 'Registro até',
-      conversao_de: 'Conversão de', conversao_ate: 'Conversão até',
-      casamento_de: 'Casamento de', casamento_ate: 'Casamento até',
-      batismo_de: 'Batismo de', batismo_ate: 'Batismo até',
-      entrada_de: 'Entrada de', entrada_ate: 'Entrada até',
-      idade_min: 'Idade mínima', idade_max: 'Idade máxima',
-    }
-    const simLabels: Record<string, string> = {
-      nome: 'Nome', naturalidade: 'Naturalidade', cpf: 'CPF', profissao: 'Profissão',
-      origem_igreja: 'Igreja de origem', email: 'E-mail', telefone: 'Telefone',
-      celular: 'Celular', nome_pai: 'Nome do pai', nome_mae: 'Nome da mãe',
-      nome_conjuge: 'Nome do cônjuge', endereco: 'Endereço', bairro: 'Bairro', cidade: 'Cidade',
-    }
-    Object.entries(advSel).forEach(([k, v]) => { if (v) lines.push(`${selLabels[k] ?? k}: ${v}`) })
-    Object.entries(advSim).forEach(([k, v]) => { if (v) lines.push(`${simLabels[k] ?? k}: contém "${v}"`) })
-    return lines
-  }
+  // Labels pra gerar resumo legível dos filtros ativos
+  const quickFiltersLabels = useMemo(
+    () => Object.fromEntries(quickFilters.map(f => [f.key, f.label])),
+    []
+  )
+
+  // Monta resumo legível dos filtros ativos (delegado pra lib)
+  const filterSummary = (): string[] =>
+    buildFilterSummary(
+      search,
+      activeFilter,
+      quickFiltersLabels,
+      advSel as unknown as Record<string, string>,
+      advSim as unknown as Record<string, string>,
+    )
 
   const buildRows = (data: Member[]) =>
     data.map(m => {
@@ -440,54 +252,13 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   const handlePrint = () => {
     const rows = buildRows(filtered)
     const headers = activeCols.map(key => ALL_COLUMNS.find(c => c.key === key)!.label)
-    const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-    const summary = filterSummary()
-
-    const filterBlock = summary.length > 0
-      ? `<div class="filters">
-          <p class="filter-title">Filtros aplicados:</p>
-          ${summary.map(l => `<p class="filter-item">• ${l}</p>`).join('')}
-         </div>`
-      : ''
-
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>${pageTitle}</title>
-      <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:20px}
-        .brand-header{width:100%;display:flex;justify-content:center;margin-bottom:8px}
-        .brand-header img{max-width:100%;max-height:90px;object-fit:contain}
-        .title-bar{border-top:2px solid #1d4ed8;border-bottom:2px solid #1d4ed8;padding:6px 4px;margin-bottom:12px}
-        h1{font-size:15px;margin-bottom:2px;color:#1d4ed8}
-        p.sub{font-size:10px;color:#666}
-        .filters{background:#f0f4ff;border:1px solid #c7d7fb;border-radius:4px;padding:8px 10px;margin-bottom:12px}
-        .filter-title{font-size:10px;font-weight:bold;color:#1d4ed8;margin-bottom:4px}
-        .filter-item{font-size:10px;color:#374151;margin-bottom:1px}
-        table{width:100%;border-collapse:collapse;margin-top:4px}
-        th{background:#1d4ed8;color:white;padding:5px 8px;text-align:left;font-size:10px}
-        td{padding:4px 8px;border-bottom:1px solid #e5e7eb;font-size:10px}
-        tr:nth-child(even) td{background:#f9fafb}
-        .footer{margin-top:10px;font-size:9px;color:#9ca3af;text-align:right}
-        @media print{body{padding:8px}.no-print{display:none}}
-      </style>
-      </head><body>
-      <div class="no-print" style="margin-bottom:12px;display:flex;gap:8px">
-        <button onclick="window.print()" style="background:#1d4ed8;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px">🖨️ Imprimir</button>
-        <button onclick="window.close()" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px">✕ Fechar</button>
-      </div>
-      <div class="brand-header"><img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" onerror="this.style.display='none'"/></div>
-      <div class="title-bar">
-        <h1>${pageTitle}</h1>
-        <p class="sub">Gerado em ${dateStr} · <strong>${filtered.length}</strong> registro(s)${pageSub ? ' · ' + pageSub : ''}</p>
-      </div>
-      ${filterBlock}
-      <table>
-        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? '—'}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>
-      <p class="footer">Igreja Digital · ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
-      </body></html>`
-
-    openPrintWindow(html, `${pageTitle} — Lista`)
+    printMembrosList({
+      pageTitle,
+      pageSub,
+      rows,
+      headers,
+      filtersSummary: filterSummary(),
+    })
     setExportMenuOpen(false)
   }
 
@@ -505,273 +276,11 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   }
 
   const handlePrintBlankForm = () => {
-    const line = (w = '100%') => `<div style="border-bottom:1px solid #aaa;width:${w};min-height:14px;display:inline-block;vertical-align:bottom"></div>`
-    const box = (label: string) => `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;font-size:9px"><span style="width:10px;height:10px;border:1px solid #555;display:inline-block;vertical-align:middle;border-radius:2px"></span>${label}</span>`
-
-    const ficha = () => `
-      <div class="ficha">
-        <!-- Cabeçalho -->
-        <div style="width:100%;display:flex;justify-content:center;margin-bottom:4px">
-          <img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" style="max-width:100%;max-height:60px;object-fit:contain" onerror="this.style.display='none'"/>
-        </div>
-        <div class="header">
-          <div class="header-title">
-            <div style="font-size:13px;font-weight:bold;color:#1d4ed8">FICHA DE CADASTRO</div>
-            <div style="font-size:9px;color:#555">Secretaria</div>
-          </div>
-          <div class="header-right">
-            <div class="field-row"><span class="lbl">Igreja:</span>${line('120px')}</div>
-            <div class="field-row" style="margin-top:4px"><span class="lbl">Data:</span>${line('80px')}&nbsp;&nbsp;<span class="lbl">Cód.:</span>${line('60px')}</div>
-          </div>
-        </div>
-
-        <div class="section-title">IDENTIFICAÇÃO</div>
-        <div class="row">
-          <div class="col-8"><span class="lbl">Nome completo:</span>${line()}</div>
-          <div class="col-4"><span class="lbl">Apelido:</span>${line()}</div>
-        </div>
-        <div class="row">
-          <div class="col-3"><span class="lbl">Sexo:</span>&nbsp;${box('Masc.')}${box('Fem.')}</div>
-          <div class="col-3"><span class="lbl">Nascimento:</span>${line()}</div>
-          <div class="col-3"><span class="lbl">Naturalidade:</span>${line()}</div>
-          <div class="col-3"><span class="lbl">Nacionalidade:</span>${line()}</div>
-        </div>
-        <div class="row">
-          <div class="col-4"><span class="lbl">Estado civil:</span>&nbsp;${box('Solteiro(a)')}${box('Casado(a)')}${box('Viúvo(a)')}${box('Divorciado(a)')}</div>
-          <div class="col-4"><span class="lbl">Escolaridade:</span>${line()}</div>
-          <div class="col-4"><span class="lbl">Profissão:</span>${line()}</div>
-        </div>
-        <div class="row">
-          <div class="col-4"><span class="lbl">CPF:</span>${line()}</div>
-          <div class="col-4"><span class="lbl">RG / Identidade:</span>${line()}</div>
-          <div class="col-4"><span class="lbl">Data de entrada:</span>${line()}</div>
-        </div>
-
-        <div class="section-title">CONTATOS</div>
-        <div class="row">
-          <div class="col-6"><span class="lbl">Celular 1:</span>${line()}</div>
-          <div class="col-6"><span class="lbl">Celular 2 / Telefone:</span>${line()}</div>
-        </div>
-        <div class="row">
-          <div class="col-6"><span class="lbl">E-mail 1:</span>${line()}</div>
-          <div class="col-6"><span class="lbl">E-mail 2:</span>${line()}</div>
-        </div>
-
-        <div class="section-title">ENDEREÇO</div>
-        <div class="row">
-          <div class="col-6"><span class="lbl">Logradouro / Endereço:</span>${line()}</div>
-          <div class="col-2"><span class="lbl">Número:</span>${line()}</div>
-          <div class="col-4"><span class="lbl">Complemento:</span>${line()}</div>
-        </div>
-        <div class="row">
-          <div class="col-4"><span class="lbl">Bairro:</span>${line()}</div>
-          <div class="col-4"><span class="lbl">Cidade:</span>${line()}</div>
-          <div class="col-2"><span class="lbl">Estado:</span>${line()}</div>
-          <div class="col-2"><span class="lbl">CEP:</span>${line()}</div>
-        </div>
-
-        <div class="section-title">FAMÍLIA</div>
-        <div class="row">
-          <div class="col-6"><span class="lbl">Nome do cônjuge:</span>${line()}</div>
-          <div class="col-3"><span class="lbl">Nascimento cônjuge:</span>${line()}</div>
-          <div class="col-3"><span class="lbl">Data do casamento:</span>${line()}</div>
-        </div>
-        <div class="row">
-          <div class="col-6"><span class="lbl">Nome do pai:</span>${line()}</div>
-          <div class="col-6"><span class="lbl">Nome da mãe:</span>${line()}</div>
-        </div>
-        <div style="margin:4px 0 2px"><span class="lbl">Filhos:</span></div>
-        <div class="row">
-          <div class="col-6" style="display:flex;align-items:center;gap:6px"><span class="lbl" style="white-space:nowrap">1.</span>${line('70%')}<span class="lbl" style="white-space:nowrap">Nasc.:</span>${line('28%')}</div>
-          <div class="col-6" style="display:flex;align-items:center;gap:6px"><span class="lbl" style="white-space:nowrap">2.</span>${line('70%')}<span class="lbl" style="white-space:nowrap">Nasc.:</span>${line('28%')}</div>
-        </div>
-        <div class="row">
-          <div class="col-6" style="display:flex;align-items:center;gap:6px"><span class="lbl" style="white-space:nowrap">3.</span>${line('70%')}<span class="lbl" style="white-space:nowrap">Nasc.:</span>${line('28%')}</div>
-          <div class="col-6" style="display:flex;align-items:center;gap:6px"><span class="lbl" style="white-space:nowrap">4.</span>${line('70%')}<span class="lbl" style="white-space:nowrap">Nasc.:</span>${line('28%')}</div>
-        </div>
-
-        <div class="section-title">VIDA ESPIRITUAL</div>
-        <div class="row">
-          <div class="col-4"><span class="lbl">Convertido:</span>&nbsp;${box('Sim')}${box('Não')}&nbsp;<span class="lbl">Data:</span>${line('50px')}</div>
-          <div class="col-4"><span class="lbl">Batismo nas águas:</span>&nbsp;${box('Sim')}${box('Não')}&nbsp;<span class="lbl">Data:</span>${line('50px')}</div>
-          <div class="col-4"><span class="lbl">Batismo no Espírito:</span>&nbsp;${box('Sim')}${box('Não')}&nbsp;<span class="lbl">Data:</span>${line('50px')}</div>
-        </div>
-        <div class="row">
-          <div class="col-6"><span class="lbl">Igreja de origem:</span>${line()}</div>
-          <div class="col-6"><span class="lbl">Motivo de entrada:</span>${line()}</div>
-        </div>
-
-        <!-- Assinatura -->
-        <div style="display:flex;gap:16px;margin-top:6px">
-          <div style="flex:1"><span class="lbl">Assinatura do membro:</span>${line()}</div>
-          <div style="flex:1"><span class="lbl">Assinatura do secretário(a):</span>${line()}</div>
-        </div>
-      </div>
-    `
-
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-    <title>Ficha de Cadastro</title>
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:9px;color:#111;background:#fff;padding:8mm}
-      .ficha{border:1px solid #bbb;border-radius:4px;padding:6px 8px;margin-bottom:4mm;page-break-inside:avoid}
-      .header{display:flex;align-items:center;gap:8px;border-bottom:1.5px solid #1d4ed8;padding-bottom:5px;margin-bottom:5px}
-      .header-logo{flex-shrink:0}
-      .header-title{flex-shrink:0}
-      .header-right{flex:1;display:flex;flex-direction:column;align-items:flex-end}
-      .section-title{background:#1d4ed8;color:white;font-size:8px;font-weight:bold;letter-spacing:.5px;padding:2px 6px;margin:5px -8px 4px;text-transform:uppercase}
-      .row{display:flex;gap:8px;margin-bottom:4px;align-items:flex-end}
-      .col-2{flex:2;min-width:0}.col-3{flex:3;min-width:0}.col-4{flex:4;min-width:0}.col-6{flex:6;min-width:0}.col-8{flex:8;min-width:0}
-      .lbl{font-size:8px;color:#374151;font-weight:600;white-space:nowrap;margin-right:2px}
-      .field-row{display:flex;align-items:center;gap:4px;font-size:8px}
-      @media print{
-        body{padding:4mm}
-        .no-print{display:none!important}
-        .ficha{margin-bottom:3mm}
-        @page{size:A4;margin:6mm}
-      }
-    </style>
-    </head><body>
-    <div class="no-print" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;background:#f0f4ff;border:1px solid #c7d7fb;border-radius:6px;padding:8px 12px">
-      <span style="font-size:11px;color:#1d4ed8;font-weight:600">📋 Ficha de Cadastro Física — 2 por folha A4</span>
-      <button onclick="window.print()" style="background:#1d4ed8;color:white;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:11px;margin-left:auto">🖨️ Imprimir</button>
-      <button onclick="window.close()" style="background:#f3f4f6;border:1px solid #d1d5db;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:11px">✕ Fechar</button>
-    </div>
-    ${ficha()}
-    ${ficha()}
-    </body></html>`
-
-    openPrintWindow(html, 'Ficha de Cadastro')
+    printFichaFisica()
   }
 
   const handlePrintIndividual = (m: Member) => {
-    const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-    const age = m.birth_date ? differenceInYears(new Date(), new Date(m.birth_date + 'T00:00:00')) : null
-    const d = (dt?: string) => {
-      if (!dt) return '—'
-      try { return format(new Date(dt + (dt.length === 10 ? 'T00:00:00' : '')), 'dd/MM/yyyy') } catch { return dt }
-    }
-    const statusTxt = m.status === 'ativo' ? 'Ativo' : m.status === 'inativo' ? 'Inativo' : m.status === 'indisponivel' ? 'Indisponível' : m.status === 'deleted' ? 'Excluído' : '—'
-    const sexoTxt = m.sex === 'masculino' ? 'Masculino' : m.sex === 'feminino' ? 'Feminino' : '—'
-    const filhos = m.family?.children?.length
-      ? m.family.children.map(c => `${c.name}${c.birth_date ? ` (${d(c.birth_date)})` : ''}`).join(', ')
-      : '—'
-
-    const field = (label: string, value?: React.ReactNode) =>
-      `<div class="field"><div class="lbl">${label}</div><div class="val">${value && value !== '' ? value : '—'}</div></div>`
-
-    const section = (title: string, body: string) =>
-      `<div class="section"><div class="section-title">${title}</div><div class="grid">${body}</div></div>`
-
-    const ident = [
-      field('Nome completo', m.name),
-      field('Data de nascimento', d(m.birth_date)),
-      field('Idade', age !== null ? `${age} anos` : '—'),
-      field('Sexo', sexoTxt),
-      field('Estado civil', civilLabel(m.civil_status)),
-      field('Nacionalidade', m.nationality),
-      field('Naturalidade', m.naturalidade),
-      field('CPF', m.cpf),
-      field('Identidade', m.identity),
-      field('Escolaridade', m.schooling),
-      field('Profissão', m.occupation),
-      field('Código', m.code),
-    ].join('')
-
-    const contatos = [
-      field('Celular 1', m.contacts?.cellphone1 ?? m.contacts?.phones?.[0]),
-      field('Telefone / Celular 2', m.contacts?.phones?.[1]),
-      field('E-mail 1', m.contacts?.emails?.[0]),
-      field('E-mail 2', m.contacts?.emails?.[1]),
-      field('CEP', m.contacts?.cep),
-      field('Endereço', m.contacts?.address),
-      field('Número', m.contacts?.number),
-      field('Complemento', m.contacts?.complement),
-      field('Bairro', m.contacts?.neighborhood),
-      field('Cidade', m.contacts?.city),
-      field('Estado', m.contacts?.state),
-      field('País', m.contacts?.country ?? 'Brasil'),
-    ].join('')
-
-    const familia = [
-      field('Cônjuge', m.family?.spouse_name),
-      field('Nasc. cônjuge', d(m.family?.spouse_birth_date)),
-      field('Data do casamento', d(m.family?.wedding_date)),
-      field('Nome do pai', m.family?.father_name),
-      field('Nome da mãe', m.family?.mother_name),
-      `<div class="field col-span-3"><div class="lbl">Filhos (${m.family?.children?.length ?? 0})</div><div class="val">${filhos}</div></div>`,
-    ].join('')
-
-    const espiritual = [
-      field('Convertido', m.conversion ? 'Sim' : 'Não'),
-      field('Data da conversão', d(m.conversion_date)),
-      field('Batismo nas águas', m.baptism ? 'Sim' : 'Não'),
-      field('Data batismo águas', d(m.baptism_date)),
-      field('Batismo no Espírito', m.baptism_spirit ? 'Sim' : 'Não'),
-      field('Data batismo Espírito', d(m.baptism_spirit_date)),
-    ].join('')
-
-    const ministerio = [
-      field('Títulos', m.ministry?.titles?.join(', ')),
-      field('Ministérios', m.ministry?.ministries?.join(', ')),
-      field('Departamentos', m.ministry?.departments?.join(', ')),
-      field('Funções', m.ministry?.functions?.join(', ')),
-      field('Companheiro(a)', m.ministry?.companion),
-    ].join('')
-
-    const admin = [
-      field('Igreja', m.church?.name),
-      field('Status', statusTxt),
-      field('Data de entrada', d(m.entry_date)),
-      field('Motivo de entrada', m.entry_reason),
-      field('Igreja de origem', m.origin_church),
-      field('Como chegou', m.how_arrived),
-      field('Data de saída', d(m.exit_date)),
-      field('Motivo de saída', m.exit_reason),
-    ].join('')
-
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-      <title>Cadastro — ${m.name}</title>
-      <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:18px;background:#fff}
-        .brand-header{width:100%;display:flex;justify-content:center;margin-bottom:6px}
-        .brand-header img{max-width:100%;max-height:100px;object-fit:contain}
-        .title-bar{display:flex;align-items:center;justify-content:space-between;border-top:2px solid #1d4ed8;border-bottom:2px solid #1d4ed8;padding:8px 4px;margin-bottom:14px}
-        .title-bar h1{font-size:15px;color:#1d4ed8;margin:0}
-        .title-bar .meta{font-size:10px;color:#666;text-align:right}
-        .title-bar .status{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;font-size:9px;font-weight:bold;background:#dbeafe;color:#1d4ed8;vertical-align:middle}
-        .section{margin-bottom:12px;border:1px solid #e5e7eb;border-radius:4px;overflow:hidden}
-        .section-title{background:#1d4ed8;color:#fff;font-size:10px;font-weight:bold;letter-spacing:.5px;padding:5px 10px;text-transform:uppercase}
-        .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 14px;padding:10px}
-        .field{min-width:0}
-        .field.col-span-3{grid-column:span 3}
-        .lbl{font-size:8.5px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1px}
-        .val{font-size:10.5px;color:#111;word-break:break-word}
-        .footer{margin-top:14px;font-size:9px;color:#9ca3af;text-align:right;border-top:1px solid #e5e7eb;padding-top:6px}
-        @media print{body{padding:10mm}.no-print{display:none!important}@page{size:A4;margin:8mm}}
-      </style>
-      </head><body>
-      <div class="no-print" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;background:#f0f4ff;border:1px solid #c7d7fb;border-radius:6px;padding:8px 12px">
-        <span style="font-size:11px;color:#1d4ed8;font-weight:600">📄 Cadastro individual — ${m.name}</span>
-        <button onclick="window.print()" style="background:#1d4ed8;color:white;border:none;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:11px;margin-left:auto">🖨️ Imprimir</button>
-        <button onclick="window.close()" style="background:#f3f4f6;border:1px solid #d1d5db;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:11px">✕ Fechar</button>
-      </div>
-      <div class="brand-header"><img src="${window.location.origin}/brand/cabecalho.png" alt="AD Piracanjuba" onerror="this.style.display='none'"/></div>
-      <div class="title-bar">
-        <h1>${m.name ?? '—'}<span class="status">${statusTxt}</span></h1>
-        <div class="meta">${m.church?.name ?? ''}${m.church?.name ? '<br/>' : ''}Gerado em ${dateStr}</div>
-      </div>
-      ${section('Identificação', ident)}
-      ${section('Contatos', contatos)}
-      ${section('Família', familia)}
-      ${section('Vida Espiritual', espiritual)}
-      ${section('Ministério', ministerio)}
-      ${section('Administrativo', admin)}
-      <div class="footer">Igreja Digital · ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
-      </body></html>`
-
-    openPrintWindow(html, `Cadastro — ${m.name}`)
+    printMembroIndividual(m)
   }
 
   const toggleSort = (field: SortField) => {

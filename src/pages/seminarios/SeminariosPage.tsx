@@ -35,14 +35,26 @@ export default function SeminariosPage() {
     })
   }, [seminarios, search, statusFilter])
 
-  const counts = useMemo(() => ({
-    total: seminarios.length,
-    em_andamento: seminarios.filter(s => s.status === 'em_andamento').length,
-    planejado: seminarios.filter(s => s.status === 'planejado').length,
-    concluido: seminarios.filter(s => s.status === 'concluido').length,
-  }), [seminarios])
+  const counts = useMemo(() => {
+    let em_andamento = 0, planejado = 0, concluido = 0
+    for (const s of seminarios) {
+      if (s.status === 'em_andamento') em_andamento++
+      else if (s.status === 'planejado') planejado++
+      else if (s.status === 'concluido') concluido++
+    }
+    return { total: seminarios.length, em_andamento, planejado, concluido }
+  }, [seminarios])
 
-  const matCount = (seminarioId: string) => matriculas.filter(m => m.seminario_id === seminarioId).length
+  // Contagem de matrículas por seminário — memoizado em um Map para evitar filter N² nos cards
+  const matCountByseminario = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const m of matriculas) {
+      map.set(m.seminario_id, (map.get(m.seminario_id) ?? 0) + 1)
+    }
+    return map
+  }, [matriculas])
+
+  const matCount = (seminarioId: string) => matCountByseminario.get(seminarioId) ?? 0
 
   const handleAdd = () => { setEditing(null); setModalOpen(true) }
   const handleEdit = (s: Seminario) => { setEditing(s); setModalOpen(true) }

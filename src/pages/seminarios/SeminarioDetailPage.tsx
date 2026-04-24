@@ -51,12 +51,15 @@ export default function SeminarioDetailPage() {
     })
   }, [matriculasDoSeminario, search, situacaoFilter])
 
-  const counts = useMemo(() => ({
-    total: matriculasDoSeminario.length,
-    cursando: matriculasDoSeminario.filter(m => m.situacao === 'cursando').length,
-    concluido: matriculasDoSeminario.filter(m => m.situacao === 'concluido').length,
-    desistente: matriculasDoSeminario.filter(m => m.situacao === 'desistente').length,
-  }), [matriculasDoSeminario])
+  const counts = useMemo(() => {
+    let cursando = 0, concluido = 0, desistente = 0
+    for (const m of matriculasDoSeminario) {
+      if (m.situacao === 'cursando') cursando++
+      else if (m.situacao === 'concluido') concluido++
+      else if (m.situacao === 'desistente') desistente++
+    }
+    return { total: matriculasDoSeminario.length, cursando, concluido, desistente }
+  }, [matriculasDoSeminario])
 
   if (!seminario) {
     return (

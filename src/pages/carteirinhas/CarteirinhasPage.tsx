@@ -63,9 +63,14 @@ export default function CarteirinhasPage() {
   }, [carteirinhas, members, search, filter])
 
   const counts = useMemo(() => {
-    const ativas = carteirinhas.filter(c => statusInfo(c).label.startsWith('Ativa')).length
-    const vencendo = carteirinhas.filter(c => statusInfo(c).label.startsWith('Vence em')).length
-    const vencidas = carteirinhas.filter(c => statusInfo(c).label === 'Vencida').length
+    // Passada única classificando cada carteirinha
+    let ativas = 0, vencendo = 0, vencidas = 0
+    for (const c of carteirinhas) {
+      const label = statusInfo(c).label
+      if (label.startsWith('Ativa')) ativas++
+      else if (label.startsWith('Vence em')) vencendo++
+      else if (label === 'Vencida') vencidas++
+    }
     return { total: carteirinhas.length, ativas, vencendo, vencidas }
   }, [carteirinhas])
 

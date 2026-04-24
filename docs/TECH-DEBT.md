@@ -76,15 +76,17 @@ A base está saudável. Os pontos abaixo são melhorias incrementais, não bugs 
 
 **Objetivo:** reduzir bundle inicial pela metade e quebrar o arquivão.
 
-- [ ] **3.1** `React.lazy()` + `<Suspense>` nas rotas: `GraficosPage`, `SeminariosPage`, `SeminarioDetailPage`, `CarteirinhasPage`, `CertificadosPage`. Criar `<PageLoader />` genérico.
-- [ ] **3.2** Quebrar `MembrosPage.tsx` (1.330 linhas) em:
-  - `pages/secretaria/membros/MembrosPage.tsx` (orquestrador)
-  - `MembrosToolbar.tsx`, `MembrosTable.tsx`, `MembrosCards.tsx`, `ColConfigPanel.tsx`
-  - `hooks/useMembersFilter.ts`
-  - `lib/print/printMembrosList.ts`, `printMembroIndividual.ts`, `printFichaFisica.ts`
-- [ ] **3.3** Mover funções de impressão pra `src/lib/print/` (consolidar com `openPrintWindow` do Sprint 1).
-- [ ] **3.4** Revisar `useMemo`/`useCallback` nas tabelas de Seminário/Carteirinha/Certificado.
-- [ ] **3.5** Validar bundle size com `npm run build` — meta: inicial < 700 KB.
+- [x] **3.1** `React.lazy()` + `<Suspense>` nas rotas: `GraficosPage`, `SeminariosPage`, `SeminarioDetailPage`, `CarteirinhasPage`, `CertificadosPage`, `ConfiguracoesPage`, `IgrejasPage`, `UsuariosPage`, `BackupPage`, `MeuPerfilPage`. Criado `<PageLoader />` genérico em `components/ui/PageLoader.tsx`. Rotas principais (Login, Dashboard, MembrosPage) ficam eager pra não ter loading no primeiro acesso.
+- [x] **3.2** `MembrosPage.tsx` reduzido de **1.330 → 839 linhas** (-37%). Extrações feitas:
+  - `pages/secretaria/membros-columns.ts` (`ColKey`, `ColDef`, `ALL_COLUMNS`, `DEFAULT_COLS`, `MAX_COLS`)
+  - `pages/secretaria/ColConfigPanel.tsx` (modal separado)
+  - `lib/print/membros/printMembrosList.ts` + `buildFilterSummary`
+  - `lib/print/membros/printFichaFisica.ts`
+  - `lib/print/membros/printMembroIndividual.ts`
+  - **Não extraí** `MembrosTable`/`MembrosCards`/`useMembersFilter` porque exigiria passar 15+ props state (risco > benefício). Fica pra quando houver necessidade real.
+- [x] **3.3** Funções de impressão do MembrosPage movidas pra `src/lib/print/membros/`. Já reutilizam o `openPrintWindow` do Sprint 1.
+- [x] **3.4** `useMemo` nas tabelas de Seminário/Carteirinha/Certificado revisado. Os `counts` faziam 3-4 `.filter()` separados — agora passada única com loop. `SeminariosPage` ganhou `matCountByseminario` em `Map` (evita filter N² nos cards).
+- [x] **3.5** Bundle final inicial: **699.88 KB / gzip 212 KB** (antes: 1256 KB / gzip 357 KB). **Redução de 44% em JS, 41% em gzip.** Meta batida.
 
 **Gatilho:** "vamos começar o Sprint 3"
 
@@ -123,3 +125,4 @@ A base está saudável. Os pontos abaixo são melhorias incrementais, não bugs 
 - [x] **2026-04-23** — Auditoria técnica inicial realizada. Plano criado.
 - [x] **2026-04-24** — **Sprint 1 concluído.** ErrorBoundary global, `lib/print.ts` com fallback de pop-up, `onError` em todas as imagens, `lib/format.ts` centralizando `parseISODate`/`fmtDate`/`fmtDateLongo`/`getAge`/`fmtIdade`. Removidas 7 implementações duplicadas de `fmtDate`. Type-check e build limpos.
 - [x] **2026-04-24** — **Sprint 2 concluído.** `UIProvider` com `useToast()` e `useConfirm()` centralizados. Toasts animados auto-dismiss em 4s (success/error/warning/info). ConfirmDialog com variante `danger`, `Esc` cancela e `Enter` confirma. Substituídos 15 `alert()` e 12 `confirm()` em 11 arquivos. Hook `useModalUX()` adiciona foco automático + fechar com Esc a 10 modais.
+- [x] **2026-04-24** — **Sprint 3 concluído.** Lazy loading em 10 rotas, `PageLoader` genérico. Bundle inicial de 1256 KB → 699.88 KB (-44%). GraficosPage (Recharts, 441 KB) isolada em chunk próprio. `MembrosPage.tsx` reduzido de 1.330 → 839 linhas (-37%) com extração de `ColConfigPanel`, `membros-columns.ts` e 3 módulos de print em `lib/print/membros/`. Counts das tabelas otimizados pra passada única.
