@@ -8,6 +8,8 @@ import TabFamilia from './tabs/TabFamilia'
 import TabConexao from './tabs/TabConexao'
 import TabMinisterio from './tabs/TabMinisterio'
 import TabAdministrativo from './tabs/TabAdministrativo'
+import { useConfirm } from '../ui/UIProvider'
+import { useModalUX } from '../../hooks/useModalUX'
 
 interface Props {
   member: Member | null
@@ -36,6 +38,8 @@ const defaultFamily: Partial<MemberFamily> = {
 }
 
 export default function MemberModal({ member, onClose, onSave }: Props) {
+  const confirm = useConfirm()
+  const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
   const [form, setForm] = useState<Partial<Member>>(member ?? defaultForm)
   const [contacts, setContacts] = useState<Partial<import('../../types').MemberContact>>(member?.contacts ?? { emails: [''], phones: [''] })
@@ -58,7 +62,7 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gray-50 sm:rounded-t-xl">
           <div>
@@ -125,7 +129,14 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
             {isEditing && (
               <button
                 className="btn-danger"
-                onClick={() => { if (confirm('Excluir este membro?')) { onSave({ ...form, status: 'deleted' }); onClose() } }}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Excluir membro',
+                    message: 'Deseja realmente excluir este membro?',
+                    danger: true,
+                  })
+                  if (ok) { onSave({ ...form, status: 'deleted' }); onClose() }
+                }}
               >
                 Excluir
               </button>

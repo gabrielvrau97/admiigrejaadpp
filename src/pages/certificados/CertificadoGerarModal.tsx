@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { X, Award, Search } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Matricula } from '../../types'
+import { useConfirm } from '../../components/ui/UIProvider'
+import { useModalUX } from '../../hooks/useModalUX'
 
 interface Props {
   onClose: () => void
@@ -11,6 +13,8 @@ interface Props {
 export default function CertificadoGerarModal({ onClose, onGenerate }: Props) {
   const { matriculas, seminarios, certificados } = useData()
   const [search, setSearch] = useState('')
+  const confirm = useConfirm()
+  const containerRef = useModalUX({ onClose })
 
   // Só permite emitir para matrículas com situação "concluido"
   const candidatos = useMemo(() => {
@@ -31,16 +35,21 @@ export default function CertificadoGerarModal({ onClose, onGenerate }: Props) {
       })
   }, [matriculas, seminarios, certificados, search])
 
-  const handlePick = (mat: Matricula, jaTem: boolean) => {
+  const handlePick = async (mat: Matricula, jaTem: boolean) => {
     if (jaTem) {
-      if (!confirm('Este aluno já tem certificado emitido para este seminário. Deseja reemitir?')) return
+      const ok = await confirm({
+        title: 'Reemitir certificado',
+        message: 'Este aluno já tem certificado emitido para este seminário. Deseja reemitir?',
+        confirmLabel: 'Reemitir',
+      })
+      if (!ok) return
     }
     onGenerate(mat.id)
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gray-50 sm:rounded-t-xl">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">

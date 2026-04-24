@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ChurchProvider } from './contexts/ChurchContext'
 import { ConfigProvider } from './contexts/ConfigContext'
 import { DataProvider } from './contexts/DataContext'
+import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -85,15 +86,17 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ChurchProvider>
-          <ConfigProvider>
-            <DataProvider>
-              <AppRoutes />
-            </DataProvider>
-          </ConfigProvider>
-        </ChurchProvider>
-      </AuthProvider>
+      <UIProvider>
+        <AuthProvider>
+          <ChurchProvider>
+            <ConfigProvider>
+              <DataProvider>
+                <AppRoutes />
+              </DataProvider>
+            </ConfigProvider>
+          </ChurchProvider>
+        </AuthProvider>
+      </UIProvider>
     </BrowserRouter>
   )
 }

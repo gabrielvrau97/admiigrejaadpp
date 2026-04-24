@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { X, IdCard, Search, Check, Layers } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Member, CarteirinhaMotivo } from '../../types'
+import { useToast } from '../../components/ui/UIProvider'
+import { useModalUX } from '../../hooks/useModalUX'
 
 interface Props {
   onClose: () => void
@@ -14,6 +16,8 @@ interface Props {
 
 export default function CarteirinhaLoteModal({ onClose, onGenerate }: Props) {
   const { members, carteirinhas } = useData()
+  const toast = useToast()
+  const containerRef = useModalUX({ onClose })
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [motivo, setMotivo] = useState<CarteirinhaMotivo>('primeira_via')
@@ -53,7 +57,7 @@ export default function CarteirinhaLoteModal({ onClose, onGenerate }: Props) {
 
   const handleConfirm = () => {
     if (selected.size === 0) {
-      alert('Selecione pelo menos um membro.')
+      toast.warning('Selecione pelo menos um membro.')
       return
     }
     onGenerate(Array.from(selected), motivo, validadeAnos)
@@ -63,7 +67,7 @@ export default function CarteirinhaLoteModal({ onClose, onGenerate }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gray-50 sm:rounded-t-xl">
           <div className="flex items-center gap-3">

@@ -3,6 +3,7 @@ import { X, Search, RotateCcw } from 'lucide-react'
 import { useConfig } from '../../contexts/ConfigContext'
 import { mockChurches } from '../../lib/mockData'
 import type { Member } from '../../types'
+import { useModalUX } from '../../hooks/useModalUX'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -265,6 +266,7 @@ interface AdvancedSearchProps {
 
 export default function AdvancedSearch({ onApply, onClose, initialSel, initialSim }: AdvancedSearchProps) {
   const { config } = useConfig()
+  const containerRef = useModalUX({ onClose })
   const [tab, setTab] = useState<'selecao' | 'semelhanca'>('selecao')
   const [sel, setSel] = useState<SelectionFilters>(initialSel ?? EMPTY_SELECTION)
   const [sim, setSim] = useState<SimilarityFilters>(initialSim ?? EMPTY_SIMILARITY)
@@ -283,7 +285,7 @@ export default function AdvancedSearch({ onApply, onClose, initialSel, initialSi
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:pt-8 sm:px-4 sm:pb-4">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">

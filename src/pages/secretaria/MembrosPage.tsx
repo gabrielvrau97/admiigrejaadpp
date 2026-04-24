@@ -20,6 +20,8 @@ import AdvancedSearch, {
   applySelectionFilters, applySimilarityFilters,
 } from '../../components/members/AdvancedSearch'
 import { openPrintWindow } from '../../lib/print'
+import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import { useModalUX } from '../../hooks/useModalUX'
 
 // ──────────────────────────────────────────────
 // Definição de colunas disponíveis
@@ -109,6 +111,7 @@ function ColConfigPanel({
   onChange: (cols: ColKey[]) => void
   onClose: () => void
 }) {
+  const containerRef = useModalUX({ onClose })
   const [local, setLocal] = useState<ColKey[]>(selected)
 
   const groups = useMemo(() => {
@@ -134,7 +137,7 @@ function ColConfigPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 sm:pt-12 sm:px-4">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[80vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div>
@@ -239,6 +242,8 @@ const subMap: Record<string, string> = {
 export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   const { members, setMembers, visitantes, setVisitantes } = useData()
   const { selectedChurch } = useChurch()
+  const toast = useToast()
+  const confirm = useConfirm()
 
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
@@ -783,12 +788,18 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
     else setSelected(new Set(paginated.map(m => m.id)))
   }
 
-  const handleDelete = useCallback((id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este registro?')) return
+  const handleDelete = useCallback(async (id: string) => {
+    const ok = await confirm({
+      title: 'Excluir registro',
+      message: 'Tem certeza que deseja excluir este registro?',
+      danger: true,
+    })
+    if (!ok) return
     const del = (list: Member[]) => list.map(m => m.id === id ? { ...m, status: 'deleted' as const } : m)
     setMembers(del)
     setVisitantes(del)
-  }, [setMembers, setVisitantes])
+    toast.success('Registro excluído.')
+  }, [setMembers, setVisitantes, confirm, toast])
 
   const handleOpenAdd = () => { setEditingMember(null); setModalOpen(true) }
   const handleOpenEdit = (m: Member) => { setEditingMember(m); setModalOpen(true) }

@@ -8,6 +8,7 @@ import { useData } from '../../contexts/DataContext'
 import type { Matricula, MatriculaSituacao, Certificado } from '../../types'
 import MatriculaModal from './MatriculaModal'
 import { fmtDate, fmtIdade } from '../../lib/format'
+import { useToast, useConfirm } from '../../components/ui/UIProvider'
 
 const SITUACAO_CONFIG: Record<MatriculaSituacao, { label: string; badge: string }> = {
   cursando: { label: 'Cursando', badge: 'badge-blue' },
@@ -24,6 +25,8 @@ export default function SeminarioDetailPage() {
     seminarios, matriculas, setMatriculas,
     certificados, setCertificados,
   } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
 
   const [search, setSearch] = useState('')
   const [situacaoFilter, setSituacaoFilter] = useState<MatriculaSituacao | ''>('')
@@ -68,9 +71,15 @@ export default function SeminarioDetailPage() {
 
   const handleAdd = () => { setEditing(null); setModalOpen(true) }
   const handleEdit = (m: Matricula) => { setEditing(m); setModalOpen(true) }
-  const handleDelete = (matId: string) => {
-    if (!confirm('Excluir esta matrícula?')) return
+  const handleDelete = async (matId: string) => {
+    const ok = await confirm({
+      title: 'Excluir matrícula',
+      message: 'Deseja realmente excluir esta matrícula?',
+      danger: true,
+    })
+    if (!ok) return
     setMatriculas(list => list.filter(m => m.id !== matId))
+    toast.success('Matrícula excluída.')
   }
 
   const handleSave = (data: Partial<Matricula>) => {
@@ -110,13 +119,18 @@ export default function SeminarioDetailPage() {
 
   const jaTemCertificado = (matId: string) => certificados.some(c => c.matricula_id === matId)
 
-  const handleGerarCertificado = (m: Matricula) => {
+  const handleGerarCertificado = async (m: Matricula) => {
     if (m.situacao !== 'concluido') {
-      alert('Só é possível emitir certificado para alunos com situação "Concluído".')
+      toast.warning('Só é possível emitir certificado para alunos com situação "Concluído".')
       return
     }
     if (jaTemCertificado(m.id)) {
-      if (!confirm('Este aluno já possui certificado. Deseja gerar uma reimpressão?')) return
+      const ok = await confirm({
+        title: 'Reemitir certificado',
+        message: 'Este aluno já possui certificado. Deseja gerar uma reimpressão?',
+        confirmLabel: 'Reemitir',
+      })
+      if (!ok) return
     }
     const novo: Certificado = {
       id: `cert-${Date.now()}`,

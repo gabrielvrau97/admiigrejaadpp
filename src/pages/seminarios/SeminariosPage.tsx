@@ -5,6 +5,7 @@ import { useData } from '../../contexts/DataContext'
 import type { Seminario, SeminarioStatus } from '../../types'
 import SeminarioModal from './SeminarioModal'
 import { fmtDate } from '../../lib/format'
+import { useToast, useConfirm } from '../../components/ui/UIProvider'
 
 const STATUS_CONFIG: Record<SeminarioStatus, { label: string; badge: string; dot: string }> = {
   planejado: { label: 'Planejado', badge: 'badge-yellow', dot: 'bg-yellow-500' },
@@ -16,6 +17,8 @@ const STATUS_CONFIG: Record<SeminarioStatus, { label: string; badge: string; dot
 export default function SeminariosPage() {
   const navigate = useNavigate()
   const { seminarios, setSeminarios, matriculas } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SeminarioStatus | ''>('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -43,9 +46,15 @@ export default function SeminariosPage() {
 
   const handleAdd = () => { setEditing(null); setModalOpen(true) }
   const handleEdit = (s: Seminario) => { setEditing(s); setModalOpen(true) }
-  const handleDelete = (id: string) => {
-    if (!confirm('Excluir este seminário? Os alunos matriculados também serão afetados.')) return
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Excluir seminário',
+      message: 'Deseja realmente excluir este seminário? Os alunos matriculados também serão afetados.',
+      danger: true,
+    })
+    if (!ok) return
     setSeminarios(list => list.filter(s => s.id !== id))
+    toast.success('Seminário excluído.')
   }
   const handleSave = (data: Partial<Seminario>) => {
     if (editing) {

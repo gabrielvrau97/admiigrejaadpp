@@ -62,11 +62,11 @@ A base está saudável. Os pontos abaixo são melhorias incrementais, não bugs 
 
 **Objetivo:** tirar os `alert/confirm` feios e dar um toast de feedback visual.
 
-- [ ] **2.1** Criar `<ConfirmDialog>` + hook `useConfirm()` em `src/components/ui/ConfirmDialog.tsx`. API: `const confirm = useConfirm(); const ok = await confirm({ title, message, danger? })`.
-- [ ] **2.2** Criar `<Toaster>` + hook `useToast()` em `src/components/ui/Toast.tsx`. Toasts auto-dismiss de sucesso/erro/warning. Provider no `App.tsx`.
-- [ ] **2.3** Substituir todos os `alert()` (15+) por `toast.error/success`.
-- [ ] **2.4** Substituir todos os `confirm()` (12+) por `await confirm({...})`.
-- [ ] **2.5** Foco automático no primeiro input dos modais. Fechar com tecla `Esc`.
+- [x] **2.1** Criar `<ConfirmDialog>` + hook `useConfirm()` em `src/components/ui/UIProvider.tsx`. API: `const confirm = useConfirm(); const ok = await confirm({ title, message, danger? })`.
+- [x] **2.2** Criar `<Toaster>` + hook `useToast()` no mesmo `UIProvider.tsx`. Toasts auto-dismiss (4s) de success/error/warning/info. Provider no `App.tsx`.
+- [x] **2.3** Substituir todos os `alert()` (15+) por `toast.warning/error/success`.
+- [x] **2.4** Substituir todos os `confirm()` (12+) por `await confirm({...})`.
+- [x] **2.5** Foco automático no primeiro input dos modais. Fechar com tecla `Esc`. Implementado via hook `useModalUX()` em `src/hooks/useModalUX.ts`.
 
 **Gatilho:** "vamos começar o Sprint 2"
 
@@ -122,3 +122,4 @@ A base está saudável. Os pontos abaixo são melhorias incrementais, não bugs 
 
 - [x] **2026-04-23** — Auditoria técnica inicial realizada. Plano criado.
 - [x] **2026-04-24** — **Sprint 1 concluído.** ErrorBoundary global, `lib/print.ts` com fallback de pop-up, `onError` em todas as imagens, `lib/format.ts` centralizando `parseISODate`/`fmtDate`/`fmtDateLongo`/`getAge`/`fmtIdade`. Removidas 7 implementações duplicadas de `fmtDate`. Type-check e build limpos.
+- [x] **2026-04-24** — **Sprint 2 concluído.** `UIProvider` com `useToast()` e `useConfirm()` centralizados. Toasts animados auto-dismiss em 4s (success/error/warning/info). ConfirmDialog com variante `danger`, `Esc` cancela e `Enter` confirma. Substituídos 15 `alert()` e 12 `confirm()` em 11 arquivos. Hook `useModalUX()` adiciona foco automático + fechar com Esc a 10 modais.

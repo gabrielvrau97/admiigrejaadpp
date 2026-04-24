@@ -7,6 +7,7 @@ import type { Carteirinha, CarteirinhaMotivo, Member } from '../../types'
 import CarteirinhaGerarModal from './CarteirinhaGerarModal'
 import CarteirinhaLoteModal from './CarteirinhaLoteModal'
 import { printCarteirinha, printCarteirinhasLote } from './printCarteirinha'
+import { useToast, useConfirm } from '../../components/ui/UIProvider'
 
 const MOTIVO_LABEL: Record<CarteirinhaMotivo, string> = {
   primeira_via: 'Primeira via',
@@ -28,6 +29,8 @@ function statusInfo(c: Carteirinha): { label: string; badge: string; icon: React
 
 export default function CarteirinhasPage() {
   const { carteirinhas, setCarteirinhas, members } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'todas' | 'ativas' | 'vencidas' | 'vencendo'>('todas')
   const [modalOpen, setModalOpen] = useState(false)
@@ -66,15 +69,22 @@ export default function CarteirinhasPage() {
     return { total: carteirinhas.length, ativas, vencendo, vencidas }
   }, [carteirinhas])
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Cancelar esta carteirinha? A ação não pode ser desfeita.')) return
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Cancelar carteirinha',
+      message: 'Deseja realmente cancelar esta carteirinha? A ação não pode ser desfeita.',
+      confirmLabel: 'Cancelar carteirinha',
+      danger: true,
+    })
+    if (!ok) return
     setCarteirinhas(list => list.map(c => c.id === id ? { ...c, status: 'cancelada' as const } : c))
+    toast.success('Carteirinha cancelada.')
   }
 
   const handlePrint = (c: Carteirinha) => {
     const m = getMember(c.member_id)
     if (!m) {
-      alert('Membro vinculado não encontrado.')
+      toast.error('Membro vinculado não encontrado.')
       return
     }
     printCarteirinha(c, m)
@@ -104,7 +114,7 @@ export default function CarteirinhasPage() {
       .filter(x => selected.has(x.c.id) && x.member)
       .map(x => ({ c: x.c, m: x.member! }))
     if (items.length === 0) {
-      alert('Selecione pelo menos uma carteirinha para imprimir.')
+      toast.warning('Selecione pelo menos uma carteirinha para imprimir.')
       return
     }
     printCarteirinhasLote(items)

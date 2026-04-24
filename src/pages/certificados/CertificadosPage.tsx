@@ -7,9 +7,12 @@ import type { Certificado } from '../../types'
 import CertificadoGerarModal from './CertificadoGerarModal'
 import CertificadoLoteModal from './CertificadoLoteModal'
 import { printCertificado, printCertificadosLote } from './printCertificado'
+import { useToast, useConfirm } from '../../components/ui/UIProvider'
 
 export default function CertificadosPage() {
   const { certificados, setCertificados, seminarios, matriculas } = useData()
+  const toast = useToast()
+  const confirm = useConfirm()
   const [params] = useSearchParams()
   const highlight = params.get('highlight')
   const [search, setSearch] = useState('')
@@ -76,7 +79,7 @@ export default function CertificadosPage() {
   const handlePrintLote = () => {
     const lote = filtered.filter(c => selected.has(c.id))
     if (lote.length === 0) {
-      alert('Selecione pelo menos um certificado para imprimir.')
+      toast.warning('Selecione pelo menos um certificado para imprimir.')
       return
     }
     printCertificadosLote(lote)
@@ -118,9 +121,16 @@ export default function CertificadosPage() {
     setTimeout(() => printCertificadosLote(novos), 200)
   }
 
-  const handleCancel = (id: string) => {
-    if (!confirm('Cancelar este certificado? A ação pode ser revertida marcando como reemitido.')) return
+  const handleCancel = async (id: string) => {
+    const ok = await confirm({
+      title: 'Cancelar certificado',
+      message: 'Deseja realmente cancelar este certificado? A ação pode ser revertida marcando como reemitido.',
+      confirmLabel: 'Cancelar certificado',
+      danger: true,
+    })
+    if (!ok) return
     setCertificados(list => list.map(c => c.id === id ? { ...c, status: 'cancelado' as const } : c))
+    toast.success('Certificado cancelado.')
   }
 
   const handleReemit = (id: string) => {

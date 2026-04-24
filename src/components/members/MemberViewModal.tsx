@@ -1,6 +1,7 @@
 import { X, User, Phone, Users, Church as ChurchIcon, Settings, Heart, Printer } from 'lucide-react'
 import type { Member } from '../../types'
 import { fmtDate, getAge } from '../../lib/format'
+import { useModalUX } from '../../hooks/useModalUX'
 
 interface Props {
   member: Member
@@ -53,12 +54,13 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 }
 
 export default function MemberViewModal({ member, onClose, onEdit, onPrint }: Props) {
+  const containerRef = useModalUX({ onClose })
   const m = member
   const age = getAge(m.birth_date)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 sm:rounded-t-xl">
           <div className="flex items-center gap-3 min-w-0">

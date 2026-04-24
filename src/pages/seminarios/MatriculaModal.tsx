@@ -3,6 +3,8 @@ import { X, UserPlus, Search, Check, Users } from 'lucide-react'
 import type { Matricula, MatriculaSituacao, Member } from '../../types'
 import { useData } from '../../contexts/DataContext'
 import { mockChurches } from '../../lib/mockData'
+import { useToast } from '../../components/ui/UIProvider'
+import { useModalUX } from '../../hooks/useModalUX'
 
 interface Props {
   matricula: Matricula | null
@@ -12,6 +14,8 @@ interface Props {
 
 export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
   const { members } = useData()
+  const toast = useToast()
+  const containerRef = useModalUX({ onClose })
   const [tab, setTab] = useState<'buscar' | 'dados'>(matricula ? 'dados' : 'buscar')
   const [memberSearch, setMemberSearch] = useState('')
   const [form, setForm] = useState<Partial<Matricula>>(matricula ?? {
@@ -61,7 +65,7 @@ export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
 
   const handleSubmit = () => {
     if (!form.nome?.trim()) {
-      alert('Nome do aluno é obrigatório')
+      toast.error('Nome do aluno é obrigatório')
       return
     }
     onSave(form)
@@ -71,7 +75,7 @@ export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black/50">
-      <div className="bg-white sm:rounded-xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
+      <div ref={containerRef} className="bg-white sm:rounded-xl shadow-2xl w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-200 bg-gray-50 sm:rounded-t-xl">
           <div className="flex items-center gap-3">
