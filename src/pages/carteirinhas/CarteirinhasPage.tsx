@@ -5,6 +5,7 @@ import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle,
 import { useData } from '../../contexts/DataContext'
 import type { Carteirinha, CarteirinhaMotivo, Member } from '../../types'
 import CarteirinhaGerarModal from './CarteirinhaGerarModal'
+import CarteirinhaLoteModal from './CarteirinhaLoteModal'
 import { printCarteirinha, printCarteirinhasLote } from './printCarteirinha'
 
 const MOTIVO_LABEL: Record<CarteirinhaMotivo, string> = {
@@ -35,6 +36,7 @@ export default function CarteirinhasPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'todas' | 'ativas' | 'vencidas' | 'vencendo'>('todas')
   const [modalOpen, setModalOpen] = useState(false)
+  const [loteModalOpen, setLoteModalOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const getMember = (id: string): Member | undefined => members.find(m => m.id === id)
@@ -157,6 +159,51 @@ export default function CarteirinhasPage() {
     }, 200)
   }
 
+  const handleGenerateLote = (
+    memberIds: string[],
+    motivo: CarteirinhaMotivo,
+    validadeAnos: number,
+  ) => {
+    const membros = memberIds.map(id => getMember(id)).filter((m): m is Member => !!m)
+    if (membros.length === 0) return
+
+    const hoje = new Date()
+    const validaAte = new Date(hoje)
+    validaAte.setFullYear(validaAte.getFullYear() + validadeAnos)
+    const hojeISO = hoje.toISOString().split('T')[0]
+    const validaAteISO = validaAte.toISOString().split('T')[0]
+    const baseSeq = carteirinhas.length
+
+    const novas: Carteirinha[] = membros.map((m, idx) => ({
+      id: `cart-${Date.now()}-${idx}`,
+      member_id: m.id,
+      numero: `ADP-${hoje.getFullYear()}-${String(baseSeq + idx + 1).padStart(4, '0')}`,
+      motivo,
+      emitida_em: hojeISO,
+      valida_ate: validaAteISO,
+      emitida_por: 'Secretaria Admin',
+      status: 'ativa',
+      created_at: hoje.toISOString(),
+    }))
+
+    setCarteirinhas(list => {
+      const idsQueReceberam = new Set(memberIds)
+      const anteriores = list.map(c =>
+        idsQueReceberam.has(c.member_id) && c.status === 'ativa'
+          ? { ...c, status: 'substituida' as const }
+          : c
+      )
+      return [...novas, ...anteriores]
+    })
+
+    setLoteModalOpen(false)
+    // Imprime todas em lote
+    setTimeout(() => {
+      const items = novas.map((c, idx) => ({ c, m: membros[idx] }))
+      printCarteirinhasLote(items)
+    }, 200)
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -170,12 +217,15 @@ export default function CarteirinhasPage() {
             <p className="text-sm text-gray-500">Gestão, histórico e impressão</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {selected.size > 0 && (
             <button onClick={handlePrintLote} className="btn-outline flex items-center gap-1.5 border-indigo-400 text-indigo-700 bg-indigo-50">
               <Layers size={14} /> Imprimir {selected.size} <span className="hidden sm:inline">selecionada{selected.size > 1 ? 's' : ''}</span>
             </button>
           )}
+          <button onClick={() => setLoteModalOpen(true)} className="btn-outline flex items-center gap-1.5 border-blue-400 text-blue-700 bg-blue-50">
+            <Layers size={14} /> Gerar em lote
+          </button>
           <button onClick={() => setModalOpen(true)} className="btn-primary">
             <Plus size={14} /> Gerar nova
           </button>
@@ -331,6 +381,13 @@ export default function CarteirinhasPage() {
         <CarteirinhaGerarModal
           onClose={() => setModalOpen(false)}
           onGenerate={handleGenerate}
+        />
+      )}
+
+      {loteModalOpen && (
+        <CarteirinhaLoteModal
+          onClose={() => setLoteModalOpen(false)}
+          onGenerate={handleGenerateLote}
         />
       )}
     </div>

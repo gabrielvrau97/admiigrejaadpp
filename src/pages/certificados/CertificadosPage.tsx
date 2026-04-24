@@ -6,6 +6,7 @@ import { Award, Search, Printer, Trash2, Plus, Layers } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Certificado } from '../../types'
 import CertificadoGerarModal from './CertificadoGerarModal'
+import CertificadoLoteModal from './CertificadoLoteModal'
 import { printCertificado, printCertificadosLote } from './printCertificado'
 
 function fmtDate(d?: string) {
@@ -20,6 +21,7 @@ export default function CertificadosPage() {
   const [search, setSearch] = useState('')
   const [seminarioFilter, setSeminarioFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [loteModalOpen, setLoteModalOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   // Scroll até o highlight se veio da página de seminário
@@ -86,6 +88,42 @@ export default function CertificadosPage() {
     printCertificadosLote(lote)
   }
 
+  const handleGenerateLote = (matriculaIds: string[]) => {
+    const hoje = new Date()
+    const hojeISO = hoje.toISOString().split('T')[0]
+    const ano = hoje.getFullYear()
+    const baseSeq = certificados.length
+
+    const novos: Certificado[] = matriculaIds
+      .map((matId, idx): Certificado | null => {
+        const mat = matriculas.find(m => m.id === matId)
+        if (!mat) return null
+        const sem = seminarios.find(s => s.id === mat.seminario_id)
+        if (!sem) return null
+        return {
+          id: `cert-${Date.now()}-${idx}`,
+          matricula_id: mat.id,
+          seminario_id: sem.id,
+          numero: `CERT-${ano}-${String(baseSeq + idx + 1).padStart(4, '0')}`,
+          nome_aluno: mat.nome,
+          nome_seminario: sem.nome,
+          carga_horaria: sem.carga_horaria,
+          data_conclusao: mat.data_conclusao ?? hojeISO,
+          emitido_em: hojeISO,
+          emitido_por: 'Secretaria Admin',
+          status: 'emitido',
+          created_at: hoje.toISOString(),
+        }
+      })
+      .filter((c): c is Certificado => c !== null)
+
+    if (novos.length === 0) return
+
+    setCertificados(list => [...novos, ...list])
+    setLoteModalOpen(false)
+    setTimeout(() => printCertificadosLote(novos), 200)
+  }
+
   const handleCancel = (id: string) => {
     if (!confirm('Cancelar este certificado? A ação pode ser revertida marcando como reemitido.')) return
     setCertificados(list => list.map(c => c.id === id ? { ...c, status: 'cancelado' as const } : c))
@@ -108,12 +146,15 @@ export default function CertificadosPage() {
             <p className="text-sm text-gray-500">Emissão e histórico de diplomas de seminários</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {selected.size > 0 && (
             <button onClick={handlePrintLote} className="btn-outline flex items-center gap-1.5 border-amber-400 text-amber-700 bg-amber-50">
               <Layers size={14} /> Imprimir {selected.size} <span className="hidden sm:inline">selecionado{selected.size > 1 ? 's' : ''}</span>
             </button>
           )}
+          <button onClick={() => setLoteModalOpen(true)} className="btn-outline flex items-center gap-1.5 border-amber-400 text-amber-700 bg-amber-50">
+            <Layers size={14} /> Emitir em lote
+          </button>
           <button onClick={() => setModalOpen(true)} className="btn-primary">
             <Plus size={14} /> Emitir novo
           </button>
@@ -303,6 +344,13 @@ export default function CertificadosPage() {
             setModalOpen(false)
             setTimeout(() => printCertificado(novo), 200)
           }}
+        />
+      )}
+
+      {loteModalOpen && (
+        <CertificadoLoteModal
+          onClose={() => setLoteModalOpen(false)}
+          onGenerate={handleGenerateLote}
         />
       )}
     </div>
