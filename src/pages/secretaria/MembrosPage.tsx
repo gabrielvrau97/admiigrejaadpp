@@ -66,7 +66,7 @@ const subMap: Record<string, string> = {
 }
 
 export default function MembrosPage({ type = 'membros' }: { type?: string }) {
-  const { members, setMembers, visitantes, setVisitantes } = useData()
+  const { members, visitantes, saveMember, removeMember } = useData()
   const { selectedChurch } = useChurch()
   const toast = useToast()
   const confirm = useConfirm()
@@ -304,37 +304,39 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       danger: true,
     })
     if (!ok) return
-    const del = (list: Member[]) => list.map(m => m.id === id ? { ...m, status: 'deleted' as const } : m)
-    setMembers(del)
-    setVisitantes(del)
-    toast.success('Registro excluído.')
-  }, [setMembers, setVisitantes, confirm, toast])
+    try {
+      await removeMember(id)
+      toast.success('Registro excluído.')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao excluir. Tente novamente.')
+    }
+  }, [removeMember, confirm, toast])
 
   const handleOpenAdd = () => { setEditingMember(null); setModalOpen(true) }
   const handleOpenEdit = (m: Member) => { setEditingMember(m); setModalOpen(true) }
 
-  const handleSave = (data: Partial<Member>) => {
-    if (editingMember) {
-      const upd = (list: Member[]) => list.map(m => m.id === editingMember.id ? { ...m, ...data } : m)
-      setMembers(upd)
-      setVisitantes(upd)
-    } else {
-      const isVisitante = type === 'visitantes'
-      const newM: Member = {
-        id: `${isVisitante ? 'visitor' : 'member'}-${Date.now()}`,
-        church_id: data.church_id ?? mockChurches[0].id,
-        member_type: isVisitante ? 'visitante' : 'membro',
-        status: data.status ?? 'ativo',
-        name: data.name ?? '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        ...data,
-        church: mockChurches.find(c => c.id === (data.church_id ?? mockChurches[0].id)),
+  const handleSave = async (data: Partial<Member>) => {
+    try {
+      if (editingMember) {
+        await saveMember({ id: editingMember.id, ...data })
+        toast.success('Cadastro atualizado.')
+      } else {
+        const isVisitante = type === 'visitantes'
+        await saveMember({
+          church_id: data.church_id ?? mockChurches[0].id,
+          member_type: isVisitante ? 'visitante' : 'membro',
+          status: data.status ?? 'ativo',
+          name: data.name ?? '',
+          ...data,
+        })
+        toast.success(isVisitante ? 'Visitante cadastrado.' : 'Membro cadastrado.')
       }
-      if (isVisitante) setVisitantes(v => [newM, ...v])
-      else setMembers(ms => [newM, ...ms])
+      setModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao salvar. Tente novamente.')
     }
-    setModalOpen(false)
   }
 
   const SortIcon = ({ field }: { field: SortField }) => (

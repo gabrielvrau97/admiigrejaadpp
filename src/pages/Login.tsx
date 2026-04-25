@@ -6,8 +6,8 @@ import { useAuth } from '../contexts/AuthContext'
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('secretaria@adp.com')
-  const [password, setPassword] = useState('demo1234')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -16,12 +16,12 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const ok = await login(email, password)
+    const result = await login(email, password)
     setLoading(false)
-    if (ok) {
+    if (result.ok) {
       navigate('/dashboard')
     } else {
-      setError('E-mail ou senha inválidos.')
+      setError(result.error ?? 'E-mail ou senha inválidos.')
     }
   }
 
@@ -93,11 +93,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <p className="text-xs text-blue-700 font-medium mb-1">Credenciais de demonstração:</p>
-            <p className="text-xs text-blue-600 font-mono">secretaria@adp.com / demo1234</p>
-          </div>
         </div>
 
         <p className="text-center text-blue-300/40 text-xs mt-6">

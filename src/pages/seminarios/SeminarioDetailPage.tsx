@@ -22,8 +22,8 @@ export default function SeminarioDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const {
-    seminarios, matriculas, setMatriculas,
-    certificados, setCertificados,
+    seminarios, matriculas, saveMatricula, removeMatricula,
+    certificados, saveCertificado,
   } = useData()
   const toast = useToast()
   const confirm = useConfirm()
@@ -81,43 +81,48 @@ export default function SeminarioDetailPage() {
       danger: true,
     })
     if (!ok) return
-    setMatriculas(list => list.filter(m => m.id !== matId))
-    toast.success('Matrícula excluída.')
+    try {
+      await removeMatricula(matId)
+      toast.success('Matrícula excluída.')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao excluir matrícula.')
+    }
   }
 
-  const handleSave = (data: Partial<Matricula>) => {
-    if (editing) {
-      setMatriculas(list => list.map(m => m.id === editing.id
-        ? { ...m, ...data, updated_at: new Date().toISOString() }
-        : m
-      ))
-    } else {
-      const novo: Matricula = {
-        id: `mat-${Date.now()}`,
-        seminario_id: seminario.id,
-        nome: data.nome ?? '',
-        apelido: data.apelido,
-        cpf: data.cpf,
-        birth_date: data.birth_date,
-        sex: data.sex,
-        email: data.email,
-        telefone: data.telefone,
-        cidade: data.cidade,
-        estado: data.estado,
-        church_id: data.church_id,
-        member_id: data.member_id,
-        situacao: data.situacao ?? 'cursando',
-        nota_final: data.nota_final,
-        frequencia: data.frequencia,
-        data_matricula: data.data_matricula ?? new Date().toISOString().split('T')[0],
-        data_conclusao: data.data_conclusao,
-        observacoes: data.observacoes,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+  const handleSave = async (data: Partial<Matricula>) => {
+    try {
+      if (editing) {
+        await saveMatricula({ id: editing.id, ...data })
+        toast.success('Matrícula atualizada.')
+      } else {
+        await saveMatricula({
+          seminario_id: seminario.id,
+          nome: data.nome ?? '',
+          apelido: data.apelido,
+          cpf: data.cpf,
+          birth_date: data.birth_date,
+          sex: data.sex,
+          email: data.email,
+          telefone: data.telefone,
+          cidade: data.cidade,
+          estado: data.estado,
+          church_id: data.church_id,
+          member_id: data.member_id,
+          situacao: data.situacao ?? 'cursando',
+          nota_final: data.nota_final,
+          frequencia: data.frequencia,
+          data_matricula: data.data_matricula ?? new Date().toISOString().split('T')[0],
+          data_conclusao: data.data_conclusao,
+          observacoes: data.observacoes,
+        })
+        toast.success('Aluno matriculado.')
       }
-      setMatriculas(list => [novo, ...list])
+      setModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao salvar matrícula.')
     }
-    setModalOpen(false)
   }
 
   const jaTemCertificado = (matId: string) => certificados.some(c => c.matricula_id === matId)
@@ -135,22 +140,24 @@ export default function SeminarioDetailPage() {
       })
       if (!ok) return
     }
-    const novo: Certificado = {
-      id: `cert-${Date.now()}`,
-      matricula_id: m.id,
-      seminario_id: seminario.id,
-      numero: `CERT-${new Date().getFullYear()}-${String(certificados.length + 1).padStart(4, '0')}`,
-      nome_aluno: m.nome,
-      nome_seminario: seminario.nome,
-      carga_horaria: seminario.carga_horaria,
-      data_conclusao: m.data_conclusao ?? new Date().toISOString().split('T')[0],
-      emitido_em: new Date().toISOString().split('T')[0],
-      emitido_por: 'Secretaria Admin',
-      status: 'emitido',
-      created_at: new Date().toISOString(),
+    try {
+      const saved = await saveCertificado({
+        matricula_id: m.id,
+        seminario_id: seminario.id,
+        numero: `CERT-${new Date().getFullYear()}-${String(certificados.length + 1).padStart(4, '0')}`,
+        nome_aluno: m.nome,
+        nome_seminario: seminario.nome,
+        carga_horaria: seminario.carga_horaria,
+        data_conclusao: m.data_conclusao ?? new Date().toISOString().split('T')[0],
+        emitido_em: new Date().toISOString().split('T')[0],
+        emitido_por: 'Secretaria Admin',
+        status: 'emitido',
+      })
+      navigate(`/certificados?highlight=${saved.id}`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao gerar certificado.')
     }
-    setCertificados(list => [novo, ...list])
-    navigate(`/certificados?highlight=${novo.id}`)
   }
 
   return (

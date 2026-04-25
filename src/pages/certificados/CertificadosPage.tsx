@@ -10,7 +10,7 @@ import { printCertificado, printCertificadosLote } from './printCertificado'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 
 export default function CertificadosPage() {
-  const { certificados, setCertificados, seminarios, matriculas } = useData()
+  const { certificados, seminarios, matriculas, saveCertificado } = useData()
   const toast = useToast()
   const confirm = useConfirm()
   const [params] = useSearchParams()
@@ -89,20 +89,21 @@ export default function CertificadosPage() {
     printCertificadosLote(lote)
   }
 
-  const handleGenerateLote = (matriculaIds: string[]) => {
+  const handleGenerateLote = async (matriculaIds: string[]) => {
     const hoje = new Date()
     const hojeISO = hoje.toISOString().split('T')[0]
     const ano = hoje.getFullYear()
     const baseSeq = certificados.length
 
-    const novos: Certificado[] = matriculaIds
-      .map((matId, idx): Certificado | null => {
+    try {
+      const novos: Certificado[] = []
+      let idx = 0
+      for (const matId of matriculaIds) {
         const mat = matriculas.find(m => m.id === matId)
-        if (!mat) return null
+        if (!mat) continue
         const sem = seminarios.find(s => s.id === mat.seminario_id)
-        if (!sem) return null
-        return {
-          id: `cert-${Date.now()}-${idx}`,
+        if (!sem) continue
+        const saved = await saveCertificado({
           matricula_id: mat.id,
           seminario_id: sem.id,
           numero: `CERT-${ano}-${String(baseSeq + idx + 1).padStart(4, '0')}`,
@@ -113,16 +114,18 @@ export default function CertificadosPage() {
           emitido_em: hojeISO,
           emitido_por: 'Secretaria Admin',
           status: 'emitido',
-          created_at: hoje.toISOString(),
-        }
-      })
-      .filter((c): c is Certificado => c !== null)
-
-    if (novos.length === 0) return
-
-    setCertificados(list => [...novos, ...list])
-    setLoteModalOpen(false)
-    setTimeout(() => printCertificadosLote(novos), 200)
+        })
+        novos.push(saved)
+        idx++
+      }
+      if (novos.length === 0) return
+      setLoteModalOpen(false)
+      toast.success(`${novos.length} certificados gerados.`)
+      setTimeout(() => printCertificadosLote(novos), 200)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao gerar certificados em lote.')
+    }
   }
 
   const handleCancel = async (id: string) => {
@@ -133,12 +136,22 @@ export default function CertificadosPage() {
       danger: true,
     })
     if (!ok) return
-    setCertificados(list => list.map(c => c.id === id ? { ...c, status: 'cancelado' as const } : c))
-    toast.success('Certificado cancelado.')
+    try {
+      await saveCertificado({ id, status: 'cancelado' })
+      toast.success('Certificado cancelado.')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao cancelar certificado.')
+    }
   }
 
-  const handleReemit = (id: string) => {
-    setCertificados(list => list.map(c => c.id === id ? { ...c, status: 'reemitido' as const } : c))
+  const handleReemit = async (id: string) => {
+    try {
+      await saveCertificado({ id, status: 'reemitido' })
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao reemitir certificado.')
+    }
   }
 
   return (
@@ -328,29 +341,32 @@ export default function CertificadosPage() {
       {modalOpen && (
         <CertificadoGerarModal
           onClose={() => setModalOpen(false)}
-          onGenerate={(matId) => {
+          onGenerate={async (matId) => {
             const mat = matriculas.find(m => m.id === matId)
             if (!mat) return
             const sem = seminarios.find(s => s.id === mat.seminario_id)
             if (!sem) return
             const hoje = new Date().toISOString().split('T')[0]
-            const novo: Certificado = {
-              id: `cert-${Date.now()}`,
-              matricula_id: mat.id,
-              seminario_id: sem.id,
-              numero: `CERT-${new Date().getFullYear()}-${String(certificados.length + 1).padStart(4, '0')}`,
-              nome_aluno: mat.nome,
-              nome_seminario: sem.nome,
-              carga_horaria: sem.carga_horaria,
-              data_conclusao: mat.data_conclusao ?? hoje,
-              emitido_em: hoje,
-              emitido_por: 'Secretaria Admin',
-              status: 'emitido',
-              created_at: new Date().toISOString(),
+            try {
+              const novo = await saveCertificado({
+                matricula_id: mat.id,
+                seminario_id: sem.id,
+                numero: `CERT-${new Date().getFullYear()}-${String(certificados.length + 1).padStart(4, '0')}`,
+                nome_aluno: mat.nome,
+                nome_seminario: sem.nome,
+                carga_horaria: sem.carga_horaria,
+                data_conclusao: mat.data_conclusao ?? hoje,
+                emitido_em: hoje,
+                emitido_por: 'Secretaria Admin',
+                status: 'emitido',
+              })
+              setModalOpen(false)
+              toast.success('Certificado gerado.')
+              setTimeout(() => printCertificado(novo), 200)
+            } catch (err) {
+              console.error(err)
+              toast.error('Erro ao gerar certificado.')
             }
-            setCertificados(list => [novo, ...list])
-            setModalOpen(false)
-            setTimeout(() => printCertificado(novo), 200)
           }}
         />
       )}

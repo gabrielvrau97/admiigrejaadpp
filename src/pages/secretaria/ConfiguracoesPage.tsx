@@ -124,7 +124,9 @@ function ListEditor({
   )
 }
 
-const sectionToKey: Record<Section, keyof ReturnType<typeof useConfig>['config'] | null> = {
+type ConfigKey = 'titulos' | 'ministerios' | 'departamentos' | 'funcoes' | 'motivosEntrada' | 'motivosSaida'
+
+const sectionToKey: Record<Section, ConfigKey | null> = {
   titulos: 'titulos',
   ministerios: 'ministerios',
   departamentos: 'departamentos',
@@ -134,9 +136,18 @@ const sectionToKey: Record<Section, keyof ReturnType<typeof useConfig>['config']
   status: null,
 }
 
+const keyToCategory: Record<ConfigKey, 'titulo' | 'ministerio' | 'departamento' | 'funcao' | 'motivo_entrada' | 'motivo_saida'> = {
+  titulos: 'titulo',
+  ministerios: 'ministerio',
+  departamentos: 'departamento',
+  funcoes: 'funcao',
+  motivosEntrada: 'motivo_entrada',
+  motivosSaida: 'motivo_saida',
+}
+
 export default function ConfiguracoesPage() {
   const [active, setActive] = useState<Section>('titulos')
-  const { config, setConfig } = useConfig()
+  const { config, addItem, removeItem } = useConfig()
   const [saved, setSaved] = useState(false)
 
   const currentSection = sections.find(s => s.id === active)!
@@ -146,9 +157,18 @@ export default function ConfiguracoesPage() {
     ? STATUS_LOCKED
     : configKey ? config[configKey] : []
 
-  const handleChange = (v: string[]) => {
+  const handleChange = async (v: string[]) => {
     if (!configKey) return
-    setConfig(c => ({ ...c, [configKey]: v }))
+    const cat = keyToCategory[configKey]
+    const before = currentItems
+    const added = v.filter(x => !before.includes(x))
+    const removed = before.filter(x => !v.includes(x))
+    try {
+      for (const a of added) await addItem(cat, a)
+      for (const r of removed) await removeItem(cat, r)
+    } catch (err) {
+      console.error('[Configuracoes] erro ao salvar:', err)
+    }
   }
 
   const handleSave = () => {

@@ -1,37 +1,60 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { loadConfig, addOption, removeOption, type ConfigData, type ConfigCategory } from '../lib/api/config'
+import { useAuth } from './AuthContext'
 
-interface ConfigData {
-  titulos: string[]
-  ministerios: string[]
-  departamentos: string[]
-  funcoes: string[]
-  motivosEntrada: string[]
-  motivosSaida: string[]
-}
-
-const defaults: ConfigData = {
-  titulos: ['Apóstolo/a', 'Aspirante', 'Bispo/a', 'Conselheiro/a', 'Cooperador/a', 'Diácono/Diaconisa', 'Dirigente', 'Evangelista', 'Membro', 'Mestre', 'Ministro/a', 'Missionário/a', 'Músico', 'Obreiro/a', 'Oficial', 'Pastor/a', 'Presbítero', 'Profeta/Profetisa', 'Reverendo'],
-  ministerios: ['Louvor', 'Intercessão', 'Evangelismo', 'Diaconia', 'Ensino', 'Infanto-Juvenil', 'Casais', 'Homens', 'Mulheres', 'Jovens'],
-  departamentos: ['Administrativo', 'Financeiro', 'Comunicação', 'Patrimônio', 'Secretaria', 'Pastoral'],
-  funcoes: ['Auxiliar', 'Presidente', 'Secretário/a', 'Tesoureiro/a', 'Comissão Fiscal', 'Vice-Presidente', 'Diretor/a'],
-  motivosEntrada: ['Aclamação', 'Adesão', 'Afiliação', 'Batismo', 'Conversão', 'Jurisdição', 'Membro Fundador', 'Motivo Pessoal', 'Profissão de Fé', 'Reconciliação', 'Transferência', 'Outro'],
-  motivosSaida: ['A Pedido', 'Abandono', 'Desligamento', 'Exclusão', 'Falecimento', 'Motivo Pessoal', 'Profissão de Fé', 'Transferência', 'Outro'],
+const empty: ConfigData = {
+  titulos: [], ministerios: [], departamentos: [], funcoes: [], motivosEntrada: [], motivosSaida: [],
 }
 
 interface ConfigContextType {
   config: ConfigData
-  setConfig: React.Dispatch<React.SetStateAction<ConfigData>>
+  loading: boolean
+  addItem: (category: ConfigCategory, value: string) => Promise<void>
+  removeItem: (category: ConfigCategory, value: string) => Promise<void>
+  reload: () => Promise<void>
 }
 
 const ConfigContext = createContext<ConfigContextType>({
-  config: defaults,
-  setConfig: () => {},
+  config: empty,
+  loading: false,
+  addItem: async () => {},
+  removeItem: async () => {},
+  reload: async () => {},
 })
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<ConfigData>(defaults)
+  const { user } = useAuth()
+  const [config, setConfig] = useState<ConfigData>(empty)
+  const [loading, setLoading] = useState(true)
+
+  const reload = async () => {
+    setLoading(true)
+    try {
+      setConfig(await loadConfig())
+    } catch (err) {
+      console.error('[ConfigContext] erro ao carregar:', err)
+      setConfig(empty)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (user) void reload()
+    else { setConfig(empty); setLoading(false) }
+  }, [user])
+
+  const addItem = async (category: ConfigCategory, value: string) => {
+    await addOption(category, value)
+    await reload()
+  }
+  const removeItem = async (category: ConfigCategory, value: string) => {
+    await removeOption(category, value)
+    await reload()
+  }
+
   return (
-    <ConfigContext.Provider value={{ config, setConfig }}>
+    <ConfigContext.Provider value={{ config, loading, addItem, removeItem, reload }}>
       {children}
     </ConfigContext.Provider>
   )

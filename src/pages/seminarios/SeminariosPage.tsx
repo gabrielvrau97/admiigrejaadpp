@@ -16,7 +16,7 @@ const STATUS_CONFIG: Record<SeminarioStatus, { label: string; badge: string; dot
 
 export default function SeminariosPage() {
   const navigate = useNavigate()
-  const { seminarios, setSeminarios, matriculas } = useData()
+  const { seminarios, matriculas, saveSeminario, removeSeminario } = useData()
   const toast = useToast()
   const confirm = useConfirm()
   const [search, setSearch] = useState('')
@@ -65,30 +65,38 @@ export default function SeminariosPage() {
       danger: true,
     })
     if (!ok) return
-    setSeminarios(list => list.filter(s => s.id !== id))
-    toast.success('Seminário excluído.')
-  }
-  const handleSave = (data: Partial<Seminario>) => {
-    if (editing) {
-      setSeminarios(list => list.map(s => s.id === editing.id ? { ...s, ...data, updated_at: new Date().toISOString() } : s))
-    } else {
-      const novo: Seminario = {
-        id: `sem-${Date.now()}`,
-        nome: data.nome ?? 'Novo seminário',
-        descricao: data.descricao,
-        instrutor: data.instrutor,
-        data_inicio: data.data_inicio ?? new Date().toISOString().split('T')[0],
-        data_fim: data.data_fim,
-        carga_horaria: data.carga_horaria ?? 0,
-        local: data.local,
-        church_id: data.church_id,
-        status: data.status ?? 'planejado',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-      setSeminarios(list => [novo, ...list])
+    try {
+      await removeSeminario(id)
+      toast.success('Seminário excluído.')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao excluir seminário.')
     }
-    setModalOpen(false)
+  }
+  const handleSave = async (data: Partial<Seminario>) => {
+    try {
+      if (editing) {
+        await saveSeminario({ id: editing.id, ...data })
+        toast.success('Seminário atualizado.')
+      } else {
+        await saveSeminario({
+          nome: data.nome ?? 'Novo seminário',
+          descricao: data.descricao,
+          instrutor: data.instrutor,
+          data_inicio: data.data_inicio ?? new Date().toISOString().split('T')[0],
+          data_fim: data.data_fim,
+          carga_horaria: data.carga_horaria ?? 0,
+          local: data.local,
+          church_id: data.church_id,
+          status: data.status ?? 'planejado',
+        })
+        toast.success('Seminário criado.')
+      }
+      setModalOpen(false)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao salvar seminário.')
+    }
   }
 
   return (

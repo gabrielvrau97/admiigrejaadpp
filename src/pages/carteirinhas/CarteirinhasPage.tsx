@@ -28,7 +28,7 @@ function statusInfo(c: Carteirinha): { label: string; badge: string; icon: React
 }
 
 export default function CarteirinhasPage() {
-  const { carteirinhas, setCarteirinhas, members } = useData()
+  const { carteirinhas, members, saveCarteirinha } = useData()
   const toast = useToast()
   const confirm = useConfirm()
   const [search, setSearch] = useState('')
@@ -82,8 +82,13 @@ export default function CarteirinhasPage() {
       danger: true,
     })
     if (!ok) return
-    setCarteirinhas(list => list.map(c => c.id === id ? { ...c, status: 'cancelada' as const } : c))
-    toast.success('Carteirinha cancelada.')
+    try {
+      await saveCarteirinha({ id, status: 'cancelada' })
+      toast.success('Carteirinha cancelada.')
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao cancelar carteirinha.')
+    }
   }
 
   const handlePrint = (c: Carteirinha) => {
@@ -125,22 +130,19 @@ export default function CarteirinhasPage() {
     printCarteirinhasLote(items)
   }
 
-  const handleGenerate = (memberId: string, motivo: CarteirinhaMotivo, validadeAnos: number) => {
+  const handleGenerate = async (memberId: string, motivo: CarteirinhaMotivo, validadeAnos: number) => {
     const m = getMember(memberId)
     if (!m) return
     const hoje = new Date()
     const validaAte = new Date(hoje)
     validaAte.setFullYear(validaAte.getFullYear() + validadeAnos)
-    // Substitui carteirinhas ativas anteriores deste membro
-    setCarteirinhas(list => {
-      const anteriores = list.map(c =>
-        c.member_id === memberId && c.status === 'ativa'
-          ? { ...c, status: 'substituida' as const }
-          : c
-      )
-      const novoNumero = `ADP-${hoje.getFullYear()}-${String(list.length + 1).padStart(4, '0')}`
-      const nova: Carteirinha = {
-        id: `cart-${Date.now()}`,
+    try {
+      // Substitui carteirinhas ativas anteriores deste membro
+      const anteriores = carteirinhas.filter(c => c.member_id === memberId && c.status === 'ativa')
+      for (const c of anteriores) await saveCarteirinha({ id: c.id, status: 'substituida' })
+
+      const novoNumero = `ADP-${hoje.getFullYear()}-${String(carteirinhas.length + 1).padStart(4, '0')}`
+      const nova = await saveCarteirinha({
         member_id: memberId,
         numero: novoNumero,
         motivo,
@@ -148,28 +150,17 @@ export default function CarteirinhasPage() {
         valida_ate: validaAte.toISOString().split('T')[0],
         emitida_por: 'Secretaria Admin',
         status: 'ativa',
-        created_at: hoje.toISOString(),
-      }
-      return [nova, ...anteriores]
-    })
-    setModalOpen(false)
-    // Imprime automaticamente
-    setTimeout(() => {
-      const novaCart: Carteirinha = {
-        id: 'temp',
-        member_id: memberId,
-        numero: `ADP-${hoje.getFullYear()}-${String(carteirinhas.length + 1).padStart(4, '0')}`,
-        motivo,
-        emitida_em: hoje.toISOString().split('T')[0],
-        valida_ate: validaAte.toISOString().split('T')[0],
-        status: 'ativa',
-        created_at: hoje.toISOString(),
-      }
-      printCarteirinha(novaCart, m)
-    }, 200)
+      })
+      setModalOpen(false)
+      toast.success('Carteirinha gerada.')
+      setTimeout(() => printCarteirinha(nova, m), 200)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao gerar carteirinha.')
+    }
   }
 
-  const handleGenerateLote = (
+  const handleGenerateLote = async (
     memberIds: string[],
     motivo: CarteirinhaMotivo,
     validadeAnos: number,
@@ -184,34 +175,38 @@ export default function CarteirinhasPage() {
     const validaAteISO = validaAte.toISOString().split('T')[0]
     const baseSeq = carteirinhas.length
 
-    const novas: Carteirinha[] = membros.map((m, idx) => ({
-      id: `cart-${Date.now()}-${idx}`,
-      member_id: m.id,
-      numero: `ADP-${hoje.getFullYear()}-${String(baseSeq + idx + 1).padStart(4, '0')}`,
-      motivo,
-      emitida_em: hojeISO,
-      valida_ate: validaAteISO,
-      emitida_por: 'Secretaria Admin',
-      status: 'ativa',
-      created_at: hoje.toISOString(),
-    }))
-
-    setCarteirinhas(list => {
+    try {
+      // Substitui ativas anteriores
       const idsQueReceberam = new Set(memberIds)
-      const anteriores = list.map(c =>
-        idsQueReceberam.has(c.member_id) && c.status === 'ativa'
-          ? { ...c, status: 'substituida' as const }
-          : c
-      )
-      return [...novas, ...anteriores]
-    })
+      const anteriores = carteirinhas.filter(c => idsQueReceberam.has(c.member_id) && c.status === 'ativa')
+      for (const c of anteriores) await saveCarteirinha({ id: c.id, status: 'substituida' })
 
-    setLoteModalOpen(false)
-    // Imprime todas em lote
-    setTimeout(() => {
-      const items = novas.map((c, idx) => ({ c, m: membros[idx] }))
-      printCarteirinhasLote(items)
-    }, 200)
+      // Cria novas em sequência
+      const novas: Carteirinha[] = []
+      for (let idx = 0; idx < membros.length; idx++) {
+        const m = membros[idx]
+        const nova = await saveCarteirinha({
+          member_id: m.id,
+          numero: `ADP-${hoje.getFullYear()}-${String(baseSeq + idx + 1).padStart(4, '0')}`,
+          motivo,
+          emitida_em: hojeISO,
+          valida_ate: validaAteISO,
+          emitida_por: 'Secretaria Admin',
+          status: 'ativa',
+        })
+        novas.push(nova)
+      }
+
+      setLoteModalOpen(false)
+      toast.success(`${novas.length} carteirinhas geradas.`)
+      setTimeout(() => {
+        const items = novas.map((c, idx) => ({ c, m: membros[idx] }))
+        printCarteirinhasLote(items)
+      }, 200)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao gerar carteirinhas em lote.')
+    }
   }
 
   return (
