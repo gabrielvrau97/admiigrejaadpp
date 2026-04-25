@@ -33,6 +33,10 @@ const quickFilters = [
   { key: 'batizados', label: 'Batizados nas águas' },
   { key: 'batizados_espirito', label: 'Batizados no Espírito' },
   { key: 'convertidos', label: 'Convertidos' },
+  { key: 'acompanhados', label: 'Com acompanhante' },
+  { key: 'sem_acompanhamento', label: 'Sem acompanhante' },
+  { key: 'discipulados', label: 'Com discipulador' },
+  { key: 'sem_discipulado', label: 'Sem discipulador' },
   { key: 'aniversariantes_hoje', label: 'Aniversariantes hoje' },
   { key: 'aniversariantes_mes', label: 'Aniversariantes do mês' },
   { key: 'casados_hoje', label: 'Casados hoje' },
@@ -140,6 +144,10 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       else if (activeFilter === 'batizados') data = data.filter(m => m.baptism)
       else if (activeFilter === 'batizados_espirito') data = data.filter(m => m.baptism_spirit)
       else if (activeFilter === 'convertidos') data = data.filter(m => m.conversion)
+      else if (activeFilter === 'acompanhados') data = data.filter(m => !!m.ministry?.companion_id)
+      else if (activeFilter === 'sem_acompanhamento') data = data.filter(m => !m.ministry?.companion_id)
+      else if (activeFilter === 'discipulados') data = data.filter(m => !!m.ministry?.discipler_id)
+      else if (activeFilter === 'sem_discipulado') data = data.filter(m => !m.ministry?.discipler_id)
       else if (activeFilter === 'aniversariantes_hoje') {
         const mmdd = format(today, 'MM-dd')
         data = data.filter(m => m.birth_date?.slice(5) === mmdd)

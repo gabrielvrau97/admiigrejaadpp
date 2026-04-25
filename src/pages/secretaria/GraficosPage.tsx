@@ -262,6 +262,59 @@ export default function GraficosPage() {
     { name: 'Feminino', value: activeBase.filter(m => m.sex === 'feminino').length },
   ]
 
+  // ── Acompanhamento e Discipulado ──────────────────────────────────────────
+  const accompCounts = useMemo(() => {
+    let comAcomp = 0, semAcomp = 0, comDiscip = 0, semDiscip = 0
+    for (const m of activeBase) {
+      if (m.ministry?.companion_id) comAcomp++
+      else semAcomp++
+      if (m.ministry?.discipler_id) comDiscip++
+      else semDiscip++
+    }
+    return { comAcomp, semAcomp, comDiscip, semDiscip }
+  }, [activeBase])
+
+  // Ranking: top membros que mais acompanham/discipulam outros
+  const acompanhantesRanking = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const m of activeBase) {
+      const id = m.ministry?.companion_id
+      if (id) map.set(id, (map.get(id) ?? 0) + 1)
+    }
+    const pool = [...members, ...visitantes]
+    return Array.from(map.entries())
+      .map(([id, count]) => {
+        const person = pool.find(p => p.id === id)
+        return { id, name: person?.name ?? '(membro removido)', count }
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  }, [activeBase, members, visitantes])
+
+  const discipuladoresRanking = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const m of activeBase) {
+      const id = m.ministry?.discipler_id
+      if (id) map.set(id, (map.get(id) ?? 0) + 1)
+    }
+    const pool = [...members, ...visitantes]
+    return Array.from(map.entries())
+      .map(([id, count]) => {
+        const person = pool.find(p => p.id === id)
+        return { id, name: person?.name ?? '(membro removido)', count }
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  }, [activeBase, members, visitantes])
+
+  // Membros sem acompanhante (lista pra ação pastoral)
+  const semAcompanhamentoLista = useMemo(() =>
+    activeBase
+      .filter(m => !m.ministry?.companion_id)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 20)
+  , [activeBase])
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
@@ -600,6 +653,134 @@ export default function GraficosPage() {
           )}
         </ChartCard>
 
+      </div>
+
+      {/* ─── Seção: Acompanhamento e Discipulado ─────────────────────────── */}
+      <div className="pt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <UserCheck size={16} className="text-blue-600" />
+          <h2 className="font-semibold text-gray-800">Acompanhamento e Discipulado</h2>
+          <span className="text-xs text-gray-400">· Cobertura pastoral entre membros ativos</span>
+        </div>
+
+        {/* KPIs de cobertura */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <KpiCard
+            label="Acompanhados"
+            value={accompCounts.comAcomp}
+            sub={pct(accompCounts.comAcomp, totalActive) + ' do total ativo'}
+            icon={<UserCheck size={18} />}
+            gradient="linear-gradient(135deg,#3b82f6,#1d4ed8)"
+            shadow="rgba(59,130,246,0.30)"
+          />
+          <KpiCard
+            label="Sem acompanhante"
+            value={accompCounts.semAcomp}
+            sub={pct(accompCounts.semAcomp, totalActive) + ' do total ativo'}
+            icon={<Users size={18} />}
+            gradient="linear-gradient(135deg,#f59e0b,#d97706)"
+            shadow="rgba(245,158,11,0.30)"
+          />
+          <KpiCard
+            label="Discipulados"
+            value={accompCounts.comDiscip}
+            sub={pct(accompCounts.comDiscip, totalActive) + ' do total ativo'}
+            icon={<Heart size={18} />}
+            gradient="linear-gradient(135deg,#8b5cf6,#6d28d9)"
+            shadow="rgba(139,92,246,0.30)"
+          />
+          <KpiCard
+            label="Sem discipulador"
+            value={accompCounts.semDiscip}
+            sub={pct(accompCounts.semDiscip, totalActive) + ' do total ativo'}
+            icon={<TrendingUp size={18} />}
+            gradient="linear-gradient(135deg,#ef4444,#b91c1c)"
+            shadow="rgba(239,68,68,0.30)"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Ranking acompanhantes */}
+          <ChartCard
+            title="Top Acompanhantes"
+            subtitle="Quem acompanha mais membros"
+            icon={<UserCheck size={14} />}
+            accentColor="#3b82f6"
+          >
+            {acompanhantesRanking.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                <UserCheck size={28} className="opacity-20 mb-2" />
+                <p className="text-sm">Ninguém acompanha membros ainda.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {acompanhantesRanking.map((d, i) => (
+                  <StatRow
+                    key={d.id}
+                    label={`${i + 1}. ${d.name}`}
+                    value={d.count}
+                    total={accompCounts.comAcomp || 1}
+                    color={PALETTE[i % PALETTE.length]}
+                  />
+                ))}
+              </div>
+            )}
+          </ChartCard>
+
+          {/* Ranking discipuladores */}
+          <ChartCard
+            title="Top Discipuladores"
+            subtitle="Quem discipula mais membros"
+            icon={<Heart size={14} />}
+            accentColor="#8b5cf6"
+          >
+            {discipuladoresRanking.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                <Heart size={28} className="opacity-20 mb-2" />
+                <p className="text-sm">Ninguém discipula membros ainda.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {discipuladoresRanking.map((d, i) => (
+                  <StatRow
+                    key={d.id}
+                    label={`${i + 1}. ${d.name}`}
+                    value={d.count}
+                    total={accompCounts.comDiscip || 1}
+                    color={PALETTE[(i + 4) % PALETTE.length]}
+                  />
+                ))}
+              </div>
+            )}
+          </ChartCard>
+
+          {/* Membros sem acompanhamento */}
+          <ChartCard
+            title="Membros sem acompanhante"
+            subtitle={`Mostrando ${semAcompanhamentoLista.length} de ${accompCounts.semAcomp}`}
+            icon={<Users size={14} />}
+            accentColor="#f59e0b"
+            span={2}
+          >
+            {semAcompanhamentoLista.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                <UserCheck size={28} className="opacity-20 mb-2" />
+                <p className="text-sm">Todos os membros têm acompanhante. 🎉</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {semAcompanhamentoLista.map(m => (
+                  <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 bg-amber-50 border border-amber-100 rounded-md">
+                    <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-xs font-bold shrink-0">
+                      {m.name[0]}
+                    </div>
+                    <span className="text-sm text-gray-700 truncate">{m.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ChartCard>
+        </div>
       </div>
     </div>
   )

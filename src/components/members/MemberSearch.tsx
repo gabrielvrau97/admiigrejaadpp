@@ -10,6 +10,11 @@ interface Props {
   onSelect: (id: string | undefined, name: string, birthDate?: string) => void
   onClearLink: () => void
   excludeId?: string
+  /**
+   * Quando true, o input só aceita vinculação a um membro existente.
+   * Texto solto não é persistido — onSelect só é chamado ao escolher da lista.
+   */
+  requireLink?: boolean
 }
 
 /**
@@ -24,6 +29,7 @@ export default function MemberSearch({
   onSelect,
   onClearLink,
   excludeId,
+  requireLink = false,
 }: Props) {
   const { members, visitantes } = useData()
   const pool: Member[] = [...members, ...visitantes]
@@ -40,7 +46,10 @@ export default function MemberSearch({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value
     setQuery(q)
-    onSelect(undefined, q, undefined)
+    // Em modo requireLink, não persiste texto enquanto digita — só ao escolher
+    if (!requireLink) {
+      onSelect(undefined, q, undefined)
+    }
     if (q.length >= 2) {
       const found = pool.filter(
         m => m.id !== excludeId && m.name.toLowerCase().includes(q.toLowerCase())
@@ -49,6 +58,19 @@ export default function MemberSearch({
       setShowDropdown(found.length > 0)
     } else {
       setShowDropdown(false)
+    }
+  }
+
+  const handleBlur = () => {
+    // Em modo strict: se digitou mas não selecionou ninguém, limpa o texto
+    if (requireLink && !linkedId && query.trim()) {
+      // pequeno delay pra não conflitar com o click do dropdown
+      setTimeout(() => {
+        if (!linkedId) {
+          setQuery('')
+          setShowDropdown(false)
+        }
+      }, 200)
     }
   }
 
@@ -66,6 +88,7 @@ export default function MemberSearch({
           className={`form-input flex-1 ${linkedId ? 'border-blue-400 bg-blue-50' : ''}`}
           value={linkedId ? value : query}
           onChange={linkedId ? undefined : handleChange}
+          onBlur={handleBlur}
           readOnly={!!linkedId}
           placeholder={placeholder}
         />

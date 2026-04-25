@@ -122,15 +122,17 @@ export default function TabMinisterio({ ministry, onChange, form, onChangeForm, 
         <MemberSearch
           value={companionName}
           linkedId={ministry.companion_id}
-          placeholder="Buscar membro ou digitar nome..."
+          placeholder="Buscar membro cadastrado..."
           excludeId={editingId}
+          requireLink
           onSelect={(id, name) => onChange({
             ...ministry,
             companion_id: id,
-            companion: name,
+            companion: id ? name : undefined,
           })}
-          onClearLink={() => onChange({ ...ministry, companion_id: undefined })}
+          onClearLink={() => onChange({ ...ministry, companion_id: undefined, companion: undefined })}
         />
+        <p className="text-[11px] text-gray-400 mt-0.5">Selecione um membro cadastrado.</p>
       </div>
 
       {/* Marcos espirituais com data condicional */}

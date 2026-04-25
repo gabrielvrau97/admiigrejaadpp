@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X, Search, RotateCcw } from 'lucide-react'
 import { useConfig } from '../../contexts/ConfigContext'
 import { useChurch } from '../../contexts/ChurchContext'
+import { useData } from '../../contexts/DataContext'
 import type { Member } from '../../types'
 import { useModalUX } from '../../hooks/useModalUX'
 
@@ -38,6 +39,9 @@ export interface SelectionFilters {
   // faixa etária
   idade_min: string
   idade_max: string
+  // acompanhamento e discipulado (UUID do membro escolhido)
+  acompanhante_id: string
+  discipulador_id: string
 }
 
 export interface SimilarityFilters {
@@ -66,6 +70,7 @@ export const EMPTY_SELECTION: SelectionFilters = {
   conversao_de: '', conversao_ate: '', casamento_de: '', casamento_ate: '',
   batismo_de: '', batismo_ate: '', entrada_de: '', entrada_ate: '',
   idade_min: '', idade_max: '',
+  acompanhante_id: '', discipulador_id: '',
 }
 
 export const EMPTY_SIMILARITY: SimilarityFilters = {
@@ -125,6 +130,10 @@ export function applySelectionFilters(data: Member[], f: SelectionFilters): Memb
       if (f.idade_min && age < parseInt(f.idade_min)) return false
       if (f.idade_max && age > parseInt(f.idade_max)) return false
     }
+
+    // acompanhamento e discipulado
+    if (f.acompanhante_id && m.ministry?.companion_id !== f.acompanhante_id) return false
+    if (f.discipulador_id && m.ministry?.discipler_id !== f.discipulador_id) return false
 
     return true
   })
@@ -267,7 +276,36 @@ interface AdvancedSearchProps {
 export default function AdvancedSearch({ onApply, onClose, initialSel, initialSim }: AdvancedSearchProps) {
   const { config } = useConfig()
   const { churches } = useChurch()
+  const { members, visitantes } = useData()
   const containerRef = useModalUX({ onClose })
+
+  // Pessoas que aparecem como acompanhante/discipulador de alguém — só elas
+  // entram no dropdown (evita poluir com a lista inteira de membros)
+  const allPeople = React.useMemo(() => [...members, ...visitantes], [members, visitantes])
+  const acompanhantesIds = React.useMemo(() => {
+    const ids = new Set<string>()
+    for (const m of allPeople) {
+      if (m.ministry?.companion_id) ids.add(m.ministry.companion_id)
+    }
+    return ids
+  }, [allPeople])
+  const discipuladoresIds = React.useMemo(() => {
+    const ids = new Set<string>()
+    for (const m of allPeople) {
+      if (m.ministry?.discipler_id) ids.add(m.ministry.discipler_id)
+    }
+    return ids
+  }, [allPeople])
+  const acompanhantesOptions = React.useMemo(() =>
+    allPeople.filter(m => acompanhantesIds.has(m.id))
+      .map(m => ({ value: m.id, label: m.name }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  , [allPeople, acompanhantesIds])
+  const discipuladoresOptions = React.useMemo(() =>
+    allPeople.filter(m => discipuladoresIds.has(m.id))
+      .map(m => ({ value: m.id, label: m.name }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  , [allPeople, discipuladoresIds])
   const [tab, setTab] = useState<'selecao' | 'semelhanca'>('selecao')
   const [sel, setSel] = useState<SelectionFilters>(initialSel ?? EMPTY_SELECTION)
   const [sim, setSim] = useState<SimilarityFilters>(initialSim ?? EMPTY_SIMILARITY)
@@ -426,6 +464,27 @@ export default function AdvancedSearch({ onApply, onClose, initialSel, initialSi
                       placeholder="120" className="form-input text-sm py-1.5" />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Acompanhamento e Discipulado</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Select
+                    label="Acompanhante"
+                    value={sel.acompanhante_id}
+                    onChange={v => setS('acompanhante_id', v)}
+                    options={acompanhantesOptions}
+                  />
+                  <Select
+                    label="Discipulador"
+                    value={sel.discipulador_id}
+                    onChange={v => setS('discipulador_id', v)}
+                    options={discipuladoresOptions}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Filtra membros por quem os acompanha ou discipula (apenas vínculos cadastrados).
+                </p>
               </div>
 
             </div>
