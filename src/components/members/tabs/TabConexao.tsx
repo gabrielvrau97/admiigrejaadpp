@@ -1,20 +1,22 @@
 import React from 'react'
 import type { MemberFamily } from '../../../types'
 import { Link as LinkIcon, Users } from 'lucide-react'
-import { mockMembers } from '../../../lib/mockData'
+import { useData } from '../../../contexts/DataContext'
 
 interface Props {
   family: Partial<MemberFamily>
 }
 
 export default function TabConexao({ family }: Props) {
+  const { members, visitantes } = useData()
+  const pool = [...members, ...visitantes]
   const spouseMember = family.spouse_id
-    ? mockMembers.find(m => m.id === family.spouse_id)
+    ? pool.find(m => m.id === family.spouse_id)
     : null
 
   const linkedChildren = (family.children ?? [])
     .filter(c => c.id)
-    .map(c => ({ child: c, member: mockMembers.find(m => m.id === c.id) }))
+    .map(c => ({ child: c, member: pool.find(m => m.id === c.id) }))
 
   const hasConnections = spouseMember || linkedChildren.length > 0
 

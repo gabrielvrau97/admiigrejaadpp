@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { differenceInYears } from 'date-fns'
 import type { Member } from '../../../types'
-import { mockMembers } from '../../../lib/mockData'
+import { useData } from '../../../contexts/DataContext'
 
 interface Props {
   form: Partial<Member>
@@ -54,6 +54,8 @@ function Field({ label, required, error, children }: { label: string; required?:
 }
 
 export default function TabPerfil({ form, onChange, editingId, errors }: Props) {
+  const { members, visitantes } = useData()
+  const allMembers = [...members, ...visitantes]
   const [nameWarn, setNameWarn] = useState('')
   const [cpfWarn, setCpfWarn] = useState('')
   const [cpfError, setCpfError] = useState('')
@@ -68,14 +70,14 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
 
   useEffect(() => {
     if (!form.church_id || form.code) return
-    const code = generateCode(form.church_id, mockMembers)
+    const code = generateCode(form.church_id, allMembers)
     onChange({ ...form, code })
   }, [form.church_id])
 
   const handleName = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value
     onChange({ ...form, name })
-    const dup = mockMembers.find(m => m.id !== editingId && m.name.toLowerCase() === name.toLowerCase())
+    const dup = allMembers.find(m => m.id !== editingId && m.name.toLowerCase() === name.toLowerCase())
     setNameWarn(dup ? `Já existe um registro com este nome: ${dup.name}` : '')
   }
 
@@ -90,7 +92,7 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
         return
       }
       setCpfError('')
-      const dup = mockMembers.find(m => m.id !== editingId && m.cpf?.replace(/\D/g, '') === digits)
+      const dup = allMembers.find(m => m.id !== editingId && m.cpf?.replace(/\D/g, '') === digits)
       setCpfWarn(dup ? `CPF já cadastrado: ${dup.name}` : '')
     } else {
       setCpfError('')

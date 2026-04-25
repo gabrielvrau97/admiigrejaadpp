@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import type { MemberFamily, FamilyChild } from '../../../types'
-import { mockMembers } from '../../../lib/mockData'
+import type { Member, MemberFamily, FamilyChild } from '../../../types'
+import { useData } from '../../../contexts/DataContext'
 import { Plus, X, Link as LinkIcon } from 'lucide-react'
 
 interface Props {
@@ -33,8 +33,10 @@ function MemberSearch({
   onClearLink: () => void
   editingId?: string
 }) {
+  const { members, visitantes } = useData()
+  const pool: Member[] = [...members, ...visitantes]
   const [query, setQuery] = useState(value)
-  const [results, setResults] = useState<typeof mockMembers>([])
+  const [results, setResults] = useState<Member[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +44,7 @@ function MemberSearch({
     setQuery(q)
     onSelect(undefined, q, undefined)
     if (q.length >= 2) {
-      const found = mockMembers.filter(
+      const found = pool.filter(
         m => m.id !== editingId && m.name.toLowerCase().includes(q.toLowerCase())
       ).slice(0, 5)
       setResults(found)
@@ -52,7 +54,7 @@ function MemberSearch({
     }
   }
 
-  const pick = (m: (typeof mockMembers)[0]) => {
+  const pick = (m: Member) => {
     setQuery(m.name)
     setResults([])
     setShowDropdown(false)
