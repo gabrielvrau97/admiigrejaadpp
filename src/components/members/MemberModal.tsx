@@ -178,7 +178,7 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
             <TabConexao family={family} />
           )}
           {activeTab === 'ministerio' && (
-            <TabMinisterio ministry={ministry} onChange={setMinistry} />
+            <TabMinisterio ministry={ministry} onChange={setMinistry} form={form} onChangeForm={setForm} />
           )}
           {activeTab === 'administrativo' && (
             <TabAdministrativo form={form} onChange={setForm} errors={errors} />
