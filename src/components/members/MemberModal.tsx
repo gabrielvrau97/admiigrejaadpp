@@ -183,10 +183,10 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
             <TabFamilia family={family} onChange={setFamily} editingId={member?.id} />
           )}
           {activeTab === 'conexao' && (
-            <TabConexao family={family} />
+            <TabConexao family={family} ministry={ministry} />
           )}
           {activeTab === 'ministerio' && (
-            <TabMinisterio ministry={ministry} onChange={setMinistry} form={form} onChangeForm={setForm} />
+            <TabMinisterio ministry={ministry} onChange={setMinistry} form={form} onChangeForm={setForm} editingId={member?.id} />
           )}
           {activeTab === 'administrativo' && (
             <TabAdministrativo form={form} onChange={setForm} errors={errors} />

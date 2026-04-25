@@ -11,7 +11,7 @@ const MEMBER_COLUMNS = `
   church:churches!church_id ( id, group_id, name, type, address, phone, email, logo_url ),
   contacts:member_contacts!member_contacts_member_id_fkey ( emails, phones, cellphone1, cep, address, number, complement, neighborhood, city, state, country ),
   family:member_family!member_family_member_id_fkey ( spouse_id, spouse_name, spouse_birth_date, wedding_date, father_id, father_name, mother_id, mother_name ),
-  ministry:member_ministry!member_ministry_member_id_fkey ( titles, ministries, departments, functions, companion, discipler_id ),
+  ministry:member_ministry!member_ministry_member_id_fkey ( titles, ministries, departments, functions, companion, companion_id, discipler_id ),
   children:member_children!member_children_parent_id_fkey ( id, name, birth_date )
 `
 

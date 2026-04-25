@@ -106,6 +106,7 @@ export interface MemberMinistry {
   titles?: string[]
   functions?: string[]
   companion?: string
+  companion_id?: string
   discipler_id?: string
 }
 

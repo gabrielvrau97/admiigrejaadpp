@@ -2,12 +2,15 @@ import React from 'react'
 import { X } from 'lucide-react'
 import type { Member, MemberMinistry } from '../../../types'
 import { useConfig } from '../../../contexts/ConfigContext'
+import MemberSearch from '../MemberSearch'
+import { useData } from '../../../contexts/DataContext'
 
 interface Props {
   ministry: Partial<MemberMinistry>
   onChange: (m: Partial<MemberMinistry>) => void
   form: Partial<Member>
   onChangeForm: (f: Partial<Member>) => void
+  editingId?: string
 }
 
 function TagPicker({ label, options, selected, onChange }: {
@@ -42,10 +45,21 @@ function TagPicker({ label, options, selected, onChange }: {
   )
 }
 
-export default function TabMinisterio({ ministry, onChange, form, onChangeForm }: Props) {
+export default function TabMinisterio({ ministry, onChange, form, onChangeForm, editingId }: Props) {
   const { config } = useConfig()
+  const { members, visitantes } = useData()
+  const pool = [...members, ...visitantes]
   const set = (key: keyof MemberMinistry, value: unknown) => onChange({ ...ministry, [key]: value })
   const today = new Date().toISOString().split('T')[0]
+
+  // Quando edita um membro existente, vamos resolver o nome do discipler/companion
+  // a partir do ID pra mostrar bonito no input
+  const disciplerName = ministry.discipler_id
+    ? (pool.find(m => m.id === ministry.discipler_id)?.name ?? '')
+    : ''
+  const companionName = ministry.companion_id
+    ? (pool.find(m => m.id === ministry.companion_id)?.name ?? ministry.companion ?? '')
+    : (ministry.companion ?? '')
 
   // Helper que liga/desliga checkbox + data correspondente
   const toggleSpiritual = (
@@ -93,12 +107,30 @@ export default function TabMinisterio({ ministry, onChange, form, onChangeForm }
 
       <div>
         <label className="form-label">Discipulado por</label>
-        <input className="form-input" value={ministry.discipler_id ?? ''} onChange={e => set('discipler_id', e.target.value)} placeholder="Buscar membro..." />
+        <MemberSearch
+          value={disciplerName}
+          linkedId={ministry.discipler_id}
+          placeholder="Buscar membro..."
+          excludeId={editingId}
+          onSelect={(id) => onChange({ ...ministry, discipler_id: id })}
+          onClearLink={() => onChange({ ...ministry, discipler_id: undefined })}
+        />
       </div>
 
       <div>
         <label className="form-label">Acompanhado por</label>
-        <input className="form-input" value={ministry.companion ?? ''} onChange={e => set('companion', e.target.value)} placeholder="Nome do acompanhante" />
+        <MemberSearch
+          value={companionName}
+          linkedId={ministry.companion_id}
+          placeholder="Buscar membro ou digitar nome..."
+          excludeId={editingId}
+          onSelect={(id, name) => onChange({
+            ...ministry,
+            companion_id: id,
+            companion: name,
+          })}
+          onClearLink={() => onChange({ ...ministry, companion_id: undefined })}
+        />
       </div>
 
       {/* Marcos espirituais com data condicional */}

@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import type { Member, MemberFamily, FamilyChild } from '../../../types'
-import { useData } from '../../../contexts/DataContext'
-import { Plus, X, Link as LinkIcon } from 'lucide-react'
+import React from 'react'
+import type { MemberFamily, FamilyChild } from '../../../types'
+import MemberSearch from '../MemberSearch'
+import { Plus, X } from 'lucide-react'
 
 interface Props {
   family: Partial<MemberFamily>
@@ -14,96 +14,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="form-label">{label}</label>
       {children}
-    </div>
-  )
-}
-
-function MemberSearch({
-  value,
-  linkedId,
-  placeholder,
-  onSelect,
-  onClearLink,
-  editingId,
-}: {
-  value: string
-  linkedId?: string
-  placeholder: string
-  onSelect: (id: string | undefined, name: string, birthDate?: string) => void
-  onClearLink: () => void
-  editingId?: string
-}) {
-  const { members, visitantes } = useData()
-  const pool: Member[] = [...members, ...visitantes]
-  const [query, setQuery] = useState(value)
-  const [results, setResults] = useState<Member[]>([])
-  const [showDropdown, setShowDropdown] = useState(false)
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value
-    setQuery(q)
-    onSelect(undefined, q, undefined)
-    if (q.length >= 2) {
-      const found = pool.filter(
-        m => m.id !== editingId && m.name.toLowerCase().includes(q.toLowerCase())
-      ).slice(0, 5)
-      setResults(found)
-      setShowDropdown(found.length > 0)
-    } else {
-      setShowDropdown(false)
-    }
-  }
-
-  const pick = (m: Member) => {
-    setQuery(m.name)
-    setResults([])
-    setShowDropdown(false)
-    onSelect(m.id, m.name, m.birth_date)
-  }
-
-  return (
-    <div className="relative">
-      <div className="flex gap-1">
-        <input
-          className={`form-input flex-1 ${linkedId ? 'border-blue-400 bg-blue-50' : ''}`}
-          value={linkedId ? value : query}
-          onChange={linkedId ? undefined : handleChange}
-          readOnly={!!linkedId}
-          placeholder={placeholder}
-        />
-        {linkedId && (
-          <button type="button" onClick={onClearLink} className="text-gray-400 hover:text-red-500 transition-colors px-1">
-            <X size={14} />
-          </button>
-        )}
-      </div>
-      {linkedId && (
-        <div className="flex items-center gap-1 mt-0.5">
-          <LinkIcon size={10} className="text-blue-500" />
-          <span className="text-xs text-blue-600 font-medium">Vinculado ao cadastro</span>
-        </div>
-      )}
-      {showDropdown && (
-        <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-          {results.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => pick(m)}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2"
-            >
-              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">
-                {m.name[0]}
-              </div>
-              <div>
-                <div className="font-medium text-gray-800">{m.name}</div>
-                {m.birth_date && <div className="text-xs text-gray-400">{m.birth_date}</div>}
-              </div>
-              <LinkIcon size={10} className="ml-auto text-blue-400" />
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -130,7 +40,7 @@ export default function TabFamilia({ family, onChange, editingId }: Props) {
               value={family.spouse_name ?? ''}
               linkedId={family.spouse_id}
               placeholder="Buscar membro ou digitar nome..."
-              editingId={editingId}
+              excludeId={editingId}
               onSelect={(id, name, birth) => onChange({
                 ...family,
                 spouse_id: id,
@@ -178,7 +88,7 @@ export default function TabFamilia({ family, onChange, editingId }: Props) {
                 value={child.name}
                 linkedId={child.id}
                 placeholder="Buscar membro ou digitar nome..."
-                editingId={editingId}
+                excludeId={editingId}
                 onSelect={(id, name, birth) => {
                   const next = [...children]
                   next[i] = { ...next[i], id, name, birth_date: id && birth ? birth : next[i].birth_date }
