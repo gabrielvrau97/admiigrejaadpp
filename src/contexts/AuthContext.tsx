@@ -15,26 +15,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 async function loadAppUser(authUserId: string): Promise<AppUser | null> {
-  const { data: profile, error } = await supabase
-    .from('app_users')
-    .select('id, email, name, role, church_group_id, active')
-    .eq('id', authUserId)
-    .single()
-  if (error || !profile || !profile.active) return null
+  try {
+    const { data: profile, error } = await supabase
+      .from('app_users')
+      .select('id, email, name, role, church_group_id, active')
+      .eq('id', authUserId)
+      .single()
+    if (error || !profile || !profile.active) {
+      if (error) console.error('[Auth] erro ao carregar app_user:', error)
+      return null
+    }
 
-  const { data: chs } = await supabase
-    .from('app_user_churches')
-    .select('church_id')
-    .eq('user_id', authUserId)
-  const church_ids = (chs ?? []).map(r => (r as { church_id: string }).church_id)
+    const { data: chs, error: chsErr } = await supabase
+      .from('app_user_churches')
+      .select('church_id')
+      .eq('user_id', authUserId)
+    if (chsErr) console.error('[Auth] erro ao carregar churches do user:', chsErr)
+    const church_ids = (chs ?? []).map(r => (r as { church_id: string }).church_id)
 
-  return {
-    id: profile.id,
-    email: profile.email,
-    name: profile.name ?? undefined,
-    role: profile.role as AppUser['role'],
-    church_group_id: profile.church_group_id,
-    church_ids,
+    return {
+      id: profile.id,
+      email: profile.email,
+      name: profile.name ?? undefined,
+      role: profile.role as AppUser['role'],
+      church_group_id: profile.church_group_id,
+      church_ids,
+    }
+  } catch (err) {
+    console.error('[Auth] excecao em loadAppUser:', err)
+    return null
   }
 }
 
@@ -70,31 +79,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Inicializa: tenta restaurar sessão salva pelo Supabase
   useEffect(() => {
     let mounted = true
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return
-      const session = data.session
-      if (session?.user) {
-        const appUser = await loadAppUser(session.user.id)
-        if (mounted && appUser) {
-          setUser(appUser)
-          startSessionTimer()
-        }
-      }
-      setLoading(false)
-    })
+    let initialized = false  // evita race entre getSession e onAuthStateChange
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const handleSession = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
       if (!mounted) return
-      if (session?.user) {
-        const appUser = await loadAppUser(session.user.id)
-        if (mounted) {
+      try {
+        if (session?.user) {
+          const appUser = await loadAppUser(session.user.id)
+          if (!mounted) return
           setUser(appUser)
           if (appUser) startSessionTimer()
+          else {
+            // sessão válida mas usuário sem perfil ativo — desloga pra evitar loop
+            await supabase.auth.signOut()
+          }
+        } else {
+          setUser(null)
+          if (timerRef.current) clearInterval(timerRef.current)
         }
-      } else {
-        setUser(null)
-        if (timerRef.current) clearInterval(timerRef.current)
+      } catch (err) {
+        console.error('[Auth] erro ao processar sessão:', err)
+        if (mounted) setUser(null)
+      } finally {
+        if (mounted) setLoading(false)
+        initialized = true
       }
+    }
+
+    // Restaura sessão salva
+    supabase.auth.getSession()
+      .then(({ data }) => handleSession(data.session))
+      .catch(err => {
+        console.error('[Auth] erro em getSession:', err)
+        if (mounted) setLoading(false)
+      })
+
+    // Reage a mudanças (login, logout, refresh de token)
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Ignora o primeiro INITIAL_SESSION — getSession já trata isso
+      if (!initialized && event === 'INITIAL_SESSION') return
+      void handleSession(session)
     })
 
     return () => {
