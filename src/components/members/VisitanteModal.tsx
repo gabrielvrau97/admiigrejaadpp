@@ -414,7 +414,7 @@ function TabConexaoVisitante({ form, onChange }: { form: Partial<Member>; onChan
 interface Props {
   visitante: Member | null
   onClose: () => void
-  onSave: (data: Partial<Member>) => void
+  onSave: (data: Partial<Member>) => void | Promise<void>
 }
 
 const tabs = [
@@ -436,6 +436,8 @@ export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
   const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const initialChurchId = visitante?.church_id
     ?? selectedChurch?.id
     ?? churches[0]?.id
@@ -453,7 +455,8 @@ export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
 
   const isEditing = !!visitante
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving || deleting) return
     const errs: Record<string, string> = {}
     if (!form.name?.trim()) errs.name = 'Nome completo é obrigatório.'
     if (!form.church_id?.trim()) errs.church_id = 'Selecione a igreja.'
@@ -463,7 +466,12 @@ export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
       toast.warning(`Preencha os campos obrigatórios: ${Object.values(errs).join(' ')}`)
       return
     }
-    onSave({ ...form, contacts, member_type: 'visitante' })
+    setSaving(true)
+    try {
+      await onSave({ ...form, contacts, member_type: 'visitante' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -515,27 +523,48 @@ export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">Fechar</button>
+          <button onClick={onClose} className="btn-secondary" disabled={saving || deleting}>Fechar</button>
           <div className="flex items-center gap-2">
-            <button onClick={() => { setForm(visitante ?? defaultForm); setContacts({ emails: [''], phones: [''] }) }} className="btn-outline">
+            <button
+              onClick={() => { setForm(visitante ?? defaultForm); setContacts({ emails: [''], phones: [''] }) }}
+              className="btn-outline"
+              disabled={saving || deleting}
+            >
               Limpar
             </button>
             {isEditing && (
               <button
-                className="btn-danger"
+                className="btn-danger inline-flex items-center gap-1.5"
+                disabled={saving || deleting}
                 onClick={async () => {
+                  if (saving || deleting) return
                   const ok = await confirm({
                     title: 'Excluir visitante',
                     message: 'Deseja realmente excluir este visitante?',
                     danger: true,
                   })
-                  if (ok) { onSave({ ...form, status: 'deleted' }); onClose() }
+                  if (!ok) return
+                  setDeleting(true)
+                  try {
+                    await onSave({ ...form, status: 'deleted' })
+                    onClose()
+                  } finally {
+                    setDeleting(false)
+                  }
                 }}
               >
-                Excluir
+                {deleting && <Loader2 size={13} className="animate-spin" />}
+                {deleting ? 'Excluindo...' : 'Excluir'}
               </button>
             )}
-            <button onClick={handleSave} className="btn-primary">Salvar</button>
+            <button
+              onClick={handleSave}
+              className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-60"
+              disabled={saving || deleting}
+            >
+              {saving && <Loader2 size={13} className="animate-spin" />}
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
           </div>
         </div>
       </div>

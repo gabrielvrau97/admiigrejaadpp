@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, User, Phone, Users, Link, Church as ChurchIcon, Settings } from 'lucide-react'
+import { X, User, Phone, Users, Link, Church as ChurchIcon, Settings, Loader2 } from 'lucide-react'
 import type { Member, MemberFamily } from '../../types'
 import { useChurch } from '../../contexts/ChurchContext'
 import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
@@ -15,7 +15,7 @@ import { useModalUX } from '../../hooks/useModalUX'
 interface Props {
   member: Member | null
   onClose: () => void
-  onSave: (data: Partial<Member>) => void
+  onSave: (data: Partial<Member>) => void | Promise<void>
 }
 
 const tabs = [
@@ -44,6 +44,8 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
   const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const initialChurchId = member?.church_id
     ?? selectedChurch?.id
     ?? churches[0]?.id
@@ -108,7 +110,8 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
     return { ok: Object.keys(errs).length === 0, errs, firstTab }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving || deleting) return  // bloqueia duplo-clique
     const { ok, errs, firstTab } = validate()
     setErrors(errs)
     if (!ok) {
@@ -117,7 +120,12 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
       toast.warning(`Preencha os campos obrigatórios: ${lista}`)
       return
     }
-    onSave({ ...form, contacts, ministry, family })
+    setSaving(true)
+    try {
+      await onSave({ ...form, contacts, ministry, family })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -187,30 +195,48 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl flex-wrap">
-          <button onClick={onClose} className="btn-secondary">Fechar</button>
+          <button onClick={onClose} className="btn-secondary" disabled={saving || deleting}>Fechar</button>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => { setForm(member ?? defaultForm); setFamily(defaultFamily) }}
               className="btn-outline hidden sm:inline-flex"
+              disabled={saving || deleting}
             >
               Limpar
             </button>
             {isEditing && (
               <button
-                className="btn-danger"
+                className="btn-danger inline-flex items-center gap-1.5"
+                disabled={saving || deleting}
                 onClick={async () => {
+                  if (saving || deleting) return
                   const ok = await confirm({
                     title: 'Excluir membro',
                     message: 'Deseja realmente excluir este membro?',
                     danger: true,
                   })
-                  if (ok) { onSave({ ...form, status: 'deleted' }); onClose() }
+                  if (!ok) return
+                  setDeleting(true)
+                  try {
+                    await onSave({ ...form, status: 'deleted' })
+                    onClose()
+                  } finally {
+                    setDeleting(false)
+                  }
                 }}
               >
-                Excluir
+                {deleting && <Loader2 size={13} className="animate-spin" />}
+                {deleting ? 'Excluindo...' : 'Excluir'}
               </button>
             )}
-            <button onClick={handleSave} className="btn-primary">Salvar</button>
+            <button
+              onClick={handleSave}
+              className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-60"
+              disabled={saving || deleting}
+            >
+              {saving && <Loader2 size={13} className="animate-spin" />}
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
           </div>
         </div>
       </div>

@@ -91,16 +91,17 @@ function cleanEmpties<T extends Record<string, unknown>>(obj: T): T {
 
 function splitMember(m: Partial<Member>) {
   // remove campos que não pertencem a members (joins read-only) e id vazio
-  const { contacts, family, ministry, church, id, created_at, updated_at, ...rest } = m
-  void church; void created_at; void updated_at  // descarta — esses são read-only
+  const mAny = m as Partial<Member> & { children?: unknown }
+  const { contacts, family, ministry, church, id, created_at, updated_at, children: rootChildren, ...rest } = mAny
+  void church; void created_at; void updated_at; void rootChildren  // descartados (vem do select com joins)
   const base = cleanEmpties({
     ...(id ? { id } : {}),  // só inclui id se foi passado de verdade
     ...rest,
-  })
+  } as Record<string, unknown>)
 
   const familyChildren = family?.children ?? undefined
-  const { children: _omit, member_id: _mid, ...familyOnly } = family ?? {}
-  void _mid
+  const { children: _omit, member_id: _mid, ...familyOnly } = (family ?? {}) as Partial<typeof family> & { children?: unknown; member_id?: string }
+  void _mid; void _omit
 
   return {
     base,
