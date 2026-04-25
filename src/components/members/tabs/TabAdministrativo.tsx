@@ -1,32 +1,41 @@
 import React from 'react'
 import type { Member } from '../../../types'
-import { mockChurches } from '../../../lib/mockData'
+import { useChurch } from '../../../contexts/ChurchContext'
 import { useConfig } from '../../../contexts/ConfigContext'
 
 interface Props {
   form: Partial<Member>
   onChange: (f: Partial<Member>) => void
+  errors?: Record<string, string>
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="form-label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
       {children}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
 
-export default function TabAdministrativo({ form, onChange }: Props) {
+export default function TabAdministrativo({ form, onChange, errors }: Props) {
   const { config } = useConfig()
+  const { churches } = useChurch()
   const set = (key: keyof Member) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     onChange({ ...form, [key]: e.target.value })
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <Field label="Igreja" required>
-        <select className="form-select" value={form.church_id ?? ''} onChange={set('church_id')}>
-          {mockChurches.map(c => (
+      <Field label="Igreja" required error={errors?.church_id}>
+        <select
+          className={`form-select ${errors?.church_id ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+          value={form.church_id ?? ''}
+          onChange={set('church_id')}
+          aria-invalid={!!errors?.church_id}
+        >
+          <option value="">Selecione...</option>
+          {churches.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { X, Search, RotateCcw } from 'lucide-react'
 import { useConfig } from '../../contexts/ConfigContext'
-import { mockChurches } from '../../lib/mockData'
+import { useChurch } from '../../contexts/ChurchContext'
 import type { Member } from '../../types'
 import { useModalUX } from '../../hooks/useModalUX'
 
@@ -266,6 +266,7 @@ interface AdvancedSearchProps {
 
 export default function AdvancedSearch({ onApply, onClose, initialSel, initialSim }: AdvancedSearchProps) {
   const { config } = useConfig()
+  const { churches } = useChurch()
   const containerRef = useModalUX({ onClose })
   const [tab, setTab] = useState<'selecao' | 'semelhanca'>('selecao')
   const [sel, setSel] = useState<SelectionFilters>(initialSel ?? EMPTY_SELECTION)
@@ -359,7 +360,7 @@ export default function AdvancedSearch({ onApply, onClose, initialSel, initialSi
                   <Select label="Escolaridade" value={sel.escolaridade} onChange={v => setS('escolaridade', v)}
                     options={ESCOLARIDADE_OPTIONS.map(e => ({ value: e, label: e }))} />
                   <Select label="Igreja" value={sel.igreja} onChange={v => setS('igreja', v)}
-                    options={mockChurches.map(c => ({ value: c.id, label: c.name }))} />
+                    options={churches.map(c => ({ value: c.id, label: c.name }))} />
                 </div>
               </div>
 

@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react'
 import { X, User, Phone, Link, Loader2, Plus, X as XIcon } from 'lucide-react'
 import { differenceInYears } from 'date-fns'
 import type { Member, MemberContact } from '../../types'
-import { mockChurches } from '../../lib/mockData'
 import { useData } from '../../contexts/DataContext'
-import { useConfirm } from '../ui/UIProvider'
+import { useChurch } from '../../contexts/ChurchContext'
+import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
+import { useConfirm, useToast } from '../ui/UIProvider'
 import { useModalUX } from '../../hooks/useModalUX'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="form-label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
       {children}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
@@ -33,7 +35,8 @@ const howArrivedOptions = [
 
 // ─── Aba Perfil ───────────────────────────────────────────────────────────────
 
-function TabPerfilVisitante({ form, onChange }: { form: Partial<Member>; onChange: (f: Partial<Member>) => void }) {
+function TabPerfilVisitante({ form, onChange, errors }: { form: Partial<Member>; onChange: (f: Partial<Member>) => void; errors?: Record<string, string> }) {
+  const { churches } = useChurch()
   const set = (key: keyof Member) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...form, [key]: e.target.value })
 
@@ -48,12 +51,13 @@ function TabPerfilVisitante({ form, onChange }: { form: Partial<Member>; onChang
           {form.name?.[0] ?? '?'}
         </div>
         <div className="flex-1">
-          <Field label="Nome completo" required>
+          <Field label="Nome completo" required error={errors?.name}>
             <input
-              className="form-input"
+              className={`form-input ${errors?.name ? 'border-red-500 ring-2 ring-red-100' : ''}`}
               value={form.name ?? ''}
               onChange={set('name')}
               placeholder="Nome completo"
+              aria-invalid={!!errors?.name}
             />
           </Field>
         </div>
@@ -88,9 +92,15 @@ function TabPerfilVisitante({ form, onChange }: { form: Partial<Member>; onChang
         <input className="form-input" value={form.occupation ?? ''} onChange={set('occupation')} placeholder="Ex: Professor" />
       </Field>
 
-      <Field label="Igreja" required>
-        <select className="form-select" value={form.church_id ?? ''} onChange={set('church_id')}>
-          {mockChurches.map(c => (
+      <Field label="Igreja" required error={errors?.church_id}>
+        <select
+          className={`form-select ${errors?.church_id ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+          value={form.church_id ?? ''}
+          onChange={set('church_id')}
+          aria-invalid={!!errors?.church_id}
+        >
+          <option value="">Selecione...</option>
+          {churches.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
@@ -417,27 +427,42 @@ const defaultForm: Partial<Member> = {
   status: 'ativo',
   sex: 'masculino',
   member_type: 'visitante',
-  church_id: mockChurches[0].id,
 }
 
 export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
   const confirm = useConfirm()
+  const toast = useToast()
+  const { selectedChurch, churches } = useChurch()
   const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
-  const [form, setForm] = useState<Partial<Member>>(visitante ?? defaultForm)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const initialChurchId = visitante?.church_id
+    ?? selectedChurch?.id
+    ?? churches[0]?.id
+    ?? DEFAULT_CHURCH_ID
+  const [form, setForm] = useState<Partial<Member>>(visitante ?? { ...defaultForm, church_id: initialChurchId })
   const [contacts, setContacts] = useState<Partial<MemberContact>>(
     visitante?.contacts ?? { emails: [''], phones: [''] }
   )
 
   useEffect(() => {
-    setForm(visitante ?? defaultForm)
+    setForm(visitante ?? { ...defaultForm, church_id: initialChurchId })
     setContacts(visitante?.contacts ?? { emails: [''], phones: [''] })
     setActiveTab('perfil')
-  }, [visitante])
+  }, [visitante, initialChurchId])
 
   const isEditing = !!visitante
 
   const handleSave = () => {
+    const errs: Record<string, string> = {}
+    if (!form.name?.trim()) errs.name = 'Nome completo é obrigatório.'
+    if (!form.church_id?.trim()) errs.church_id = 'Selecione a igreja.'
+    setErrors(errs)
+    if (Object.keys(errs).length) {
+      setActiveTab('perfil')
+      toast.warning(`Preencha os campos obrigatórios: ${Object.values(errs).join(' ')}`)
+      return
+    }
     onSave({ ...form, contacts, member_type: 'visitante' })
   }
 
@@ -478,7 +503,7 @@ export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
           {activeTab === 'perfil' && (
-            <TabPerfilVisitante form={form} onChange={setForm} />
+            <TabPerfilVisitante form={form} onChange={setForm} errors={errors} />
           )}
           {activeTab === 'contatos' && (
             <TabContatosVisitante contacts={contacts} onChange={setContacts} />

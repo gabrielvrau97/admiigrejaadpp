@@ -6,7 +6,7 @@ import {
   MessageCircle, Trash2, Edit2, MapPin, Filter, X, ChevronLeft, ChevronRight,
   Eye, MoreHorizontal
 } from 'lucide-react'
-import { mockChurches } from '../../lib/mockData'
+import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
 import type { Member } from '../../types'
 import MemberModal from '../../components/members/MemberModal'
 import MemberViewModal from '../../components/members/MemberViewModal'
@@ -323,8 +323,9 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
         toast.success('Cadastro atualizado.')
       } else {
         const isVisitante = type === 'visitantes'
+        const fallbackChurch = selectedChurch?.id ?? DEFAULT_CHURCH_ID
         await saveMember({
-          church_id: data.church_id ?? mockChurches[0].id,
+          church_id: data.church_id ?? fallbackChurch,
           member_type: isVisitante ? 'visitante' : 'membro',
           status: data.status ?? 'ativo',
           name: data.name ?? '',

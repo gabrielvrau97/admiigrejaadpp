@@ -2,7 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, GraduationCap } from 'lucide-react'
 import type { Seminario } from '../../types'
-import { mockChurches } from '../../lib/mockData'
+import { useChurch } from '../../contexts/ChurchContext'
 import { useModalUX } from '../../hooks/useModalUX'
 import { seminarioFormSchema, type SeminarioFormData } from '../../schemas/seminario'
 
@@ -14,6 +14,7 @@ interface Props {
 
 export default function SeminarioModal({ seminario, onClose, onSave }: Props) {
   const containerRef = useModalUX<HTMLFormElement>({ onClose })
+  const { churches } = useChurch()
 
   const {
     register,
@@ -162,7 +163,7 @@ export default function SeminarioModal({ seminario, onClose, onSave }: Props) {
               <label htmlFor="church_id" className="form-label">Igreja vinculada</label>
               <select id="church_id" {...register('church_id')} className="form-select">
                 <option value="">Nenhuma específica</option>
-                {mockChurches.map(c => (
+                {churches.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>

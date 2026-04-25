@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { X, UserPlus, Search, Check, Users } from 'lucide-react'
 import type { Matricula, MatriculaSituacao, Member } from '../../types'
 import { useData } from '../../contexts/DataContext'
-import { mockChurches } from '../../lib/mockData'
+import { useChurch } from '../../contexts/ChurchContext'
 import { useToast } from '../../components/ui/UIProvider'
 import { useModalUX } from '../../hooks/useModalUX'
 
@@ -14,6 +14,7 @@ interface Props {
 
 export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
   const { members } = useData()
+  const { churches } = useChurch()
   const toast = useToast()
   const containerRef = useModalUX({ onClose })
   const [tab, setTab] = useState<'buscar' | 'dados'>(matricula ? 'dados' : 'buscar')
@@ -302,7 +303,7 @@ export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
                     onChange={e => set('church_id', e.target.value || undefined)}
                   >
                     <option value="">Nenhuma</option>
-                    {mockChurches.map(c => (
+                    {churches.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { X, User, Phone, Users, Link, Church as ChurchIcon, Settings } from 'lucide-react'
 import type { Member, MemberFamily } from '../../types'
-import { mockChurches } from '../../lib/mockData'
+import { useChurch } from '../../contexts/ChurchContext'
+import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
 import TabPerfil from './tabs/TabPerfil'
 import TabContatos from './tabs/TabContatos'
 import TabFamilia from './tabs/TabFamilia'
 import TabConexao from './tabs/TabConexao'
 import TabMinisterio from './tabs/TabMinisterio'
 import TabAdministrativo from './tabs/TabAdministrativo'
-import { useConfirm } from '../ui/UIProvider'
+import { useConfirm, useToast } from '../ui/UIProvider'
 import { useModalUX } from '../../hooks/useModalUX'
 
 interface Props {
@@ -30,7 +31,6 @@ const defaultForm: Partial<Member> = {
   status: 'ativo',
   sex: 'masculino',
   nationality: 'Brasil',
-  church_id: mockChurches[0].id,
 }
 
 const defaultFamily: Partial<MemberFamily> = {
@@ -39,24 +39,55 @@ const defaultFamily: Partial<MemberFamily> = {
 
 export default function MemberModal({ member, onClose, onSave }: Props) {
   const confirm = useConfirm()
+  const toast = useToast()
+  const { selectedChurch, churches } = useChurch()
   const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
-  const [form, setForm] = useState<Partial<Member>>(member ?? defaultForm)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const initialChurchId = member?.church_id
+    ?? selectedChurch?.id
+    ?? churches[0]?.id
+    ?? DEFAULT_CHURCH_ID
+  const [form, setForm] = useState<Partial<Member>>(member ?? { ...defaultForm, church_id: initialChurchId })
   const [contacts, setContacts] = useState<Partial<import('../../types').MemberContact>>(member?.contacts ?? { emails: [''], phones: [''] })
   const [ministry, setMinistry] = useState<Partial<import('../../types').MemberMinistry>>(member?.ministry ?? { titles: [], ministries: [], departments: [], functions: [] })
   const [family, setFamily] = useState<Partial<MemberFamily>>(member?.family ?? defaultFamily)
 
   useEffect(() => {
-    setForm(member ?? defaultForm)
+    setForm(member ?? { ...defaultForm, church_id: initialChurchId })
     setContacts(member?.contacts ?? { emails: [''], phones: [''] })
     setMinistry(member?.ministry ?? { titles: [], ministries: [], departments: [], functions: [] })
     setFamily(member?.family ?? defaultFamily)
     setActiveTab('perfil')
-  }, [member])
+  }, [member, initialChurchId])
 
   const isEditing = !!member
 
+  const validate = (): { ok: boolean; errs: Record<string, string>; firstTab?: string } => {
+    const errs: Record<string, string> = {}
+    let firstTab: string | undefined
+
+    if (!form.name?.trim()) {
+      errs.name = 'Nome completo é obrigatório.'
+      firstTab ??= 'perfil'
+    }
+    if (!form.church_id?.trim()) {
+      errs.church_id = 'Selecione a igreja.'
+      firstTab ??= 'administrativo'
+    }
+
+    return { ok: Object.keys(errs).length === 0, errs, firstTab }
+  }
+
   const handleSave = () => {
+    const { ok, errs, firstTab } = validate()
+    setErrors(errs)
+    if (!ok) {
+      if (firstTab) setActiveTab(firstTab)
+      const lista = Object.values(errs).join(' ')
+      toast.warning(`Preencha os campos obrigatórios: ${lista}`)
+      return
+    }
     onSave({ ...form, contacts, ministry, family })
   }
 
@@ -78,26 +109,31 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 overflow-x-auto px-4 pt-2 gap-0.5">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md transition-colors whitespace-nowrap ${
-                activeTab === t.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              {t.icon}
-              {t.label}
-            </button>
-          ))}
+          {tabs.map(t => {
+            const tabErr = (t.id === 'perfil' && errors.name)
+              || (t.id === 'administrativo' && errors.church_id)
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md transition-colors whitespace-nowrap relative ${
+                  activeTab === t.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                {t.icon}
+                {t.label}
+                {tabErr && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-red-500" aria-label="Pendência nesta aba" />}
+              </button>
+            )
+          })}
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-5">
           {activeTab === 'perfil' && (
-            <TabPerfil form={form} onChange={setForm} editingId={member?.id} />
+            <TabPerfil form={form} onChange={setForm} editingId={member?.id} errors={errors} />
           )}
           {activeTab === 'contatos' && (
             <TabContatos contacts={contacts} onChange={setContacts} />
@@ -112,7 +148,7 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
             <TabMinisterio ministry={ministry} onChange={setMinistry} />
           )}
           {activeTab === 'administrativo' && (
-            <TabAdministrativo form={form} onChange={setForm} />
+            <TabAdministrativo form={form} onChange={setForm} errors={errors} />
           )}
         </div>
 

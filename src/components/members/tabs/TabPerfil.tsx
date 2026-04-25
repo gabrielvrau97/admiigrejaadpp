@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { differenceInYears } from 'date-fns'
 import type { Member } from '../../../types'
-import { mockMembers, mockChurches } from '../../../lib/mockData'
+import { mockMembers } from '../../../lib/mockData'
 
 interface Props {
   form: Partial<Member>
   onChange: (f: Partial<Member>) => void
   editingId?: string
+  errors?: Record<string, string>
 }
 
 const statuses = ['ativo', 'inativo', 'indisponivel']
@@ -42,16 +43,17 @@ function generateCode(churchId: string, existing: Member[]): string {
   return `${prefix}-${String(count).padStart(4, '0')}`
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="form-label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
       {children}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
 
-export default function TabPerfil({ form, onChange, editingId }: Props) {
+export default function TabPerfil({ form, onChange, editingId, errors }: Props) {
   const [nameWarn, setNameWarn] = useState('')
   const [cpfWarn, setCpfWarn] = useState('')
   const [cpfError, setCpfError] = useState('')
@@ -139,14 +141,16 @@ export default function TabPerfil({ form, onChange, editingId }: Props) {
           </select>
         </Field>
 
-        <Field label="Nome completo" required>
+        <Field label="Nome completo" required error={errors?.name}>
           <input
-            className={`form-input ${nameWarn ? 'border-yellow-400' : ''}`}
+            className={`form-input ${errors?.name ? 'border-red-500 ring-2 ring-red-100' : nameWarn ? 'border-yellow-400' : ''}`}
             value={form.name ?? ''}
             onChange={handleName}
             placeholder="Nome completo"
+            aria-invalid={!!errors?.name}
+            aria-describedby={errors?.name ? 'member-name-error' : undefined}
           />
-          {nameWarn && <p className="text-xs text-yellow-600 mt-0.5">{nameWarn}</p>}
+          {!errors?.name && nameWarn && <p className="text-xs text-yellow-600 mt-0.5">{nameWarn}</p>}
         </Field>
 
         <Field label="Apelido">
