@@ -175,24 +175,6 @@ export default function TabMinisterio({ ministry, onChange, form, onChangeForm }
             )}
           </div>
 
-          {/* Comungante / Professo / Recebe visita — sem data */}
-          <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 sm:col-span-1">
-            <p className="text-xs text-gray-500 mb-1.5">Outros</p>
-            <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" className="rounded" disabled title="A implementar" />
-                <span className="text-gray-400">Comungante</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" className="rounded" disabled title="A implementar" />
-                <span className="text-gray-400">Professo</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" className="rounded" disabled title="A implementar" />
-                <span className="text-gray-400">Recebe visita</span>
-              </label>
-            </div>
-          </div>
         </div>
       </div>
 
