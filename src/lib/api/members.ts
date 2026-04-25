@@ -7,6 +7,7 @@ const MEMBER_COLUMNS = `
   entry_date, entry_reason, entry_reason_other, origin_church, how_arrived, how_arrived_other,
   novo_convertido, exit_date, exit_reason, exit_reason_other,
   baptism, baptism_date, baptism_spirit, baptism_spirit_date, conversion, conversion_date,
+  imprimir_credencial,
   notes, created_at, updated_at,
   church:churches!church_id ( id, group_id, name, type, address, phone, email, logo_url ),
   contacts:member_contacts!member_contacts_member_id_fkey ( emails, phones, cellphone1, cep, address, number, complement, neighborhood, city, state, country ),

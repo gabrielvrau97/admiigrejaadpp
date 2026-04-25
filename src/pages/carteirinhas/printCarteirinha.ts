@@ -190,11 +190,11 @@ export function printCarteirinha(c: Carteirinha, m: Member) {
   const hoje = fmtDateLongo(new Date().toISOString().slice(0, 10))
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-  <title>Carteirinha — ${m.name}</title>
+  <title>Credencial — ${m.name}</title>
   <style>${sharedStyles(origin)}</style>
   </head><body>
     <div class="no-print">
-      <span style="font-size:12px;color:#1d4ed8;font-weight:600">🪪 Carteirinha — ${m.name}</span>
+      <span style="font-size:12px;color:#1d4ed8;font-weight:600">🪪 Credencial — ${m.name}</span>
       <button onclick="window.print()" style="margin-left:auto">🖨️ Imprimir</button>
       <button class="close" onclick="window.close()">✕ Fechar</button>
     </div>
@@ -204,7 +204,7 @@ export function printCarteirinha(c: Carteirinha, m: Member) {
     </div>
   </body></html>`
 
-  openPrintWindow(html, `Carteirinha — ${m.name}`)
+  openPrintWindow(html, `Credencial — ${m.name}`)
 }
 
 // ── Impressão em LOTE: 4 carteirinhas por folha A4 retrato ────────────────
@@ -240,14 +240,14 @@ export function printCarteirinhasLote(items: Array<{ c: Carteirinha; m: Member }
   }).join('')
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-  <title>Carteirinhas em lote (${items.length})</title>
+  <title>Credenciais em lote (${items.length})</title>
   <style>${sharedStyles(origin)}
     .sheet{box-shadow:0 4px 16px rgba(0,0,0,0.1);margin:0 auto 20px}
     @media print{.sheet{box-shadow:none;margin:0}}
   </style>
   </head><body>
     <div class="no-print">
-      <span style="font-size:12px;color:#1d4ed8;font-weight:600">🪪 Carteirinhas em lote · ${items.length} ${items.length === 1 ? 'carteirinha' : 'carteirinhas'} · 4 por folha A4</span>
+      <span style="font-size:12px;color:#1d4ed8;font-weight:600">🪪 Credenciais em lote · ${items.length} ${items.length === 1 ? 'credencial' : 'credenciais'} · 4 por folha A4</span>
       <button onclick="window.print()" style="margin-left:auto">🖨️ Imprimir</button>
       <button class="close" onclick="window.close()">✕ Fechar</button>
     </div>
@@ -258,5 +258,5 @@ export function printCarteirinhasLote(items: Array<{ c: Carteirinha; m: Member }
     ${sheetsHtml}
   </body></html>`
 
-  openPrintWindow(html, `Carteirinhas em lote (${items.length})`)
+  openPrintWindow(html, `Credenciais em lote (${items.length})`)
 }

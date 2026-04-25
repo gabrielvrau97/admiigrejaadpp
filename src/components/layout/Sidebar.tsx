@@ -37,7 +37,7 @@ const academicoItems: NavItem[] = [
 ]
 
 const documentosItems: NavItem[] = [
-  { label: 'Carteirinhas', path: '/carteirinhas', icon: <IdCard size={14} /> },
+  { label: 'Credenciais', path: '/carteirinhas', icon: <IdCard size={14} /> },
 ]
 
 const controleItems: NavItem[] = [

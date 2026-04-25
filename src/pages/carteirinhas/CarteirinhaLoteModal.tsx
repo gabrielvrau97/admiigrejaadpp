@@ -75,7 +75,7 @@ export default function CarteirinhaLoteModal({ onClose, onGenerate }: Props) {
               <Layers size={18} className="text-blue-600" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-800">Gerar carteirinhas em lote</h2>
+              <h2 className="font-semibold text-gray-800">Gerar credenciais em lote</h2>
               <p className="text-xs text-gray-500">
                 Selecione os membros · mesma validade e motivo pra todos
               </p>
@@ -182,7 +182,7 @@ export default function CarteirinhaLoteModal({ onClose, onGenerate }: Props) {
                 </div>
                 {jaTem && (
                   <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
-                    Já tem carteirinha
+                    Já tem credencial
                   </span>
                 )}
               </label>
@@ -194,7 +194,7 @@ export default function CarteirinhaLoteModal({ onClose, onGenerate }: Props) {
         <div className="px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
           {jaTemCount > 0 && selected.size > 0 && (
             <p className="text-xs text-amber-700 mb-2 flex items-center gap-1">
-              <Check size={12} /> {jaTemCount} do{jaTemCount > 1 ? 's' : ''} selecionado{jaTemCount > 1 ? 's' : ''} já tem carteirinha ativa — a antiga será substituída.
+              <Check size={12} /> {jaTemCount} do{jaTemCount > 1 ? 's' : ''} selecionado{jaTemCount > 1 ? 's' : ''} já tem credencial ativa — a antiga será substituída.
             </p>
           )}
           <div className="flex items-center justify-end gap-2">

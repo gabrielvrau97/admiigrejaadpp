@@ -51,7 +51,7 @@ export default function CarteirinhaGerarModal({ onClose, onGenerate }: Props) {
               <IdCard size={18} className="text-blue-600" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-800">Gerar nova carteirinha</h2>
+              <h2 className="font-semibold text-gray-800">Gerar nova credencial</h2>
               <p className="text-xs text-gray-500">Selecione o membro e defina a validade</p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export default function CarteirinhaGerarModal({ onClose, onGenerate }: Props) {
                     </p>
                     {jaTem && (
                       <p className="text-xs text-amber-700 mt-1">
-                        ⚠ Membro já tem carteirinha ativa — a antiga será marcada como substituída.
+                        ⚠ Membro já tem credencial ativa — a antiga será marcada como substituída.
                       </p>
                     )}
                   </div>
@@ -157,7 +157,7 @@ export default function CarteirinhaGerarModal({ onClose, onGenerate }: Props) {
 
               {/* Preview dos dados */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 space-y-1">
-                <p className="font-semibold text-gray-700 mb-1">📋 Dados da carteirinha</p>
+                <p className="font-semibold text-gray-700 mb-1">📋 Dados da credencial</p>
                 <p><strong>Titular:</strong> {selected.name}</p>
                 <p><strong>CPF:</strong> {selected.cpf ?? 'Não informado'}</p>
                 <p><strong>Igreja:</strong> {selected.church?.name ?? '—'}</p>

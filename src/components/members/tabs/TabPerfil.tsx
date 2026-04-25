@@ -123,12 +123,24 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
           </Field>
           <div className="space-y-1">
             <label className="text-xs text-gray-600 font-medium">Opções</label>
-            {['Receber SMS', 'Imprimir credencial'].map(opt => (
-              <label key={opt} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
-                <input type="checkbox" className="rounded" />
-                {opt}
-              </label>
-            ))}
+            <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer opacity-50" title="A implementar">
+              <input type="checkbox" className="rounded" disabled />
+              Receber SMS
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={!!form.imprimir_credencial}
+                onChange={e => onChange({ ...form, imprimir_credencial: e.target.checked })}
+              />
+              Imprimir credencial
+            </label>
+            {form.imprimir_credencial && (
+              <p className="text-[10px] text-blue-600 mt-0.5">
+                Adicionado à fila de impressão.
+              </p>
+            )}
           </div>
         </div>
       </div>
