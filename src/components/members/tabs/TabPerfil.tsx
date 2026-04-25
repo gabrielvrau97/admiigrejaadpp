@@ -133,8 +133,13 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
 
       {/* Right */}
       <div className="col-span-3 grid grid-cols-2 gap-3">
-        <Field label="Status" required>
-          <select className="form-select" value={form.status ?? 'ativo'} onChange={set('status')}>
+        <Field label="Status" required error={errors?.status}>
+          <select
+            className={`form-select ${errors?.status ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+            value={form.status ?? 'ativo'}
+            onChange={set('status')}
+            aria-invalid={!!errors?.status}
+          >
             {statuses.map(s => (
               <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
             ))}
@@ -162,22 +167,39 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
           />
         </Field>
 
-        <Field label="Sexo" required>
-          <select className="form-select" value={form.sex ?? 'masculino'} onChange={set('sex')}>
+        <Field label="Sexo" required error={errors?.sex}>
+          <select
+            className={`form-select ${errors?.sex ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+            value={form.sex ?? ''}
+            onChange={set('sex')}
+            aria-invalid={!!errors?.sex}
+          >
+            <option value="">Selecione</option>
             <option value="masculino">Masculino</option>
             <option value="feminino">Feminino</option>
           </select>
         </Field>
 
-        <Field label="Data de nascimento" required>
+        <Field label="Data de nascimento" required error={errors?.birth_date}>
           <div className="flex items-center gap-2">
-            <input type="date" className="form-input flex-1" value={form.birth_date ?? ''} onChange={set('birth_date')} />
+            <input
+              type="date"
+              className={`form-input flex-1 ${errors?.birth_date ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+              value={form.birth_date ?? ''}
+              onChange={set('birth_date')}
+              aria-invalid={!!errors?.birth_date}
+            />
             {age !== null && <span className="text-xs text-gray-500 whitespace-nowrap">{age} anos</span>}
           </div>
         </Field>
 
-        <Field label="Estado civil" required>
-          <select className="form-select" value={form.civil_status ?? ''} onChange={set('civil_status')}>
+        <Field label="Estado civil" required error={errors?.civil_status}>
+          <select
+            className={`form-select ${errors?.civil_status ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+            value={form.civil_status ?? ''}
+            onChange={set('civil_status')}
+            aria-invalid={!!errors?.civil_status}
+          >
             <option value="">Selecione</option>
             <option value="solteiro">Solteiro(a)</option>
             <option value="casado">Casado(a)</option>

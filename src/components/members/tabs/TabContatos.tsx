@@ -5,20 +5,22 @@ import { MapPin, Loader2, Plus, X } from 'lucide-react'
 interface Props {
   contacts: Partial<MemberContact>
   onChange: (c: Partial<MemberContact>) => void
+  errors?: Record<string, string>
 }
 
 const brStates = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="form-label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
       {children}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
 
-export default function TabContatos({ contacts, onChange }: Props) {
+export default function TabContatos({ contacts, onChange, errors }: Props) {
   const [cepLoading, setCepLoading] = useState(false)
 
   const emails = contacts.emails ?? ['']
@@ -166,8 +168,14 @@ export default function TabContatos({ contacts, onChange }: Props) {
         <Field label="Bairro">
           <input className="form-input" value={contacts.neighborhood ?? ''} onChange={set('neighborhood')} placeholder="Bairro" />
         </Field>
-        <Field label="Cidade" required>
-          <input className="form-input" value={contacts.city ?? ''} onChange={set('city')} placeholder="Cidade" />
+        <Field label="Cidade" required error={errors?.city}>
+          <input
+            className={`form-input ${errors?.city ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+            value={contacts.city ?? ''}
+            onChange={set('city')}
+            placeholder="Cidade"
+            aria-invalid={!!errors?.city}
+          />
         </Field>
 
         <Field label="Estado">

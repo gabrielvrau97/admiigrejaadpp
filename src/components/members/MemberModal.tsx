@@ -67,12 +67,41 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
     const errs: Record<string, string> = {}
     let firstTab: string | undefined
 
+    // Aba Perfil
     if (!form.name?.trim()) {
       errs.name = 'Nome completo é obrigatório.'
       firstTab ??= 'perfil'
     }
+    if (!form.status) {
+      errs.status = 'Selecione o status.'
+      firstTab ??= 'perfil'
+    }
+    if (!form.sex) {
+      errs.sex = 'Selecione o sexo.'
+      firstTab ??= 'perfil'
+    }
+    if (!form.birth_date) {
+      errs.birth_date = 'Data de nascimento é obrigatória.'
+      firstTab ??= 'perfil'
+    }
+    if (!form.civil_status) {
+      errs.civil_status = 'Selecione o estado civil.'
+      firstTab ??= 'perfil'
+    }
+
+    // Aba Contatos
+    if (!contacts.city?.trim()) {
+      errs.city = 'Cidade é obrigatória.'
+      firstTab ??= 'contatos'
+    }
+
+    // Aba Administrativo
     if (!form.church_id?.trim()) {
       errs.church_id = 'Selecione a igreja.'
+      firstTab ??= 'administrativo'
+    }
+    if (!form.entry_date) {
+      errs.entry_date = 'Data de entrada é obrigatória.'
       firstTab ??= 'administrativo'
     }
 
@@ -110,8 +139,12 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
         {/* Tabs */}
         <div className="flex border-b border-gray-200 overflow-x-auto px-4 pt-2 gap-0.5">
           {tabs.map(t => {
-            const tabErr = (t.id === 'perfil' && errors.name)
-              || (t.id === 'administrativo' && errors.church_id)
+            const perfilErr = errors.name || errors.status || errors.sex || errors.birth_date || errors.civil_status
+            const contatosErr = errors.city
+            const administrativoErr = errors.church_id || errors.entry_date
+            const tabErr = (t.id === 'perfil' && perfilErr)
+              || (t.id === 'contatos' && contatosErr)
+              || (t.id === 'administrativo' && administrativoErr)
             return (
               <button
                 key={t.id}
@@ -136,7 +169,7 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
             <TabPerfil form={form} onChange={setForm} editingId={member?.id} errors={errors} />
           )}
           {activeTab === 'contatos' && (
-            <TabContatos contacts={contacts} onChange={setContacts} />
+            <TabContatos contacts={contacts} onChange={setContacts} errors={errors} />
           )}
           {activeTab === 'familia' && (
             <TabFamilia family={family} onChange={setFamily} editingId={member?.id} />

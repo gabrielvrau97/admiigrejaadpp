@@ -45,8 +45,14 @@ export default function TabAdministrativo({ form, onChange, errors }: Props) {
         <input className="form-input" value={form.origin_church ?? ''} onChange={set('origin_church')} placeholder="Cidade ou nome da igreja de origem" />
       </Field>
 
-      <Field label="Data de entrada" required>
-        <input type="date" className="form-input" value={form.entry_date ?? ''} onChange={set('entry_date')} />
+      <Field label="Data de entrada" required error={errors?.entry_date}>
+        <input
+          type="date"
+          className={`form-input ${errors?.entry_date ? 'border-red-500 ring-2 ring-red-100' : ''}`}
+          value={form.entry_date ?? ''}
+          onChange={set('entry_date')}
+          aria-invalid={!!errors?.entry_date}
+        />
       </Field>
 
       <Field label="Motivo de entrada">
