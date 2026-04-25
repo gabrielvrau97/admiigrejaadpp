@@ -66,18 +66,62 @@ export async function getMember(id: string): Promise<Member | null> {
 
 // ── Helpers de divisão (separar Member em pedaços por tabela) ──────────────
 
+// Campos do members que são DATE no banco — strings vazias precisam virar null
+const DATE_FIELDS = new Set([
+  'birth_date', 'entry_date', 'exit_date',
+  'baptism_date', 'baptism_spirit_date', 'conversion_date',
+])
+
+// Limpa string vazia → null em campos opcionais (Postgres rejeita "" em date/uuid)
+function cleanEmpties<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === '' || v === undefined) {
+      // se for campo de data ou termina em _id (uuid), null. senão pula
+      if (DATE_FIELDS.has(k) || k === 'id' || k.endsWith('_id')) {
+        out[k] = null
+      }
+      // strings vazias em outros campos: pula (deixa Postgres usar default)
+    } else {
+      out[k] = v
+    }
+  }
+  return out as T
+}
+
 function splitMember(m: Partial<Member>) {
-  const { contacts, family, ministry, church, ...base } = m
-  // família: separar children pra outra tabela
+  // remove campos que não pertencem a members (joins read-only) e id vazio
+  const { contacts, family, ministry, church, id, created_at, updated_at, ...rest } = m
+  void church; void created_at; void updated_at  // descarta — esses são read-only
+  const base = cleanEmpties({
+    ...(id ? { id } : {}),  // só inclui id se foi passado de verdade
+    ...rest,
+  })
+
   const familyChildren = family?.children ?? undefined
-  const { children: _omit, ...familyOnly } = family ?? {}
+  const { children: _omit, member_id: _mid, ...familyOnly } = family ?? {}
+  void _mid
+
   return {
     base,
-    contacts: contacts ?? null,
-    family: Object.keys(familyOnly).length ? familyOnly : null,
-    ministry: ministry ?? null,
+    contacts: contacts && Object.keys(contacts).length
+      ? cleanEmpties(stripMemberId(contacts))
+      : null,
+    family: Object.keys(familyOnly).length
+      ? cleanEmpties(familyOnly as Record<string, unknown>)
+      : null,
+    ministry: ministry && Object.keys(ministry).length
+      ? cleanEmpties(stripMemberId(ministry))
+      : null,
     children: familyChildren,
   }
+}
+
+// Remove member_id que pode vir nos joins quando vem do banco
+function stripMemberId<T extends { member_id?: string }>(obj: T): Omit<T, 'member_id'> {
+  const { member_id: _omit, ...rest } = obj
+  void _omit
+  return rest
 }
 
 // ── CRUD ────────────────────────────────────────────────────────────────────
@@ -113,9 +157,12 @@ export async function createMember(m: Partial<Member>): Promise<Member> {
 
 export async function updateMember(id: string, patch: Partial<Member>): Promise<Member> {
   const { base, contacts, family, ministry, children } = splitMember(patch)
+  // Não atualiza a PK
+  const { id: _omit, ...baseNoId } = base as Record<string, unknown>
+  void _omit
 
-  if (Object.keys(base).length) {
-    const { error } = await supabase.from('members').update(base).eq('id', id)
+  if (Object.keys(baseNoId).length) {
+    const { error } = await supabase.from('members').update(baseNoId).eq('id', id)
     if (error) throw error
   }
   if (contacts) {

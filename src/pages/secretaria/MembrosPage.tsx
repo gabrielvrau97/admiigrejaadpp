@@ -334,8 +334,9 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       }
       setModalOpen(false)
     } catch (err) {
-      console.error(err)
-      toast.error('Erro ao salvar. Tente novamente.')
+      console.error('[MembrosPage] erro ao salvar:', err)
+      const msg = (err as { message?: string })?.message ?? ''
+      toast.error(msg ? `Erro ao salvar: ${msg}` : 'Erro ao salvar. Verifique o console (F12).')
     }
   }
 
