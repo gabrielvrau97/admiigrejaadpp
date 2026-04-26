@@ -26,7 +26,7 @@ export default function TabAdministrativo({ form, onChange, errors }: Props) {
     onChange({ ...form, [key]: e.target.value })
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Field label="Igreja" required error={errors?.church_id}>
         <select
           className={`form-select ${errors?.church_id ? 'border-red-500 ring-2 ring-red-100' : ''}`}

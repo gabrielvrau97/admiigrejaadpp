@@ -168,12 +168,12 @@ export default function CarteirinhaGerarModal({ onClose, onGenerate }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">Cancelar</button>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
+          <button onClick={onClose} className="btn-secondary w-full sm:w-auto justify-center">Cancelar</button>
           <button
             onClick={handleConfirm}
             disabled={!selected}
-            className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-primary w-full sm:w-auto justify-center disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Gerar e imprimir
           </button>

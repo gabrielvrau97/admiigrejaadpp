@@ -139,7 +139,7 @@ export type QuickFilter =
   | 'casados_hoje' | 'casados_semana' | 'casados_mes'
   | 'celula' | 'sem_celula'
 
-export type MemberType = 'membros' | 'visitantes' | 'congregados' | 'criancas' | 'adolescentes' | 'jovens' | 'novos_convertidos'
+export type MemberType = 'membros' | 'visitantes' | 'criancas' | 'adolescentes' | 'jovens' | 'novos_convertidos'
 
 export interface BaptismYearStat {
   year: number

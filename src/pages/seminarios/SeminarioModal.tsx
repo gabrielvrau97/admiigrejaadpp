@@ -171,9 +171,9 @@ export default function SeminarioModal({ seminario, onClose, onSave }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
-          <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-          <button type="submit" disabled={isSubmitting} className="btn-primary">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
+          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto justify-center">Cancelar</button>
+          <button type="submit" disabled={isSubmitting} className="btn-primary w-full sm:w-auto justify-center disabled:opacity-60">
             {seminario ? 'Salvar alterações' : 'Criar seminário'}
           </button>
         </div>

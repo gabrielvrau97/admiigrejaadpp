@@ -20,7 +20,6 @@ const secretariaItems: NavItem[] = [
     children: [
       { label: 'Membros', path: '/secretaria/membros', icon: <UserCheck size={14} /> },
       { label: 'Visitantes', path: '/secretaria/visitantes', icon: <Users size={14} /> },
-      { label: 'Congregados', path: '/secretaria/congregados', icon: <Users size={14} /> },
       { label: 'Crianças', path: '/secretaria/criancas', icon: <Baby size={14} /> },
       { label: 'Adolescentes', path: '/secretaria/adolescentes', icon: <Users size={14} /> },
       { label: 'Jovens', path: '/secretaria/jovens', icon: <Users size={14} /> },

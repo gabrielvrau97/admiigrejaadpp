@@ -111,9 +111,9 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
   }
 
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
       {/* Left */}
-      <div className="col-span-1 flex flex-col items-center gap-3 pt-2">
+      <div className="sm:col-span-1 flex flex-col items-center gap-3 pt-2">
         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow">
           {form.name?.[0] ?? '?'}
         </div>
@@ -146,7 +146,7 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
       </div>
 
       {/* Right */}
-      <div className="col-span-3 grid grid-cols-2 gap-3">
+      <div className="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Status" required error={errors?.status}>
           <select
             className={`form-select ${errors?.status ? 'border-red-500 ring-2 ring-red-100' : ''}`}

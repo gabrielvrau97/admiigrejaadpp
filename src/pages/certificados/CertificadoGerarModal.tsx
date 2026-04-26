@@ -116,7 +116,7 @@ export default function CertificadoGerarModal({ onClose, onGenerate }: Props) {
         </div>
 
         <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">Fechar</button>
+          <button onClick={onClose} className="btn-secondary w-full sm:w-auto justify-center">Fechar</button>
         </div>
       </div>
     </div>

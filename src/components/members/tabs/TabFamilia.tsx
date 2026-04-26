@@ -34,7 +34,7 @@ export default function TabFamilia({ family, onChange, editingId }: Props) {
       {/* Cônjuge */}
       <div className="p-3 bg-gray-50 rounded-lg space-y-3">
         <p className="text-sm font-semibold text-gray-700">Cônjuge</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Nome do cônjuge">
             <MemberSearch
               value={family.spouse_name ?? ''}
@@ -82,7 +82,7 @@ export default function TabFamilia({ family, onChange, editingId }: Props) {
           <p className="text-xs text-gray-400 italic">Nenhum filho cadastrado.</p>
         )}
         {children.map((child, i) => (
-          <div key={i} className="grid grid-cols-2 gap-2 items-end border-b border-gray-200 pb-3">
+          <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end border-b border-gray-200 pb-3">
             <Field label={`Filho ${i + 1} — Nome`}>
               <MemberSearch
                 value={child.name}

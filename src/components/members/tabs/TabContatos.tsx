@@ -134,7 +134,7 @@ export default function TabContatos({ contacts, onChange, errors }: Props) {
       </div>
 
       {/* Endereço */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="CEP">
           <div className="flex gap-1">
             <input

@@ -194,49 +194,53 @@ export default function MemberModal({ member, onClose, onSave }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl flex-wrap">
-          <button onClick={onClose} className="btn-secondary" disabled={saving || deleting}>Fechar</button>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => { setForm(member ?? defaultForm); setFamily(defaultFamily) }}
-              className="btn-outline hidden sm:inline-flex"
-              disabled={saving || deleting}
-            >
-              Limpar
+        <div className="px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+            <button onClick={onClose} className="btn-secondary w-full sm:w-auto justify-center" disabled={saving || deleting}>
+              Fechar
             </button>
-            {isEditing && (
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2 sm:flex-wrap">
               <button
-                className="btn-danger inline-flex items-center gap-1.5"
+                onClick={() => { setForm(member ?? defaultForm); setFamily(defaultFamily) }}
+                className="btn-outline hidden sm:inline-flex"
                 disabled={saving || deleting}
-                onClick={async () => {
-                  if (saving || deleting) return
-                  const ok = await confirm({
-                    title: 'Excluir membro',
-                    message: 'Deseja realmente excluir este membro?',
-                    danger: true,
-                  })
-                  if (!ok) return
-                  setDeleting(true)
-                  try {
-                    await onSave({ ...form, status: 'deleted' })
-                    onClose()
-                  } finally {
-                    setDeleting(false)
-                  }
-                }}
               >
-                {deleting && <Loader2 size={13} className="animate-spin" />}
-                {deleting ? 'Excluindo...' : 'Excluir'}
+                Limpar
               </button>
-            )}
-            <button
-              onClick={handleSave}
-              className="btn-primary inline-flex items-center gap-1.5 disabled:opacity-60"
-              disabled={saving || deleting}
-            >
-              {saving && <Loader2 size={13} className="animate-spin" />}
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
+              {isEditing && (
+                <button
+                  className="btn-danger inline-flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                  disabled={saving || deleting}
+                  onClick={async () => {
+                    if (saving || deleting) return
+                    const ok = await confirm({
+                      title: 'Excluir membro',
+                      message: 'Deseja realmente excluir este membro?',
+                      danger: true,
+                    })
+                    if (!ok) return
+                    setDeleting(true)
+                    try {
+                      await onSave({ ...form, status: 'deleted' })
+                      onClose()
+                    } finally {
+                      setDeleting(false)
+                    }
+                  }}
+                >
+                  {deleting && <Loader2 size={13} className="animate-spin" />}
+                  {deleting ? 'Excluindo...' : 'Excluir'}
+                </button>
+              )}
+              <button
+                onClick={handleSave}
+                className="btn-primary inline-flex items-center justify-center gap-1.5 disabled:opacity-60 w-full sm:w-auto"
+                disabled={saving || deleting}
+              >
+                {saving && <Loader2 size={13} className="animate-spin" />}
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

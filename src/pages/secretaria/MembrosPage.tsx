@@ -4,8 +4,9 @@ import * as XLSX from 'xlsx'
 import {
   Plus, Search, Printer, Settings2, ChevronDown, Download,
   MessageCircle, Trash2, Edit2, MapPin, Filter, X, ChevronLeft, ChevronRight,
-  Eye, MoreHorizontal
+  Eye, MoreHorizontal, UserCheck, Users, Baby, Heart,
 } from 'lucide-react'
+import { getListTheme } from './membros-themes'
 import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
 import type { Member } from '../../types'
 import MemberModal from '../../components/members/MemberModal'
@@ -55,7 +56,6 @@ function statusBadge(status: Member['status']) {
 const titleMap: Record<string, string> = {
   membros: 'Membros',
   visitantes: 'Visitantes',
-  congregados: 'Congregados',
   criancas: 'Crianças',
   adolescentes: 'Adolescentes',
   jovens: 'Jovens',
@@ -353,6 +353,12 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
     <span className="ml-0.5 text-gray-400">{sortField === field ? (sortAsc ? '↑' : '↓') : '↕'}</span>
   )
 
+  const theme = getListTheme(type)
+  const HeaderIcon = type === 'membros' ? UserCheck
+    : type === 'criancas' ? Baby
+    : type === 'novos-convertidos' ? Heart
+    : Users
+
   const summaryCards = [
     { label: 'Ativos', value: baseData.filter(m => m.status === 'ativo').length, color: 'bg-blue-500', filter: 'ativos' },
     { label: 'Batizados', value: baseData.filter(m => m.baptism).length, color: 'bg-indigo-500', filter: 'batizados' },
@@ -362,13 +368,21 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">{pageTitle}</h1>
-          <p className="text-sm text-gray-500">
-            Secretaria · {pageTitle}
-            {pageSub && <span className="ml-1 text-gray-400">— {pageSub}</span>}
-          </p>
+      {/* Header com tema por categoria */}
+      <div className={`rounded-xl bg-gradient-to-r ${theme.headerGradient} border-b-2 ${theme.border} px-4 py-3 sm:px-5 sm:py-4`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl border ${theme.iconBox} flex items-center justify-center shrink-0`}>
+            <HeaderIcon size={22} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className={`text-lg sm:text-xl font-bold ${theme.accent}`}>{pageTitle}</h1>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${theme.typeBadge}`}>
+                {theme.label}
+              </span>
+            </div>
+            {pageSub && <p className="text-xs text-gray-500 mt-0.5">{pageSub}</p>}
+          </div>
         </div>
       </div>
 

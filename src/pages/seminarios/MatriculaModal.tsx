@@ -391,16 +391,16 @@ export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">Cancelar</button>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 px-4 sm:px-5 py-3 border-t border-gray-200 bg-gray-50 sm:rounded-b-xl">
+          <button onClick={onClose} className="btn-secondary w-full sm:w-auto justify-center">Cancelar</button>
           <div className="flex items-center gap-2">
             {tab === 'buscar' && !matricula && (
-              <button onClick={() => setTab('dados')} className="btn-primary">
+              <button onClick={() => setTab('dados')} className="btn-primary w-full sm:w-auto justify-center">
                 Continuar →
               </button>
             )}
             {tab === 'dados' && (
-              <button onClick={handleSubmit} className="btn-primary">
+              <button onClick={handleSubmit} className="btn-primary w-full sm:w-auto justify-center">
                 {matricula ? 'Salvar alterações' : 'Matricular aluno'}
               </button>
             )}

@@ -56,7 +56,7 @@ function AppRoutes() {
         {/* Secretaria */}
         <Route path="/secretaria/membros" element={<MembrosPage type="membros" />} />
         <Route path="/secretaria/visitantes" element={<MembrosPage type="visitantes" />} />
-        <Route path="/secretaria/congregados" element={<MembrosPage type="congregados" />} />
+        <Route path="/secretaria/congregados" element={<Navigate to="/secretaria/visitantes" replace />} />
         <Route path="/secretaria/criancas" element={<MembrosPage type="criancas" />} />
         <Route path="/secretaria/adolescentes" element={<MembrosPage type="adolescentes" />} />
         <Route path="/secretaria/jovens" element={<MembrosPage type="jovens" />} />

@@ -203,12 +203,12 @@ export default function CertificadoLoteModal({ onClose, onGenerate }: Props) {
               ⚠ {jaTemCount} do{jaTemCount > 1 ? 's' : ''} selecionado{jaTemCount > 1 ? 's' : ''} já tem certificado — será emitida uma reimpressão.
             </p>
           )}
-          <div className="flex items-center justify-end gap-2">
-            <button onClick={onClose} className="btn-secondary">Cancelar</button>
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+            <button onClick={onClose} className="btn-secondary w-full sm:w-auto justify-center">Cancelar</button>
             <button
               onClick={handleConfirm}
               disabled={selected.size === 0}
-              className="btn-primary flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn-primary w-full sm:w-auto justify-center flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Award size={14} />
               Emitir e imprimir {selected.size > 0 ? `(${selected.size})` : ''}

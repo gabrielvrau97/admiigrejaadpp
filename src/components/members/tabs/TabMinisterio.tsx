@@ -75,7 +75,7 @@ export default function TabMinisterio({ ministry, onChange, form, onChangeForm, 
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="col-span-2">
         <TagPicker
           label="Títulos"
