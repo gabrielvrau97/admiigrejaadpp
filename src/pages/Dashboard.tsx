@@ -1,29 +1,90 @@
-import React, { useState, useMemo } from 'react'
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, differenceInYears, getYear } from 'date-fns'
+import { useState, useMemo } from 'react'
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay, differenceInYears, getYear, getMonth, getDate } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { MessageCircle, ChevronLeft, ChevronRight, Church, Users, Heart, Droplets, TrendingUp, TrendingDown, Minus, CalendarDays, Baby, Sparkles } from 'lucide-react'
-import { mockBirthdays, mockChurches } from '../lib/mockData'
+import { MessageCircle, ChevronLeft, ChevronRight, Church, Users, Heart, Droplets, TrendingUp, TrendingDown, Minus, CalendarDays, Baby, Sparkles, Plus } from 'lucide-react'
 import { useData, filterByType, getAge } from '../contexts/DataContext'
 import { useChurch } from '../contexts/ChurchContext'
+import type { EventoCalendario, Member } from '../types'
+import EventoCalendarioModal from '../components/dashboard/EventoCalendarioModal'
 
 const today = new Date()
 const currentYear = getYear(today)
 const prevYear = currentYear - 1
 
-const events = [
-  { date: new Date(currentYear, 11, 1), label: 'Culto de Abertura' },
-  { date: new Date(currentYear, 11, 8), label: 'Reunião de Célula' },
-  { date: new Date(currentYear, 11, 15), label: 'Culto de Santa Ceia' },
-  { date: new Date(currentYear, 11, 25), label: 'Natal do Senhor' },
-  { date: new Date(currentYear, 11, 31), label: 'Réveillon' },
-]
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function MiniCalendar() {
+function parseDateOnly(s: string): Date {
+  return new Date(s + 'T00:00:00')
+}
+
+/** Retorna membros cujo birth_date cai no dia/mês de `target`. */
+function aniversariantesDoDia(members: Member[], target: Date): Member[] {
+  const dia = getDate(target)
+  const mes = getMonth(target)
+  return members.filter(m => {
+    if (!m.birth_date) return false
+    const d = parseDateOnly(m.birth_date)
+    return getDate(d) === dia && getMonth(d) === mes
+  })
+}
+
+/** Retorna membros cujo wedding_date cai no dia/mês de `target`. */
+function casadosDoDia(members: Member[], target: Date): Member[] {
+  const dia = getDate(target)
+  const mes = getMonth(target)
+  return members.filter(m => {
+    const w = m.family?.wedding_date
+    if (!w) return false
+    const d = parseDateOnly(w)
+    return getDate(d) === dia && getMonth(d) === mes
+  })
+}
+
+const corDot: Record<string, string> = {
+  blue: 'bg-blue-400',
+  green: 'bg-green-400',
+  red: 'bg-red-400',
+  amber: 'bg-amber-400',
+  purple: 'bg-purple-400',
+  orange: 'bg-orange-400',
+  pink: 'bg-pink-400',
+  gray: 'bg-gray-400',
+}
+
+// ─── MiniCalendar ────────────────────────────────────────────────────────────
+
+interface MiniCalendarProps {
+  eventos: EventoCalendario[]
+  onAdd: (date: string) => void
+  onEdit: (e: EventoCalendario) => void
+}
+
+function MiniCalendar({ eventos, onAdd, onEdit }: MiniCalendarProps) {
   const [current, setCurrent] = useState(today)
   const start = startOfMonth(current)
   const end = endOfMonth(current)
   const days = eachDayOfInterval({ start, end })
   const blanks = Array.from({ length: getDay(start) })
+
+  const eventosDoMes = useMemo(() => {
+    const m = getMonth(current)
+    const y = getYear(current)
+    return eventos.filter(e => {
+      const d = parseDateOnly(e.data)
+      return getMonth(d) === m && getYear(d) === y
+    })
+  }, [eventos, current])
+
+  const eventosNaData = (day: Date) =>
+    eventosDoMes.filter(e => isSameDay(parseDateOnly(e.data), day))
+
+  const proximos = useMemo(() => {
+    const todayStr = format(today, 'yyyy-MM-dd')
+    return [...eventos]
+      .filter(e => e.data >= todayStr)
+      .sort((a, b) => a.data.localeCompare(b.data) || (a.hora ?? '').localeCompare(b.hora ?? ''))
+      .slice(0, 4)
+  }, [eventos])
 
   return (
     <div className="bg-white rounded-xl border border-gray-200/80 overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
@@ -34,16 +95,23 @@ function MiniCalendar() {
             {format(current, 'MMMM yyyy', { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())}
           </h3>
         </div>
-        <div className="flex gap-0.5">
+        <div className="flex gap-0.5 items-center">
+          <button
+            onClick={() => onAdd(format(current, 'yyyy-MM-dd'))}
+            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+            title="Novo evento"
+          >
+            <Plus size={13} />
+          </button>
           <button
             onClick={() => setCurrent(subMonths(current, 1))}
-            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-150"
+            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
           >
             <ChevronLeft size={13} />
           </button>
           <button
             onClick={() => setCurrent(addMonths(current, 1))}
-            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-150"
+            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
           >
             <ChevronRight size={13} />
           </button>
@@ -60,47 +128,63 @@ function MiniCalendar() {
           {blanks.map((_, i) => <div key={`b-${i}`} />)}
           {days.map(day => {
             const isToday = isSameDay(day, today)
-            const hasEvent = events.some(e => isSameDay(e.date, day))
+            const evDay = eventosNaData(day)
+            const dateStr = format(day, 'yyyy-MM-dd')
             return (
-              <div
+              <button
                 key={day.toISOString()}
+                onClick={() => evDay.length === 1 ? onEdit(evDay[0]) : onAdd(dateStr)}
                 className={`text-xs py-1.5 rounded-lg cursor-pointer relative transition-all duration-100 font-medium ${
                   isToday
                     ? 'text-white font-bold shadow-sm'
                     : 'hover:bg-blue-50 text-gray-600 hover:text-blue-600'
                 }`}
                 style={isToday ? { background: 'linear-gradient(135deg,#2563eb,#1d4ed8)' } : {}}
+                title={evDay.map(e => e.titulo).join(' · ') || undefined}
               >
                 {format(day, 'd')}
-                {hasEvent && !isToday && (
-                  <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-400 rounded-full" />
+                {evDay.length > 0 && !isToday && (
+                  <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    {evDay.slice(0, 3).map(e => (
+                      <div key={e.id} className={`w-1 h-1 ${corDot[e.cor] ?? 'bg-blue-400'} rounded-full`} />
+                    ))}
+                  </div>
                 )}
-              </div>
+              </button>
             )
           })}
         </div>
       </div>
 
       <div className="px-3 pb-3 space-y-1.5 border-t border-gray-50 pt-2.5">
-        {events.slice(0, 4).map((e, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs">
-            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full shrink-0" />
-            <span className="font-semibold text-gray-400 w-9 shrink-0">{format(e.date, 'dd/MM')}</span>
-            <span className="text-gray-600 truncate">{e.label}</span>
-          </div>
-        ))}
+        {proximos.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-2">Nenhum evento futuro</p>
+        ) : (
+          proximos.map(e => (
+            <button
+              key={e.id}
+              onClick={() => onEdit(e)}
+              className="w-full flex items-center gap-2 text-xs text-left hover:bg-gray-50 rounded px-1 py-1 transition-colors"
+            >
+              <div className={`w-1.5 h-1.5 ${corDot[e.cor] ?? 'bg-blue-400'} rounded-full shrink-0`} />
+              <span className="font-semibold text-gray-400 w-9 shrink-0">
+                {format(parseDateOnly(e.data), 'dd/MM')}
+              </span>
+              <span className="text-gray-600 truncate flex-1">{e.titulo}</span>
+              {e.hora && <span className="text-gray-400 shrink-0">{e.hora}</span>}
+            </button>
+          ))
+        )}
       </div>
     </div>
   )
 }
 
-function calcAge(birthDate: string): number {
-  return differenceInYears(today, new Date(birthDate + 'T00:00:00'))
-}
+// ─── BaptismCard ─────────────────────────────────────────────────────────────
 
-function BaptismCard({ members }: { members: ReturnType<typeof useData>['members'] }) {
+function BaptismCard({ members }: { members: Member[] }) {
   function baptismsByYear(year: number) {
-    return members.filter(m => m.baptism && m.baptism_date && getYear(new Date(m.baptism_date)) === year).length
+    return members.filter(m => m.baptism && m.baptism_date && getYear(parseDateOnly(m.baptism_date)) === year).length
   }
   const baptismsThisYear = baptismsByYear(currentYear)
   const baptismsPrevYear = baptismsByYear(prevYear)
@@ -169,6 +253,8 @@ function BaptismCard({ members }: { members: ReturnType<typeof useData>['members
   )
 }
 
+// ─── Cards principais ────────────────────────────────────────────────────────
+
 const topCardStyles = [
   { gradient: 'linear-gradient(135deg,#2563eb,#1d4ed8)', shadow: 'rgba(37,99,235,0.3)' },
   { gradient: 'linear-gradient(135deg,#059669,#047857)', shadow: 'rgba(5,150,105,0.3)' },
@@ -176,36 +262,54 @@ const topCardStyles = [
   { gradient: 'linear-gradient(135deg,#7c3aed,#6d28d9)', shadow: 'rgba(124,58,237,0.3)' },
 ]
 
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
 export default function Dashboard() {
-  const { members, visitantes } = useData()
-  const { selectedChurch } = useChurch()
+  const { members, visitantes, eventosCalendario, saveEventoCalendario, saveEventosCalendarioBulk, removeEventoCalendario } = useData()
+  const { selectedChurch, churches } = useChurch()
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalDate, setModalDate] = useState<string | undefined>(undefined)
+  const [editingEvento, setEditingEvento] = useState<EventoCalendario | null>(null)
 
   const filtM = selectedChurch ? members.filter(m => m.church_id === selectedChurch.id) : members
   const filtV = selectedChurch ? visitantes.filter(v => v.church_id === selectedChurch.id) : visitantes
 
   const activeMembers = filtM.filter(m => m.status === 'ativo' && m.member_type !== 'visitante')
   const activeVisitantes = filtV.filter(m => m.status === 'ativo')
-  const newMembersThisYear = filtM.filter(m => m.entry_date && getYear(new Date(m.entry_date)) === currentYear && m.member_type !== 'visitante')
-  const newVisitantesThisYear = filtV.filter(m => m.entry_date && getYear(new Date(m.entry_date)) === currentYear)
+  const newMembersThisYear = filtM.filter(m => m.entry_date && getYear(parseDateOnly(m.entry_date)) === currentYear && m.member_type !== 'visitante')
+  const newVisitantesThisYear = filtV.filter(m => m.entry_date && getYear(parseDateOnly(m.entry_date)) === currentYear)
 
   const allFilt = [...filtM, ...filtV]
   const criancas = filterByType(allFilt, 'criancas')
   const adolescentes = filterByType(allFilt, 'adolescentes')
   const jovens = filterByType(allFilt, 'jovens')
 
-  const baptismsThisYear = filtM.filter(m => m.baptism && m.baptism_date && getYear(new Date(m.baptism_date)) === currentYear).length
-  const baptismsPrevYear = filtM.filter(m => m.baptism && m.baptism_date && getYear(new Date(m.baptism_date)) === prevYear).length
+  const baptismsThisYear = filtM.filter(m => m.baptism && m.baptism_date && getYear(parseDateOnly(m.baptism_date)) === currentYear).length
+  const baptismsPrevYear = filtM.filter(m => m.baptism && m.baptism_date && getYear(parseDateOnly(m.baptism_date)) === prevYear).length
   const baptismDiff = baptismsThisYear - baptismsPrevYear
 
-  const married = filtM.filter(m => m.civil_status === 'casado').slice(0, 2)
+  // Aniversariantes e casados do dia (reais)
+  const aniversariantes = useMemo(
+    () => aniversariantesDoDia(allFilt, today),
+    [allFilt],
+  )
+  const casados = useMemo(
+    () => casadosDoDia(filtM, today),
+    [filtM],
+  )
+
+  const totalChurches = churches.length || 1
+  const sedes = churches.filter(c => c.type === 'sede').length
+  const filiais = churches.filter(c => c.type === 'filial').length
 
   const topCards = [
     {
       label: selectedChurch ? 'Igreja selecionada' : 'Igrejas',
-      value: selectedChurch ? 1 : mockChurches.length,
+      value: selectedChurch ? 1 : totalChurches,
       sub: selectedChurch
         ? selectedChurch.type === 'sede' ? 'Sede' : 'Filial'
-        : `${mockChurches.filter(c => c.type === 'sede').length} sede · ${mockChurches.filter(c => c.type === 'filial').length} filiais`,
+        : `${sedes} sede · ${filiais} filiais`,
       icon: <Church size={20} />,
     },
     {
@@ -234,6 +338,45 @@ export default function Dashboard() {
     { label: 'Jovens', sub: '18+ solteiros', value: jovens.length, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-700 border-purple-100', icon: <Users size={15} /> },
   ]
 
+  const openNew = (date?: string) => {
+    setEditingEvento(null)
+    setModalDate(date)
+    setModalOpen(true)
+  }
+  const openEdit = (e: EventoCalendario) => {
+    setEditingEvento(e)
+    setModalDate(undefined)
+    setModalOpen(true)
+  }
+  const closeModal = () => {
+    setModalOpen(false)
+    setEditingEvento(null)
+  }
+
+  const groupId = churches[0]?.group_id
+
+  const handleSaveSingle = async (e: Partial<EventoCalendario>) => {
+    if (!groupId) throw new Error('Sem grupo de igrejas')
+    await saveEventoCalendario({
+      ...e,
+      church_group_id: groupId,
+      church_id: selectedChurch?.id,
+    })
+  }
+
+  const handleSaveMany = async (
+    list: Omit<EventoCalendario, 'id' | 'created_at' | 'updated_at' | 'church_group_id'>[],
+  ) => {
+    if (!groupId) throw new Error('Sem grupo de igrejas')
+    await saveEventosCalendarioBulk(
+      list.map(l => ({
+        ...l,
+        church_group_id: groupId,
+        church_id: selectedChurch?.id,
+      })),
+    )
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -256,7 +399,6 @@ export default function Dashboard() {
               className="rounded-xl p-4 text-white relative overflow-hidden"
               style={{ background: s.gradient, boxShadow: `0 4px 14px ${s.shadow}` }}
             >
-              {/* Círculo decorativo */}
               <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10" />
               <div className="absolute -right-1 -bottom-6 w-16 h-16 rounded-full bg-white/5" />
               <div className="relative">
@@ -300,38 +442,44 @@ export default function Dashboard() {
               <span className="text-base">🎂</span>
               <h3 className="font-semibold text-gray-800 text-sm">Aniversariantes do dia</h3>
             </div>
-            <span className="badge-blue text-[10px] font-bold px-2 py-0.5 rounded-full">{mockBirthdays.length}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{aniversariantes.length}</span>
           </div>
           <div className="p-3">
-            {mockBirthdays.length === 0 ? (
+            {aniversariantes.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">Nenhum aniversariante hoje</p>
             ) : (
-              <div className="space-y-1">
-                {mockBirthdays.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#60a5fa,#2563eb)' }}>
-                      {m.name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-800 truncate">{m.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {m.birth_date ? calcAge(m.birth_date) : '?'} anos · {m.contacts?.city ?? ''}
+              <div className="space-y-1 max-h-72 overflow-y-auto">
+                {aniversariantes.map(m => {
+                  const idade = m.birth_date ? differenceInYears(today, parseDateOnly(m.birth_date)) : null
+                  const cidade = m.contacts?.city
+                  const phone = m.contacts?.phones?.[0] ?? m.contacts?.cellphone1
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: 'linear-gradient(135deg,#60a5fa,#2563eb)' }}>
+                        {m.name[0]}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-800 truncate">{m.name}</div>
+                        <div className="text-xs text-gray-400">
+                          {idade !== null ? `${idade} anos` : '?'}
+                          {cidade ? ` · ${cidade}` : ''}
+                        </div>
+                      </div>
+                      {phone && (
+                        <a
+                          href={`https://wa.me/55${phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 text-[10px] bg-green-50 border border-green-100 text-green-700 px-2 py-1 rounded-lg hover:bg-green-100 transition-colors font-medium shrink-0"
+                        >
+                          <MessageCircle size={10} />
+                          <span>WhatsApp</span>
+                        </a>
+                      )}
                     </div>
-                    {(m.contacts?.phones?.[0]) && (
-                      <a
-                        href={`https://wa.me/55${m.contacts.phones[0].replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 text-[10px] bg-green-50 border border-green-100 text-green-700 px-2 py-1 rounded-lg hover:bg-green-100 transition-colors font-medium shrink-0"
-                      >
-                        <MessageCircle size={10} />
-                        <span>WhatsApp</span>
-                      </a>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -344,33 +492,62 @@ export default function Dashboard() {
               <span className="text-base">💍</span>
               <h3 className="font-semibold text-gray-800 text-sm">Casados do dia</h3>
             </div>
-            <span className="badge-green text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-50 text-pink-700">{casados.length}</span>
           </div>
           <div className="p-3">
-            <p className="text-sm text-gray-400 text-center py-6">Nenhum aniversário de casamento hoje</p>
-            <div className="space-y-1">
-              {married.map(m => (
-                <div key={m.id} className="flex items-center gap-3 px-1 py-2 rounded-lg opacity-30">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#f9a8d4,#e11d48)' }}>
-                    {m.name[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-gray-800 truncate">{m.name}</div>
-                    <div className="text-xs text-gray-400">Casado(a)</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {casados.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">Nenhum aniversário de casamento hoje</p>
+            ) : (
+              <div className="space-y-1 max-h-72 overflow-y-auto">
+                {casados.map(m => {
+                  const w = m.family?.wedding_date
+                  const anos = w ? differenceInYears(today, parseDateOnly(w)) : null
+                  const conjuge = m.family?.spouse_name
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 px-1 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ background: 'linear-gradient(135deg,#f9a8d4,#e11d48)' }}>
+                        {m.name[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-800 truncate">{m.name}</div>
+                        <div className="text-xs text-gray-400 truncate">
+                          {conjuge ? `& ${conjuge}` : 'Casado(a)'}
+                          {anos !== null ? ` · ${anos} ${anos === 1 ? 'ano' : 'anos'}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Calendário */}
-        <MiniCalendar />
+        <MiniCalendar
+          eventos={eventosCalendario}
+          onAdd={openNew}
+          onEdit={openEdit}
+        />
       </div>
 
       {/* Batismos */}
       <BaptismCard members={filtM} />
+
+      {modalOpen && (
+        <EventoCalendarioModal
+          onClose={closeModal}
+          initialDate={modalDate}
+          editing={editingEvento}
+          onSaveSingle={handleSaveSingle}
+          onSaveMany={handleSaveMany}
+          onDelete={editingEvento ? removeEventoCalendario : undefined}
+        />
+      )}
     </div>
   )
 }
+
+// re-export getAge usage workaround (não usado aqui mas mantém parity com Dashboard antigo)
+void getAge

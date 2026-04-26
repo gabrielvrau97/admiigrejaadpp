@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import type { Member, Seminario, Matricula, Carteirinha, Certificado } from '../types'
+import type { Member, Seminario, Matricula, Carteirinha, Certificado, EventoCalendario } from '../types'
 import { differenceInYears } from 'date-fns'
 import { useAuth } from './AuthContext'
 import * as MembersApi from '../lib/api/members'
@@ -7,6 +7,7 @@ import * as SeminariosApi from '../lib/api/seminarios'
 import * as MatriculasApi from '../lib/api/matriculas'
 import * as CarteirinhasApi from '../lib/api/carteirinhas'
 import * as CertificadosApi from '../lib/api/certificados'
+import * as EventosCalendarioApi from '../lib/api/eventos-calendario'
 
 interface DataContextType {
   // Estado (cache local — espelho do banco)
@@ -16,6 +17,7 @@ interface DataContextType {
   matriculas: Matricula[]
   carteirinhas: Carteirinha[]
   certificados: Certificado[]
+  eventosCalendario: EventoCalendario[]
 
   // Setters legados (mantidos pra compatibilidade — atualizam só estado local)
   setMembers: React.Dispatch<React.SetStateAction<Member[]>>
@@ -24,6 +26,7 @@ interface DataContextType {
   setMatriculas: React.Dispatch<React.SetStateAction<Matricula[]>>
   setCarteirinhas: React.Dispatch<React.SetStateAction<Carteirinha[]>>
   setCertificados: React.Dispatch<React.SetStateAction<Certificado[]>>
+  setEventosCalendario: React.Dispatch<React.SetStateAction<EventoCalendario[]>>
 
   // Novas APIs persistentes
   loading: boolean
@@ -43,6 +46,12 @@ interface DataContextType {
 
   saveCertificado: (c: Partial<Certificado> & { id?: string }) => Promise<Certificado>
   removeCertificado: (id: string) => Promise<void>
+
+  saveEventoCalendario: (e: Partial<EventoCalendario> & { id?: string }) => Promise<EventoCalendario>
+  saveEventosCalendarioBulk: (
+    list: Omit<EventoCalendario, 'id' | 'created_at' | 'updated_at'>[],
+  ) => Promise<EventoCalendario[]>
+  removeEventoCalendario: (id: string) => Promise<void>
 }
 
 const DataContext = createContext<DataContextType | null>(null)
@@ -56,17 +65,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [matriculas, setMatriculas] = useState<Matricula[]>([])
   const [carteirinhas, setCarteirinhas] = useState<Carteirinha[]>([])
   const [certificados, setCertificados] = useState<Certificado[]>([])
+  const [eventosCalendario, setEventosCalendario] = useState<EventoCalendario[]>([])
   const [loading, setLoading] = useState(true)
 
   const reload = async () => {
     setLoading(true)
     try {
-      const [m, s, mt, ca, ce] = await Promise.all([
+      const [m, s, mt, ca, ce, ev] = await Promise.all([
         MembersApi.listMembers(),
         SeminariosApi.listSeminarios(),
         MatriculasApi.listMatriculas(),
         CarteirinhasApi.listCarteirinhas(),
         CertificadosApi.listCertificados(),
+        EventosCalendarioApi.listEventosCalendario(),
       ])
       // Divide membros vs visitantes pelo member_type
       setMembers(m.filter(x => x.member_type !== 'visitante'))
@@ -75,6 +86,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setMatriculas(mt)
       setCarteirinhas(ca)
       setCertificados(ce)
+      setEventosCalendario(ev)
     } catch (err) {
       console.error('[DataContext] erro ao carregar dados:', err)
     } finally {
@@ -87,6 +99,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     else {
       setMembers([]); setVisitantes([]); setSeminarios([])
       setMatriculas([]); setCarteirinhas([]); setCertificados([])
+      setEventosCalendario([])
       setLoading(false)
     }
   }, [user])
@@ -181,17 +194,49 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setCertificados(prev => prev.filter(x => x.id !== id))
   }
 
+  // ── Eventos do Calendário ────────────────────────────────────────────────
+  const saveEventoCalendario = async (
+    e: Partial<EventoCalendario> & { id?: string },
+  ): Promise<EventoCalendario> => {
+    const saved = e.id
+      ? await EventosCalendarioApi.updateEventoCalendario(e.id, e)
+      : await EventosCalendarioApi.createEventoCalendario(
+          e as Omit<EventoCalendario, 'id' | 'created_at' | 'updated_at'>,
+        )
+    setEventosCalendario(prev => {
+      const without = prev.filter(x => x.id !== saved.id)
+      return [...without, saved].sort((a, b) => a.data.localeCompare(b.data))
+    })
+    return saved
+  }
+
+  const saveEventosCalendarioBulk = async (
+    list: Omit<EventoCalendario, 'id' | 'created_at' | 'updated_at'>[],
+  ): Promise<EventoCalendario[]> => {
+    const saved = await EventosCalendarioApi.createEventosCalendarioBulk(list)
+    setEventosCalendario(prev =>
+      [...prev, ...saved].sort((a, b) => a.data.localeCompare(b.data)),
+    )
+    return saved
+  }
+
+  const removeEventoCalendario = async (id: string) => {
+    await EventosCalendarioApi.deleteEventoCalendario(id)
+    setEventosCalendario(prev => prev.filter(x => x.id !== id))
+  }
+
   return (
     <DataContext.Provider
       value={{
-        members, visitantes, seminarios, matriculas, carteirinhas, certificados,
-        setMembers, setVisitantes, setSeminarios, setMatriculas, setCarteirinhas, setCertificados,
+        members, visitantes, seminarios, matriculas, carteirinhas, certificados, eventosCalendario,
+        setMembers, setVisitantes, setSeminarios, setMatriculas, setCarteirinhas, setCertificados, setEventosCalendario,
         loading, reload,
         saveMember, removeMember,
         saveSeminario, removeSeminario,
         saveMatricula, removeMatricula,
         saveCarteirinha, removeCarteirinha,
         saveCertificado, removeCertificado,
+        saveEventoCalendario, saveEventosCalendarioBulk, removeEventoCalendario,
       }}
     >
       {children}

@@ -129,6 +129,22 @@ export interface Notification {
   created_at: string
 }
 
+export type EventoCor = 'blue' | 'green' | 'red' | 'amber' | 'purple' | 'orange' | 'pink' | 'gray'
+
+export interface EventoCalendario {
+  id: string
+  church_group_id: string
+  church_id?: string
+  titulo: string
+  descricao?: string
+  data: string  // YYYY-MM-DD
+  hora?: string // HH:MM
+  cor: EventoCor
+  created_by?: string
+  created_at: string
+  updated_at: string
+}
+
 export type QuickFilter =
   | 'novos' | 'ativos' | 'inativos' | 'indisponiveis'
   | 'lideres_familia' | 'com_foto' | 'sem_foto'

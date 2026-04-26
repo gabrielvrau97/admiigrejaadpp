@@ -1,12 +1,31 @@
-import { useState } from 'react'
-import { Bell, Mail, LogOut, Globe, ChevronDown, Church, Menu } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { Bell, Mail, LogOut, Globe, ChevronDown, Church, Menu, Cake, Heart, CalendarDays, IdCard } from 'lucide-react'
+import { format, getMonth, getDate, differenceInDays } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { useAuth } from '../../contexts/AuthContext'
 import { useChurch } from '../../contexts/ChurchContext'
+import { useData } from '../../contexts/DataContext'
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0')
   const s = (seconds % 60).toString().padStart(2, '0')
   return `${m}:${s}`
+}
+
+const today = new Date()
+
+function parseDateOnly(s: string): Date {
+  return new Date(s + 'T00:00:00')
+}
+
+interface NotifItem {
+  id: string
+  icon: React.ReactNode
+  iconBg: string
+  msg: string
+  time: string
+  link?: string
 }
 
 interface TopbarProps {
@@ -16,11 +35,108 @@ interface TopbarProps {
 export default function Topbar({ onOpenSidebar }: TopbarProps) {
   const { logout, sessionRemaining, user } = useAuth()
   const { churches, selectedChurch, setSelectedChurch } = useChurch()
+  const { members, visitantes, eventosCalendario, carteirinhas } = useData()
   const [showChurchDD, setShowChurchDD] = useState(false)
   const [lang, setLang] = useState('PT')
   const [showNotif, setShowNotif] = useState(false)
 
   const isWarning = sessionRemaining < 300
+
+  // Notificações dinâmicas em tempo real
+  const notifications: NotifItem[] = useMemo(() => {
+    const items: NotifItem[] = []
+    const dia = getDate(today)
+    const mes = getMonth(today)
+    const todayStr = format(today, 'yyyy-MM-dd')
+
+    const all = [...members, ...visitantes].filter(m =>
+      selectedChurch ? m.church_id === selectedChurch.id : true,
+    )
+
+    // Aniversariantes
+    const aniv = all.filter(m => {
+      if (!m.birth_date) return false
+      const d = parseDateOnly(m.birth_date)
+      return getDate(d) === dia && getMonth(d) === mes
+    })
+    if (aniv.length > 0) {
+      items.push({
+        id: 'aniv',
+        icon: <Cake size={14} />,
+        iconBg: 'bg-blue-100 text-blue-600',
+        msg: aniv.length === 1
+          ? `${aniv[0].name} faz aniversário hoje 🎂`
+          : `${aniv.length} aniversariantes hoje`,
+        time: 'agora',
+        link: '/secretaria/membros',
+      })
+    }
+
+    // Casados
+    const casados = members.filter(m => {
+      const w = m.family?.wedding_date
+      if (!w) return false
+      const d = parseDateOnly(w)
+      return getDate(d) === dia && getMonth(d) === mes
+    })
+    if (casados.length > 0) {
+      items.push({
+        id: 'casados',
+        icon: <Heart size={14} />,
+        iconBg: 'bg-pink-100 text-pink-600',
+        msg: casados.length === 1
+          ? `Aniversário de casamento: ${casados[0].name}`
+          : `${casados.length} aniversários de casamento hoje`,
+        time: 'agora',
+        link: '/secretaria/membros',
+      })
+    }
+
+    // Eventos do calendário — hoje e próximos 7 dias
+    const eventosFut = eventosCalendario
+      .filter(e => e.data >= todayStr)
+      .filter(e => differenceInDays(parseDateOnly(e.data), today) <= 7)
+      .sort((a, b) => a.data.localeCompare(b.data))
+      .slice(0, 3)
+
+    eventosFut.forEach(e => {
+      const d = parseDateOnly(e.data)
+      const dias = differenceInDays(d, today)
+      const quando = dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias} dias`
+      items.push({
+        id: `ev-${e.id}`,
+        icon: <CalendarDays size={14} />,
+        iconBg: 'bg-purple-100 text-purple-600',
+        msg: `${e.titulo} — ${quando}${e.hora ? ` às ${e.hora}` : ''}`,
+        time: format(d, 'dd/MM', { locale: ptBR }),
+        link: '/',
+      })
+    })
+
+    // Credenciais vencendo nos próximos 30 dias
+    const credVencendo = carteirinhas.filter(c => {
+      if (c.status !== 'ativa') return false
+      const v = parseDateOnly(c.valida_ate)
+      const d = differenceInDays(v, today)
+      return d >= 0 && d <= 30
+    })
+    if (credVencendo.length > 0) {
+      items.push({
+        id: 'cred-venc',
+        icon: <IdCard size={14} />,
+        iconBg: 'bg-amber-100 text-amber-600',
+        msg: credVencendo.length === 1
+          ? '1 credencial vence nos próximos 30 dias'
+          : `${credVencendo.length} credenciais vencem nos próximos 30 dias`,
+        time: 'em breve',
+        link: '/carteirinhas',
+      })
+    }
+
+    return items
+  }, [members, visitantes, eventosCalendario, carteirinhas, selectedChurch])
+
+  const notifCount = notifications.length
 
   return (
     <header
@@ -111,32 +227,61 @@ export default function Topbar({ onOpenSidebar }: TopbarProps) {
           aria-expanded={showNotif}
         >
           <Bell size={17} />
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">3</span>
+          {notifCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+              {notifCount > 9 ? '9+' : notifCount}
+            </span>
+          )}
         </button>
         {showNotif && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowNotif(false)} />
             <div
-              className="absolute top-full right-0 mt-1.5 w-72 max-w-[calc(100vw-1rem)] bg-white border border-gray-200/80 rounded-xl z-50 overflow-hidden"
+              className="absolute top-full right-0 mt-1.5 w-80 max-w-[calc(100vw-1rem)] bg-white border border-gray-200/80 rounded-xl z-50 overflow-hidden"
               style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06)' }}
             >
               <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-700">Notificações</span>
-                <span className="text-[10px] text-blue-600 font-medium cursor-pointer hover:underline">Marcar todas como lidas</span>
+                <span className="text-[10px] text-gray-400">{notifCount} {notifCount === 1 ? 'item' : 'itens'}</span>
               </div>
-              {[
-                { msg: '3 aniversariantes hoje', time: 'agora', dot: 'bg-blue-500' },
-                { msg: 'Novo membro cadastrado', time: '2h', dot: 'bg-green-500' },
-                { msg: 'Backup automático realizado', time: '5h', dot: 'bg-gray-400' },
-              ].map((n, i) => (
-                <div key={i} className="px-4 py-2.5 hover:bg-gray-50 flex items-start gap-3 cursor-pointer transition-colors border-b border-gray-50 last:border-0">
-                  <div className={`w-1.5 h-1.5 ${n.dot} rounded-full mt-1.5 flex-shrink-0`} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-700 leading-snug">{n.msg}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{n.time}</div>
-                  </div>
+              {notifications.length === 0 ? (
+                <div className="px-4 py-8 text-center text-xs text-gray-400">
+                  Sem novidades por enquanto
                 </div>
-              ))}
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.map(n => {
+                    const content = (
+                      <>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${n.iconBg}`}>
+                          {n.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-gray-700 leading-snug">{n.msg}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">{n.time}</div>
+                        </div>
+                      </>
+                    )
+                    return n.link ? (
+                      <Link
+                        key={n.id}
+                        to={n.link}
+                        onClick={() => setShowNotif(false)}
+                        className="px-4 py-2.5 hover:bg-gray-50 flex items-start gap-3 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <div
+                        key={n.id}
+                        className="px-4 py-2.5 hover:bg-gray-50 flex items-start gap-3 transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        {content}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </>
         )}
