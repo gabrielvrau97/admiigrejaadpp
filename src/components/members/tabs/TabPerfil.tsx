@@ -30,10 +30,11 @@ const churchPrefixes: Record<string, string> = {
 
 // validateCPF centralizado em src/schemas/member.ts
 import { isValidCPF } from '../../../schemas/member'
+import { maskCPF, maskRG } from '../../../lib/masks'
 const validateCPF = isValidCPF
 
 function validateRG(rg: string): boolean {
-  const c = rg.replace(/\D/g, '')
+  const c = rg.replace(/[^0-9Xx]/g, '')
   return c.length >= 7 && c.length <= 9
 }
 
@@ -82,11 +83,11 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
   }
 
   const handleCPF = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value
-    onChange({ ...form, cpf: raw })
-    const digits = raw.replace(/\D/g, '')
+    const masked = maskCPF(e.target.value)
+    onChange({ ...form, cpf: masked })
+    const digits = masked.replace(/\D/g, '')
     if (digits.length === 11) {
-      if (!validateCPF(raw)) {
+      if (!validateCPF(masked)) {
         setCpfError('CPF inválido')
         setCpfWarn('')
         return
@@ -101,9 +102,10 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
   }
 
   const handleRG = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    onChange({ ...form, identity: val })
-    if (val.replace(/\D/g, '').length > 0 && !validateRG(val)) {
+    const masked = maskRG(e.target.value)
+    onChange({ ...form, identity: masked })
+    const clean = masked.replace(/[^0-9Xx]/g, '')
+    if (clean.length > 0 && !validateRG(masked)) {
       setRgError('RG inválido (mínimo 7 dígitos)')
     } else {
       setRgError('')
@@ -237,6 +239,8 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
             value={form.identity ?? ''}
             onChange={handleRG}
             placeholder="00.000.000-0"
+            inputMode="text"
+            maxLength={12}
           />
           {rgError && <p className="text-xs text-red-500 mt-0.5">{rgError}</p>}
         </Field>
@@ -248,6 +252,7 @@ export default function TabPerfil({ form, onChange, editingId, errors }: Props) 
             onChange={handleCPF}
             placeholder="000.000.000-00"
             maxLength={14}
+            inputMode="numeric"
           />
           {cpfError && <p className="text-xs text-red-500 mt-0.5">{cpfError}</p>}
           {!cpfError && cpfWarn && <p className="text-xs text-yellow-600 mt-0.5">{cpfWarn}</p>}

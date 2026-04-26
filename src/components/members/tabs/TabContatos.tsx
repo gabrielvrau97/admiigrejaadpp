@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import type { MemberContact } from '../../../types'
 import { MapPin, Loader2, Plus, X } from 'lucide-react'
+import { maskPhone, maskCEP } from '../../../lib/masks'
 
 interface Props {
   contacts: Partial<MemberContact>
@@ -38,7 +39,7 @@ export default function TabContatos({ contacts, onChange, errors }: Props) {
 
   const updatePhone = (i: number, val: string) => {
     const next = [...phones]
-    next[i] = val
+    next[i] = maskPhone(val)
     setPhones(next)
   }
   const removePhone = (i: number) => setPhones(phones.filter((_, idx) => idx !== i))
@@ -47,8 +48,9 @@ export default function TabContatos({ contacts, onChange, errors }: Props) {
     onChange({ ...contacts, [key]: e.target.value })
 
   const handleCep = async (cep: string) => {
-    onChange({ ...contacts, cep })
-    const clean = cep.replace(/\D/g, '')
+    const masked = maskCEP(cep)
+    onChange({ ...contacts, cep: masked })
+    const clean = masked.replace(/\D/g, '')
     if (clean.length !== 8) return
     setCepLoading(true)
     try {
@@ -57,7 +59,7 @@ export default function TabContatos({ contacts, onChange, errors }: Props) {
       if (!data.erro) {
         onChange({
           ...contacts,
-          cep,
+          cep: masked,
           address: data.logradouro,
           neighborhood: data.bairro,
           city: data.localidade,
@@ -115,6 +117,8 @@ export default function TabContatos({ contacts, onChange, errors }: Props) {
                 value={phone}
                 onChange={e => updatePhone(i, e.target.value)}
                 placeholder="(64) 99999-0000"
+                inputMode="tel"
+                maxLength={15}
               />
               {phones.length > 1 && (
                 <button type="button" onClick={() => removePhone(i)} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -143,6 +147,7 @@ export default function TabContatos({ contacts, onChange, errors }: Props) {
               onChange={e => handleCep(e.target.value)}
               placeholder="00000-000"
               maxLength={9}
+              inputMode="numeric"
             />
             {cepLoading && <Loader2 size={14} className="animate-spin self-center text-gray-400" />}
           </div>

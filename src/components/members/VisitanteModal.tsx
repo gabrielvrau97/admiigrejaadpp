@@ -4,9 +4,9 @@ import { differenceInYears } from 'date-fns'
 import type { Member, MemberContact } from '../../types'
 import { useData } from '../../contexts/DataContext'
 import { useChurch } from '../../contexts/ChurchContext'
-import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
 import { useConfirm, useToast } from '../ui/UIProvider'
 import { useModalUX } from '../../hooks/useModalUX'
+import { maskPhone, maskCEP } from '../../lib/masks'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -99,9 +99,11 @@ function TabPerfilVisitante({ form, onChange, errors }: { form: Partial<Member>;
           onChange={set('church_id')}
           aria-invalid={!!errors?.church_id}
         >
-          <option value="">Selecione...</option>
+          <option value="">Selecione a igreja...</option>
           {churches.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>
+              {c.type === 'sede' ? '★ ' : ''}{c.name}{c.type === 'sede' ? ' (Sede)' : ''}
+            </option>
           ))}
         </select>
       </Field>
@@ -141,22 +143,23 @@ function TabContatosVisitante({ contacts, onChange }: { contacts: Partial<Member
 
   const updateEmail = (i: number, val: string) => { const n = [...emails]; n[i] = val; setEmails(n) }
   const removeEmail = (i: number) => setEmails(emails.filter((_, idx) => idx !== i))
-  const updatePhone = (i: number, val: string) => { const n = [...phones]; n[i] = val; setPhones(n) }
+  const updatePhone = (i: number, val: string) => { const n = [...phones]; n[i] = maskPhone(val); setPhones(n) }
   const removePhone = (i: number) => setPhones(phones.filter((_, idx) => idx !== i))
 
   const set = (key: keyof MemberContact) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     onChange({ ...contacts, [key]: e.target.value })
 
   const handleCep = async (cep: string) => {
-    onChange({ ...contacts, cep })
-    const clean = cep.replace(/\D/g, '')
+    const masked = maskCEP(cep)
+    onChange({ ...contacts, cep: masked })
+    const clean = masked.replace(/\D/g, '')
     if (clean.length !== 8) return
     setCepLoading(true)
     try {
       const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`)
       const data = await res.json()
       if (!data.erro) {
-        onChange({ ...contacts, cep, address: data.logradouro, neighborhood: data.bairro, city: data.localidade, state: data.uf, country: 'Brasil' })
+        onChange({ ...contacts, cep: masked, address: data.logradouro, neighborhood: data.bairro, city: data.localidade, state: data.uf, country: 'Brasil' })
       }
     } catch { /* silently fail */ } finally { setCepLoading(false) }
   }
@@ -168,7 +171,7 @@ function TabContatosVisitante({ contacts, onChange }: { contacts: Partial<Member
         <div className="space-y-2">
           {phones.map((phone, i) => (
             <div key={i} className="flex gap-2 items-center">
-              <input className="form-input flex-1" value={phone} onChange={e => updatePhone(i, e.target.value)} placeholder="(64) 99999-0000" />
+              <input className="form-input flex-1" value={phone} onChange={e => updatePhone(i, e.target.value)} placeholder="(64) 99999-0000" inputMode="tel" maxLength={15} />
               {phones.length > 1 && (
                 <button type="button" onClick={() => removePhone(i)} className="text-gray-400 hover:text-red-500 transition-colors">
                   <XIcon size={14} />
@@ -204,7 +207,7 @@ function TabContatosVisitante({ contacts, onChange }: { contacts: Partial<Member
       <div className="grid grid-cols-2 gap-3">
         <Field label="CEP">
           <div className="flex gap-1">
-            <input className="form-input flex-1" value={contacts.cep ?? ''} onChange={e => handleCep(e.target.value)} placeholder="00000-000" maxLength={9} />
+            <input className="form-input flex-1" value={contacts.cep ?? ''} onChange={e => handleCep(e.target.value)} placeholder="00000-000" maxLength={9} inputMode="numeric" />
             {cepLoading && <Loader2 size={14} className="animate-spin self-center text-gray-400" />}
           </div>
         </Field>
@@ -432,26 +435,23 @@ const defaultForm: Partial<Member> = {
 export default function VisitanteModal({ visitante, onClose, onSave }: Props) {
   const confirm = useConfirm()
   const toast = useToast()
-  const { selectedChurch, churches } = useChurch()
+  useChurch() // garante carregamento; igreja não é pré-selecionada em novo cadastro
   const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const initialChurchId = visitante?.church_id
-    ?? selectedChurch?.id
-    ?? churches[0]?.id
-    ?? DEFAULT_CHURCH_ID
-  const [form, setForm] = useState<Partial<Member>>(visitante ?? { ...defaultForm, church_id: initialChurchId })
+  // Em edição, mantém church_id existente. Em novo cadastro, deixa vazio pra forçar seleção.
+  const [form, setForm] = useState<Partial<Member>>(visitante ?? { ...defaultForm })
   const [contacts, setContacts] = useState<Partial<MemberContact>>(
     visitante?.contacts ?? { emails: [''], phones: [''] }
   )
 
   useEffect(() => {
-    setForm(visitante ?? { ...defaultForm, church_id: initialChurchId })
+    setForm(visitante ?? { ...defaultForm })
     setContacts(visitante?.contacts ?? { emails: [''], phones: [''] })
     setActiveTab('perfil')
-  }, [visitante, initialChurchId])
+  }, [visitante])
 
   const isEditing = !!visitante
 

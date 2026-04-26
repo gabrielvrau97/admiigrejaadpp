@@ -5,10 +5,14 @@ export async function listChurches(): Promise<Church[]> {
   const { data, error } = await supabase
     .from('churches')
     .select('id, group_id, name, type, address, phone, email, logo_url')
-    .order('type', { ascending: true })
     .order('name', { ascending: true })
   if (error) throw error
-  return (data ?? []) as Church[]
+  // Sede sempre no topo, filiais ordenadas por nome
+  const list = (data ?? []) as Church[]
+  return list.sort((a, b) => {
+    if (a.type === b.type) return a.name.localeCompare(b.name)
+    return a.type === 'sede' ? -1 : 1
+  })
 }
 
 export async function createChurch(c: Omit<Church, 'id'>): Promise<Church> {

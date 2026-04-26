@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { X, User, Phone, Users, Link, Church as ChurchIcon, Settings, Loader2 } from 'lucide-react'
 import type { Member, MemberFamily } from '../../types'
 import { useChurch } from '../../contexts/ChurchContext'
-import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
 import TabPerfil from './tabs/TabPerfil'
 import TabContatos from './tabs/TabContatos'
 import TabFamilia from './tabs/TabFamilia'
@@ -40,28 +39,25 @@ const defaultFamily: Partial<MemberFamily> = {
 export default function MemberModal({ member, onClose, onSave }: Props) {
   const confirm = useConfirm()
   const toast = useToast()
-  const { selectedChurch, churches } = useChurch()
+  useChurch() // garante carregamento; igreja não é pré-selecionada em novo cadastro
   const containerRef = useModalUX({ onClose })
   const [activeTab, setActiveTab] = useState('perfil')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const initialChurchId = member?.church_id
-    ?? selectedChurch?.id
-    ?? churches[0]?.id
-    ?? DEFAULT_CHURCH_ID
-  const [form, setForm] = useState<Partial<Member>>(member ?? { ...defaultForm, church_id: initialChurchId })
+  // Em edição, mantém church_id existente. Em novo cadastro, deixa vazio pra forçar seleção.
+  const [form, setForm] = useState<Partial<Member>>(member ?? { ...defaultForm })
   const [contacts, setContacts] = useState<Partial<import('../../types').MemberContact>>(member?.contacts ?? { emails: [''], phones: [''] })
   const [ministry, setMinistry] = useState<Partial<import('../../types').MemberMinistry>>(member?.ministry ?? { titles: [], ministries: [], departments: [], functions: [] })
   const [family, setFamily] = useState<Partial<MemberFamily>>(member?.family ?? defaultFamily)
 
   useEffect(() => {
-    setForm(member ?? { ...defaultForm, church_id: initialChurchId })
+    setForm(member ?? { ...defaultForm })
     setContacts(member?.contacts ?? { emails: [''], phones: [''] })
     setMinistry(member?.ministry ?? { titles: [], ministries: [], departments: [], functions: [] })
     setFamily(member?.family ?? defaultFamily)
     setActiveTab('perfil')
-  }, [member, initialChurchId])
+  }, [member])
 
   const isEditing = !!member
 

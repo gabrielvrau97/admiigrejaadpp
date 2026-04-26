@@ -34,9 +34,11 @@ export default function TabAdministrativo({ form, onChange, errors }: Props) {
           onChange={set('church_id')}
           aria-invalid={!!errors?.church_id}
         >
-          <option value="">Selecione...</option>
+          <option value="">Selecione a igreja...</option>
           {churches.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>
+              {c.type === 'sede' ? '★ ' : ''}{c.name}{c.type === 'sede' ? ' (Sede)' : ''}
+            </option>
           ))}
         </select>
       </Field>
