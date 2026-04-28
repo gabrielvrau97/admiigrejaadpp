@@ -70,6 +70,41 @@ export default function TabFamilia({ family, onChange, editingId }: Props) {
         </div>
       </div>
 
+      {/* Pais */}
+      <div className="p-3 bg-gray-50 rounded-lg space-y-3">
+        <p className="text-sm font-semibold text-gray-700">Pais</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Pai">
+            <MemberSearch
+              value={family.father_name ?? ''}
+              linkedId={family.father_id}
+              placeholder="Buscar membro ou digitar nome..."
+              excludeId={editingId}
+              onSelect={(id, name) => onChange({
+                ...family,
+                father_id: id,
+                father_name: name,
+              })}
+              onClearLink={() => onChange({ ...family, father_id: undefined })}
+            />
+          </Field>
+          <Field label="Mãe">
+            <MemberSearch
+              value={family.mother_name ?? ''}
+              linkedId={family.mother_id}
+              placeholder="Buscar membro ou digitar nome..."
+              excludeId={editingId}
+              onSelect={(id, name) => onChange({
+                ...family,
+                mother_id: id,
+                mother_name: name,
+              })}
+              onClearLink={() => onChange({ ...family, mother_id: undefined })}
+            />
+          </Field>
+        </div>
+      </div>
+
       {/* Filhos */}
       <div className="p-3 bg-gray-50 rounded-lg space-y-3">
         <div className="flex items-center justify-between">
