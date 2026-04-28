@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 
 export interface BulkAction {
@@ -37,12 +37,32 @@ export default function BulkActionBar({
   selectAllLabel,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false)
-  const moreRef = useRef<HTMLDivElement>(null)
+  const moreBtnRef = useRef<HTMLButtonElement>(null)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number } | null>(null)
 
+  // Posiciona o menu acima do botão "Mais" quando abre
+  useLayoutEffect(() => {
+    if (!moreOpen || !moreBtnRef.current) return
+    const rect = moreBtnRef.current.getBoundingClientRect()
+    const menuWidth = 224 // w-56
+    const viewportWidth = window.innerWidth
+    // Alinha pela borda direita do botão, mas evita sair da tela
+    let left = rect.right - menuWidth
+    if (left < 8) left = 8
+    if (left + menuWidth > viewportWidth - 8) left = viewportWidth - menuWidth - 8
+    const bottom = window.innerHeight - rect.top + 8
+    setMenuPos({ left, bottom })
+  }, [moreOpen])
+
+  // Fecha quando clica fora do menu E fora do botão
   useEffect(() => {
     if (!moreOpen) return
     const handleClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const insideBtn = moreBtnRef.current?.contains(target)
+      const insideMenu = moreMenuRef.current?.contains(target)
+      if (!insideBtn && !insideMenu) {
         setMoreOpen(false)
       }
     }
@@ -99,33 +119,14 @@ export default function BulkActionBar({
             ))}
 
             {moreActions.length > 0 && (
-              <div className="relative" ref={moreRef}>
-                <button
-                  onClick={() => setMoreOpen(p => !p)}
-                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white hover:bg-white/20 whitespace-nowrap"
-                >
-                  Mais
-                  <ChevronDown size={12} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {moreOpen && (
-                  <div className="absolute bottom-full right-0 mb-2 w-56 bg-white text-gray-700 rounded-lg shadow-xl border border-gray-200 overflow-hidden">
-                    {moreActions.map(a => (
-                      <button
-                        key={a.key}
-                        onClick={() => { setMoreOpen(false); a.onClick() }}
-                        className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors ${
-                          a.danger
-                            ? 'text-red-600 hover:bg-red-50'
-                            : 'text-gray-700 hover:bg-blue-50'
-                        }`}
-                      >
-                        {a.icon}
-                        {a.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <button
+                ref={moreBtnRef}
+                onClick={() => setMoreOpen(p => !p)}
+                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white hover:bg-white/20 whitespace-nowrap shrink-0"
+              >
+                Mais
+                <ChevronDown size={12} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+              </button>
             )}
           </div>
 
@@ -152,6 +153,30 @@ export default function BulkActionBar({
           </div>
         )}
       </div>
+
+      {/* Dropdown "Mais" — renderizado fora do container com overflow */}
+      {moreOpen && menuPos && moreActions.length > 0 && (
+        <div
+          ref={moreMenuRef}
+          className="fixed z-50 w-56 bg-white text-gray-700 rounded-lg shadow-xl border border-gray-200 overflow-hidden"
+          style={{ left: menuPos.left, bottom: menuPos.bottom }}
+        >
+          {moreActions.map(a => (
+            <button
+              key={a.key}
+              onClick={() => { setMoreOpen(false); a.onClick() }}
+              className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors ${
+                a.danger
+                  ? 'text-red-600 hover:bg-red-50'
+                  : 'text-gray-700 hover:bg-blue-50'
+              }`}
+            >
+              {a.icon}
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
