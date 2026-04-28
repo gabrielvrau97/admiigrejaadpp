@@ -2,13 +2,15 @@ import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, GraduationCap, UserPlus, Calendar, Clock, MapPin, Users,
-  Eye, Pencil, Trash2, Search, Award, FileText
+  Eye, Pencil, Trash2, Search, Award, FileText, CheckCircle2, Percent, ClipboardCheck,
 } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Matricula, MatriculaSituacao, Certificado } from '../../types'
 import MatriculaModal from './MatriculaModal'
 import { fmtDate, fmtIdade } from '../../lib/format'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
+import { useBulkMatriculas } from '../../components/bulk/useBulkMatriculas'
 
 const SITUACAO_CONFIG: Record<MatriculaSituacao, { label: string; badge: string }> = {
   cursando: { label: 'Cursando', badge: 'badge-blue' },
@@ -32,6 +34,7 @@ export default function SeminarioDetailPage() {
   const [situacaoFilter, setSituacaoFilter] = useState<MatriculaSituacao | ''>('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Matricula | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const seminario = useMemo(() => seminarios.find(s => s.id === id), [seminarios, id])
 
@@ -60,6 +63,31 @@ export default function SeminarioDetailPage() {
     }
     return { total: matriculasDoSeminario.length, cursando, concluido, desistente }
   }, [matriculasDoSeminario])
+
+  const toggleSelect = (id: string) =>
+    setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleAll = () => {
+    if (selected.size === filtered.length && filtered.length > 0) setSelected(new Set())
+    else setSelected(new Set(filtered.map(m => m.id)))
+  }
+  const clearSelection = () => setSelected(new Set())
+
+  // Bulk actions (hook precisa ser chamado sempre — antes de early returns)
+  const selectedIds = Array.from(selected)
+  const bulk = useBulkMatriculas({
+    selectedIds,
+    matriculas: matriculasDoSeminario,
+    seminario: seminario ?? null,
+    onClear: clearSelection,
+  })
+
+  const bulkActions: BulkAction[] = [
+    { key: 'situacao', label: 'Situação', icon: <CheckCircle2 size={13} />, onClick: () => bulk.open('situacao') },
+    { key: 'notas', label: 'Notas/Freq.', icon: <Percent size={13} />, onClick: () => bulk.open('notas') },
+    { key: 'data_conclusao', label: 'Data conclusão', icon: <Calendar size={13} />, onClick: () => bulk.open('data_conclusao'), group: 'more' },
+    { key: 'gerar_certificados', label: 'Gerar certificados', icon: <Award size={13} />, onClick: () => bulk.open('gerar_certificados'), group: 'more' },
+    { key: 'excluir', label: 'Excluir', icon: <Trash2 size={13} />, onClick: () => bulk.open('excluir'), danger: true, group: 'more' },
+  ]
 
   if (!seminario) {
     return (
@@ -248,6 +276,14 @@ export default function SeminarioDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-2.5 w-8">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={toggleAll}
+                    className="rounded"
+                  />
+                </th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Aluno</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Idade</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 text-left">Contato</th>
@@ -259,12 +295,20 @@ export default function SeminarioDetailPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-sm">Nenhum matriculado encontrado</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-sm">Nenhum matriculado encontrado</td></tr>
               ) : filtered.map(m => {
                 const cfg = SITUACAO_CONFIG[m.situacao]
                 const temCert = jaTemCertificado(m.id)
                 return (
-                  <tr key={m.id} className="hover:bg-blue-50/30">
+                  <tr key={m.id} className={`hover:bg-blue-50/30 ${selected.has(m.id) ? 'bg-blue-50/50' : ''}`}>
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(m.id)}
+                        onChange={() => toggleSelect(m.id)}
+                        className="rounded"
+                      />
+                    </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
@@ -318,7 +362,13 @@ export default function SeminarioDetailPage() {
             const cfg = SITUACAO_CONFIG[m.situacao]
             const temCert = jaTemCertificado(m.id)
             return (
-              <div key={m.id} className="p-3 flex items-start gap-3">
+              <div key={m.id} className={`p-3 flex items-start gap-3 ${selected.has(m.id) ? 'bg-blue-50/40' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(m.id)}
+                  onChange={() => toggleSelect(m.id)}
+                  className="rounded mt-2 shrink-0"
+                />
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
                   {m.nome[0]}
                 </div>
@@ -362,6 +412,16 @@ export default function SeminarioDetailPage() {
           onSave={handleSave}
         />
       )}
+
+      {/* Bulk actions */}
+      <BulkActionBar
+        count={selected.size}
+        total={filtered.length}
+        entityLabel="matrículas"
+        actions={bulkActions}
+        onClear={clearSelection}
+      />
+      {bulk.modals}
     </div>
   )
 }

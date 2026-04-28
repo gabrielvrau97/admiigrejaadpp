@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { differenceInDays } from 'date-fns'
 import { fmtDate } from '../../lib/format'
-import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle, Layers } from 'lucide-react'
+import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle, Layers, RefreshCw, CheckCircle2, X } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Carteirinha, CarteirinhaMotivo, Member } from '../../types'
 import CarteirinhaGerarModal from './CarteirinhaGerarModal'
 import CarteirinhaLoteModal from './CarteirinhaLoteModal'
 import { printCarteirinha, printCarteirinhasLote } from './printCarteirinha'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
+import { useBulkCarteirinhas } from '../../components/bulk/useBulkCarteirinhas'
 
 const MOTIVO_LABEL: Record<CarteirinhaMotivo, string> = {
   primeira_via: 'Primeira via',
@@ -312,6 +314,18 @@ export default function CarteirinhasPage() {
       toast.error('Erro ao remover da fila.')
     }
   }
+
+  // Bulk actions sobre o histórico de credenciais
+  const bulk = useBulkCarteirinhas({
+    selectedIds: Array.from(selected),
+    carteirinhas,
+    onClear: () => setSelected(new Set()),
+  })
+  const bulkActions: BulkAction[] = [
+    { key: 'status', label: 'Status', icon: <CheckCircle2 size={13} />, onClick: () => bulk.open('status') },
+    { key: 'renovar', label: 'Renovar', icon: <RefreshCw size={13} />, onClick: () => bulk.open('renovar') },
+    { key: 'cancelar', label: 'Cancelar', icon: <X size={13} />, onClick: () => bulk.open('cancelar'), danger: true, group: 'more' },
+  ]
 
   return (
     <div className="space-y-4">
@@ -622,6 +636,16 @@ export default function CarteirinhasPage() {
           onGenerate={handleGenerateLote}
         />
       )}
+
+      {/* Bulk actions */}
+      <BulkActionBar
+        count={selected.size}
+        total={filtered.length}
+        entityLabel="credenciais"
+        actions={bulkActions}
+        onClear={() => setSelected(new Set())}
+      />
+      {bulk.modals}
     </div>
   )
 }

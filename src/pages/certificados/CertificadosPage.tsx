@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Award, Search, Printer, Trash2, Plus, Layers } from 'lucide-react'
+import { Award, Search, Printer, Trash2, Plus, Layers, CheckCircle2, RefreshCw, X } from 'lucide-react'
 import { fmtDate } from '../../lib/format'
 import { useData } from '../../contexts/DataContext'
 import type { Certificado } from '../../types'
@@ -8,6 +8,8 @@ import CertificadoGerarModal from './CertificadoGerarModal'
 import CertificadoLoteModal from './CertificadoLoteModal'
 import { printCertificado, printCertificadosLote } from './printCertificado'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
+import { useBulkCertificados } from '../../components/bulk/useBulkCertificados'
 
 export default function CertificadosPage() {
   const { certificados, seminarios, matriculas, saveCertificado } = useData()
@@ -153,6 +155,18 @@ export default function CertificadosPage() {
       toast.error('Erro ao reemitir certificado.')
     }
   }
+
+  // Bulk actions
+  const bulk = useBulkCertificados({
+    selectedIds: Array.from(selected),
+    certificados,
+    onClear: () => setSelected(new Set()),
+  })
+  const bulkActions: BulkAction[] = [
+    { key: 'status', label: 'Status', icon: <CheckCircle2 size={13} />, onClick: () => bulk.open('status') },
+    { key: 'reemitir', label: 'Reemitir', icon: <RefreshCw size={13} />, onClick: () => bulk.open('reemitir') },
+    { key: 'cancelar', label: 'Cancelar', icon: <X size={13} />, onClick: () => bulk.open('cancelar'), danger: true, group: 'more' },
+  ]
 
   return (
     <div className="space-y-4">
@@ -377,6 +391,16 @@ export default function CertificadosPage() {
           onGenerate={handleGenerateLote}
         />
       )}
+
+      {/* Bulk actions */}
+      <BulkActionBar
+        count={selected.size}
+        total={filtered.length}
+        entityLabel="certificados"
+        actions={bulkActions}
+        onClear={() => setSelected(new Set())}
+      />
+      {bulk.modals}
     </div>
   )
 }

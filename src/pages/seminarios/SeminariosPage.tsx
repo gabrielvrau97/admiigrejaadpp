@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
-import { GraduationCap, Plus, Search, Users, Calendar, Clock, MapPin, Pencil, Eye, Trash2 } from 'lucide-react'
+import { GraduationCap, Plus, Search, Users, Calendar, Clock, MapPin, Pencil, Eye, Trash2, CheckCircle2, Copy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../../contexts/DataContext'
 import type { Seminario, SeminarioStatus } from '../../types'
 import SeminarioModal from './SeminarioModal'
 import { fmtDate } from '../../lib/format'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
+import { useBulkSeminarios } from '../../components/bulk/useBulkSeminarios'
 
 const STATUS_CONFIG: Record<SeminarioStatus, { label: string; badge: string; dot: string }> = {
   planejado: { label: 'Planejado', badge: 'badge-yellow', dot: 'bg-yellow-500' },
@@ -23,6 +25,7 @@ export default function SeminariosPage() {
   const [statusFilter, setStatusFilter] = useState<SeminarioStatus | ''>('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Seminario | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const filtered = useMemo(() => {
     return seminarios.filter(s => {
@@ -55,6 +58,21 @@ export default function SeminariosPage() {
   }, [matriculas])
 
   const matCount = (seminarioId: string) => matCountByseminario.get(seminarioId) ?? 0
+
+  const toggleSelect = (id: string) =>
+    setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const clearSelection = () => setSelected(new Set())
+
+  const bulk = useBulkSeminarios({
+    selectedIds: Array.from(selected),
+    seminarios,
+    onClear: clearSelection,
+  })
+  const bulkActions: BulkAction[] = [
+    { key: 'status', label: 'Status', icon: <CheckCircle2 size={13} />, onClick: () => bulk.open('status') },
+    { key: 'duplicar', label: 'Duplicar', icon: <Copy size={13} />, onClick: () => bulk.open('duplicar') },
+    { key: 'excluir', label: 'Excluir', icon: <Trash2 size={13} />, onClick: () => bulk.open('excluir'), danger: true, group: 'more' },
+  ]
 
   const handleAdd = () => { setEditing(null); setModalOpen(true) }
   const handleEdit = (s: Seminario) => { setEditing(s); setModalOpen(true) }
@@ -175,14 +193,25 @@ export default function SeminariosPage() {
             return (
               <div
                 key={s.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden transition-all hover:shadow-md hover:border-blue-200"
+                className={`bg-white rounded-xl border overflow-hidden transition-all hover:shadow-md ${
+                  selected.has(s.id) ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-blue-200'
+                }`}
               >
                 <div className={`h-1 ${cfg.dot}`} />
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-gray-800 leading-tight truncate">{s.nome}</h3>
-                      {s.instrutor && <p className="text-xs text-gray-500 mt-0.5 truncate">Instrutor: {s.instrutor}</p>}
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(s.id)}
+                        onChange={() => toggleSelect(s.id)}
+                        onClick={e => e.stopPropagation()}
+                        className="rounded mt-1 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-800 leading-tight truncate">{s.nome}</h3>
+                        {s.instrutor && <p className="text-xs text-gray-500 mt-0.5 truncate">Instrutor: {s.instrutor}</p>}
+                      </div>
                     </div>
                     <span className={cfg.badge}>{cfg.label}</span>
                   </div>
@@ -248,6 +277,15 @@ export default function SeminariosPage() {
           onSave={handleSave}
         />
       )}
+
+      <BulkActionBar
+        count={selected.size}
+        total={filtered.length}
+        entityLabel="seminários"
+        actions={bulkActions}
+        onClear={clearSelection}
+      />
+      {bulk.modals}
     </div>
   )
 }
