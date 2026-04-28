@@ -35,3 +35,8 @@ Thumbs.db
 
 # Vite cache
 .vite/
+
+# Imports — arquivos com dados pessoais (CPF, telefone, endereco) NUNCA vao pro git
+imports/*
+!imports/.gitkeep
+!imports/README.md
