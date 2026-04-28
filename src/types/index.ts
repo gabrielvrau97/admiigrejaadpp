@@ -20,6 +20,8 @@ export interface Church {
   phone?: string
   email?: string
   logo_url?: string
+  pastor_id?: string
+  pastor?: { id: string; name: string; apelido?: string } | null
 }
 
 export interface Member {

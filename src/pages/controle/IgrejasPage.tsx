@@ -1,11 +1,13 @@
-import React, { useState } from 'react'
-import { Plus, Edit2, Trash2, Phone, Mail, MapPin, Church as ChurchIcon, X, Loader2 } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { Plus, Edit2, Trash2, Phone, Mail, MapPin, Church as ChurchIcon, X, Loader2, User, Search } from 'lucide-react'
 import { useChurch } from '../../contexts/ChurchContext'
+import { useData } from '../../contexts/DataContext'
 import { createChurch, updateChurch, deleteChurch } from '../../lib/api/churches'
 import { APP_GROUP_ID } from '../../lib/supabase'
-import type { Church } from '../../types'
+import type { Church, Member } from '../../types'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import { useModalUX } from '../../hooks/useModalUX'
+import { maskPhone } from '../../lib/masks'
 
 export default function IgrejasPage() {
   const { churches, loading, reload } = useChurch()
@@ -122,6 +124,17 @@ export default function IgrejasPage() {
                   </div>
 
                   <div className="space-y-1.5 text-xs text-gray-500">
+                    {c.pastor && (
+                      <div className="flex items-center gap-2 pb-2 mb-2 border-b border-gray-100">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                          {c.pastor.name[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold leading-tight">Pastor dirigente</div>
+                          <div className="text-xs text-gray-700 font-medium truncate">{c.pastor.name}</div>
+                        </div>
+                      </div>
+                    )}
                     {c.address && (
                       <div className="flex items-start gap-2">
                         <MapPin size={11} className="mt-0.5 shrink-0 text-gray-400" />
@@ -140,8 +153,8 @@ export default function IgrejasPage() {
                         <span className="truncate">{c.email}</span>
                       </div>
                     )}
-                    {!c.address && !c.phone && !c.email && (
-                      <span className="italic text-gray-300">Sem dados de contato cadastrados.</span>
+                    {!c.pastor && !c.address && !c.phone && !c.email && (
+                      <span className="italic text-gray-300">Sem dados cadastrados.</span>
                     )}
                   </div>
                 </div>
@@ -173,15 +186,64 @@ interface ChurchModalProps {
 function ChurchModal({ igreja, onClose, onSaved }: ChurchModalProps) {
   const containerRef = useModalUX({ onClose })
   const toast = useToast()
+  const { members } = useData()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<Partial<Church>>(
     igreja ?? { name: '', type: 'filial', address: '', phone: '', email: '' }
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [pastorSearch, setPastorSearch] = useState('')
+  const [pastorOpen, setPastorOpen] = useState(false)
+
+  // Membros elegíveis: tipo membro + ativo. Quando editando, prioriza os da própria igreja.
+  const elegiveis = useMemo(() => {
+    return members.filter(m =>
+      (m.member_type === 'membro' || !m.member_type) &&
+      m.status === 'ativo',
+    )
+  }, [members])
+
+  const filteredPastores = useMemo(() => {
+    const q = pastorSearch.trim().toLowerCase()
+    let list = elegiveis
+    if (q) {
+      list = list.filter(m =>
+        m.name.toLowerCase().includes(q) ||
+        (m.apelido?.toLowerCase().includes(q) ?? false),
+      )
+    }
+    // Ordena: membros desta igreja primeiro
+    if (igreja) {
+      list = [...list].sort((a, b) => {
+        const aHere = a.church_id === igreja.id ? 0 : 1
+        const bHere = b.church_id === igreja.id ? 0 : 1
+        if (aHere !== bHere) return aHere - bHere
+        return a.name.localeCompare(b.name)
+      })
+    }
+    return list.slice(0, 8)
+  }, [elegiveis, pastorSearch, igreja])
+
+  const pastorAtual = form.pastor_id
+    ? members.find(m => m.id === form.pastor_id) ?? igreja?.pastor ?? null
+    : null
 
   const set = <K extends keyof Church>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm(prev => ({ ...prev, [key]: e.target.value }))
+
+  const setPhone = (val: string) => setForm(prev => ({ ...prev, phone: maskPhone(val) }))
+
+  const pickPastor = (m: Member | { id: string; name: string }) => {
+    setForm(prev => ({ ...prev, pastor_id: m.id }))
+    setPastorOpen(false)
+    setPastorSearch('')
+  }
+
+  const clearPastor = () => {
+    setForm(prev => ({ ...prev, pastor_id: undefined }))
+    setPastorSearch('')
+  }
 
   const handleSubmit = async () => {
     if (saving) return
@@ -204,6 +266,7 @@ function ChurchModal({ igreja, onClose, onSaved }: ChurchModalProps) {
           address: form.address?.trim() || undefined,
           phone: form.phone?.trim() || undefined,
           email: form.email?.trim() || undefined,
+          pastor_id: form.pastor_id || undefined,
         })
         toast.success('Igreja criada.')
       }
@@ -249,6 +312,85 @@ function ChurchModal({ igreja, onClose, onSaved }: ChurchModalProps) {
             </select>
           </div>
 
+          {/* Pastor dirigente */}
+          <div className="relative">
+            <label className="form-label">Pastor dirigente</label>
+            {pastorAtual ? (
+              <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {pastorAtual.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-blue-900 truncate">{pastorAtual.name}</div>
+                  {pastorAtual.apelido && (
+                    <div className="text-xs text-blue-600">({pastorAtual.apelido})</div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={clearPastor}
+                  className="text-blue-400 hover:text-red-500 p-1 rounded"
+                  title="Remover"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    className="form-input pl-8"
+                    value={pastorSearch}
+                    onChange={e => { setPastorSearch(e.target.value); setPastorOpen(true) }}
+                    onFocus={() => setPastorOpen(true)}
+                    placeholder="Buscar membro..."
+                  />
+                </div>
+                {pastorOpen && filteredPastores.length > 0 && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setPastorOpen(false)} />
+                    <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                      {filteredPastores.map(m => {
+                        const isHere = igreja && m.church_id === igreja.id
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => pickPastor(m)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 border-b border-gray-50 last:border-0"
+                          >
+                            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+                              {m.name[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-800 truncate">{m.name}</div>
+                              {m.apelido && (
+                                <div className="text-xs text-gray-400">({m.apelido})</div>
+                              )}
+                            </div>
+                            {isHere && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 shrink-0">
+                                Desta igreja
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+                {pastorOpen && pastorSearch && filteredPastores.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-1 italic">Nenhum membro encontrado.</p>
+                )}
+                <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                  <User size={10} />
+                  Apenas membros ativos podem ser selecionados como pastor.
+                </p>
+              </>
+            )}
+          </div>
+
           <div>
             <label className="form-label">Endereço</label>
             <input
@@ -262,7 +404,14 @@ function ChurchModal({ igreja, onClose, onSaved }: ChurchModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Telefone</label>
-              <input className="form-input" value={form.phone ?? ''} onChange={set('phone')} placeholder="(64) 0000-0000" />
+              <input
+                className="form-input"
+                value={form.phone ?? ''}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="(64) 0000-0000"
+                inputMode="tel"
+                maxLength={15}
+              />
             </div>
             <div>
               <label className="form-label">E-mail</label>
