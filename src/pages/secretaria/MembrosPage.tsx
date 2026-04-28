@@ -5,8 +5,11 @@ import {
   Plus, Search, Printer, Settings2, ChevronDown, Download,
   MessageCircle, Trash2, Edit2, MapPin, Filter, X, ChevronLeft, ChevronRight,
   Eye, MoreHorizontal, UserCheck, Users, Baby, Heart,
+  CheckCircle2, Tags, Briefcase, Building2, Sparkles as SparklesIcon, ArrowRightLeft, Layers as LayersIcon,
 } from 'lucide-react'
 import { getListTheme } from './membros-themes'
+import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
+import { useBulkMembros } from '../../components/bulk/useBulkMembros'
 import { DEFAULT_CHURCH_ID } from '../../lib/supabase'
 import type { Member } from '../../types'
 import MemberModal from '../../components/members/MemberModal'
@@ -304,6 +307,29 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
     if (selected.size === paginated.length) setSelected(new Set())
     else setSelected(new Set(paginated.map(m => m.id)))
   }
+  const selectAllFiltered = () => setSelected(new Set(filtered.map(m => m.id)))
+  const clearSelection = () => setSelected(new Set())
+
+  // ── Bulk actions ──────────────────────────────────────────────────────────
+  const selectedIds = useMemo(() => Array.from(selected), [selected])
+  const allPool = useMemo(() => [...members, ...visitantes], [members, visitantes])
+  const bulk = useBulkMembros({
+    selectedIds,
+    members: allPool,
+    onClear: clearSelection,
+  })
+
+  const bulkActions: BulkAction[] = [
+    { key: 'status', label: 'Status', icon: <CheckCircle2 size={13} />, onClick: () => bulk.open('status') },
+    { key: 'igreja', label: 'Igreja', icon: <Building2 size={13} />, onClick: () => bulk.open('igreja') },
+    { key: 'titulos', label: 'Títulos', icon: <Tags size={13} />, onClick: () => bulk.open('titulos'), group: 'more' },
+    { key: 'ministerios', label: 'Ministérios', icon: <LayersIcon size={13} />, onClick: () => bulk.open('ministerios'), group: 'more' },
+    { key: 'departamentos', label: 'Departamentos', icon: <Briefcase size={13} />, onClick: () => bulk.open('departamentos'), group: 'more' },
+    { key: 'funcoes', label: 'Funções', icon: <Briefcase size={13} />, onClick: () => bulk.open('funcoes'), group: 'more' },
+    { key: 'espiritual', label: 'Vida espiritual', icon: <SparklesIcon size={13} />, onClick: () => bulk.open('espiritual'), group: 'more' },
+    { key: 'tipo', label: 'Tipo', icon: <ArrowRightLeft size={13} />, onClick: () => bulk.open('tipo'), group: 'more' },
+    { key: 'excluir', label: 'Excluir', icon: <Trash2 size={13} />, onClick: () => bulk.open('excluir'), danger: true, group: 'more' },
+  ]
 
   const handleDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -860,6 +886,18 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
           onSave={handleSave}
         />
       )}
+
+      {/* Bulk actions: barra flutuante + modais */}
+      <BulkActionBar
+        count={selected.size}
+        total={filtered.length}
+        entityLabel={pageTitle.toLowerCase()}
+        actions={bulkActions}
+        onClear={clearSelection}
+        onSelectAllFiltered={filtered.length > paginated.length ? selectAllFiltered : undefined}
+        selectAllLabel={`Selecionar todos os ${filtered.length} filtrados`}
+      />
+      {bulk.modals}
     </div>
   )
 }
