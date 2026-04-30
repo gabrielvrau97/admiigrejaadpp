@@ -1,7 +1,8 @@
 import React from 'react'
 import type { MemberFamily, MemberMinistry } from '../../../types'
-import { Link as LinkIcon, Users } from 'lucide-react'
+import { Link as LinkIcon, Users, Eye } from 'lucide-react'
 import { useData } from '../../../contexts/DataContext'
+import { useMemberQuickView } from '../../../contexts/MemberQuickViewContext'
 
 interface Props {
   family: Partial<MemberFamily>
@@ -17,11 +18,20 @@ interface ConnectionCardProps {
   colorBorder: string
   colorAvatar: string
   colorText: string
+  onClick?: () => void
 }
 
-function ConnectionCard({ name, subtitle, initial, badge, colorBg, colorBorder, colorAvatar, colorText }: ConnectionCardProps) {
+function ConnectionCard({ name, subtitle, initial, badge, colorBg, colorBorder, colorAvatar, colorText, onClick }: ConnectionCardProps) {
+  const isClickable = !!onClick
+  const Wrapper: React.ElementType = isClickable ? 'button' : 'div'
   return (
-    <div className={`p-3 ${colorBg} border ${colorBorder} rounded-lg flex items-center gap-3`}>
+    <Wrapper
+      onClick={onClick}
+      className={`w-full p-3 ${colorBg} border ${colorBorder} rounded-lg flex items-center gap-3 text-left transition-all ${
+        isClickable ? 'hover:shadow-md hover:scale-[1.01] cursor-pointer' : ''
+      }`}
+      title={isClickable ? 'Clique para visualizar cadastro' : undefined}
+    >
       <div className={`w-9 h-9 rounded-full ${colorAvatar} flex items-center justify-center font-bold`}>
         {initial}
       </div>
@@ -30,14 +40,15 @@ function ConnectionCard({ name, subtitle, initial, badge, colorBg, colorBorder, 
         {subtitle && <div className="text-xs text-gray-500 truncate">{subtitle}</div>}
       </div>
       <span className={`flex items-center gap-1 text-xs ${colorText} font-medium shrink-0`}>
-        <LinkIcon size={11} /> {badge}
+        {isClickable ? <Eye size={11} /> : <LinkIcon size={11} />} {badge}
       </span>
-    </div>
+    </Wrapper>
   )
 }
 
 export default function TabConexao({ family, ministry }: Props) {
   const { members, visitantes } = useData()
+  const { openMember } = useMemberQuickView()
   const pool = [...members, ...visitantes]
 
   const spouseMember = family.spouse_id ? pool.find(m => m.id === family.spouse_id) : null
@@ -82,6 +93,7 @@ export default function TabConexao({ family, ministry }: Props) {
               badge="Cônjuge"
               colorBg="bg-blue-50" colorBorder="border-blue-100"
               colorAvatar="bg-blue-200 text-blue-700" colorText="text-blue-600"
+              onClick={() => openMember(spouseMember.id)}
             />
           )}
 
@@ -93,6 +105,7 @@ export default function TabConexao({ family, ministry }: Props) {
               badge="Pai"
               colorBg="bg-indigo-50" colorBorder="border-indigo-100"
               colorAvatar="bg-indigo-200 text-indigo-700" colorText="text-indigo-600"
+              onClick={() => openMember(fatherMember.id)}
             />
           )}
 
@@ -104,6 +117,7 @@ export default function TabConexao({ family, ministry }: Props) {
               badge="Mãe"
               colorBg="bg-pink-50" colorBorder="border-pink-100"
               colorAvatar="bg-pink-200 text-pink-700" colorText="text-pink-600"
+              onClick={() => openMember(motherMember.id)}
             />
           )}
 
@@ -120,6 +134,7 @@ export default function TabConexao({ family, ministry }: Props) {
                 badge="Filho(a)"
                 colorBg="bg-green-50" colorBorder="border-green-100"
                 colorAvatar="bg-green-200 text-green-700" colorText="text-green-600"
+                onClick={member ? () => openMember(member.id) : undefined}
               />
             )
           })}
@@ -139,6 +154,7 @@ export default function TabConexao({ family, ministry }: Props) {
               badge="Discipulador"
               colorBg="bg-purple-50" colorBorder="border-purple-100"
               colorAvatar="bg-purple-200 text-purple-700" colorText="text-purple-600"
+              onClick={() => openMember(disciplerMember.id)}
             />
           )}
 
@@ -150,6 +166,7 @@ export default function TabConexao({ family, ministry }: Props) {
               badge="Acompanhante"
               colorBg="bg-amber-50" colorBorder="border-amber-100"
               colorAvatar="bg-amber-200 text-amber-700" colorText="text-amber-600"
+              onClick={() => openMember(companionMember.id)}
             />
           )}
         </div>

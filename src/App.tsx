@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ChurchProvider } from './contexts/ChurchContext'
 import { ConfigProvider } from './contexts/ConfigContext'
 import { DataProvider } from './contexts/DataContext'
+import { MemberQuickViewProvider } from './contexts/MemberQuickViewContext'
 import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
 import PageLoader from './components/ui/PageLoader'
@@ -96,7 +97,9 @@ export default function App() {
           <ChurchProvider>
             <ConfigProvider>
               <DataProvider>
-                <AppRoutes />
+                <MemberQuickViewProvider>
+                  <AppRoutes />
+                </MemberQuickViewProvider>
               </DataProvider>
             </ConfigProvider>
           </ChurchProvider>

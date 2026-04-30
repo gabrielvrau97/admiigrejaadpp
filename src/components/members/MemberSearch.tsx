@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X, Link as LinkIcon } from 'lucide-react'
+import { X, Link as LinkIcon, Eye } from 'lucide-react'
 import type { Member } from '../../types'
 import { useData } from '../../contexts/DataContext'
+import { useMemberQuickView } from '../../contexts/MemberQuickViewContext'
 
 interface Props {
   value: string
@@ -32,6 +33,7 @@ export default function MemberSearch({
   requireLink = false,
 }: Props) {
   const { members, visitantes } = useData()
+  const { openMember } = useMemberQuickView()
   const pool: Member[] = [...members, ...visitantes]
   const [query, setQuery] = useState(value)
   const [results, setResults] = useState<Member[]>([])
@@ -99,10 +101,16 @@ export default function MemberSearch({
         )}
       </div>
       {linkedId && (
-        <div className="flex items-center gap-1 mt-0.5">
-          <LinkIcon size={10} className="text-blue-500" />
-          <span className="text-xs text-blue-600 font-medium">Vinculado ao cadastro</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => openMember(linkedId)}
+          className="flex items-center gap-1 mt-0.5 text-xs text-blue-600 font-medium hover:text-blue-800 hover:underline transition-colors"
+          title="Visualizar cadastro completo"
+        >
+          <LinkIcon size={10} />
+          <span>Vinculado ao cadastro</span>
+          <Eye size={10} className="opacity-70" />
+        </button>
       )}
       {showDropdown && (
         <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">

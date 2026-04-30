@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react'
-import { Plus, Edit2, Trash2, Phone, Mail, MapPin, Church as ChurchIcon, X, Loader2, User, Search } from 'lucide-react'
+import { Plus, Edit2, Trash2, Phone, Mail, MapPin, Church as ChurchIcon, X, Loader2, User, Search, Eye } from 'lucide-react'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useData } from '../../contexts/DataContext'
 import { createChurch, updateChurch, deleteChurch } from '../../lib/api/churches'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import type { Church, Member } from '../../types'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import { useMemberQuickView } from '../../contexts/MemberQuickViewContext'
 import { useModalUX } from '../../hooks/useModalUX'
 import { maskPhone } from '../../lib/masks'
 
@@ -13,6 +14,7 @@ export default function IgrejasPage() {
   const { churches, loading, reload } = useChurch()
   const toast = useToast()
   const confirm = useConfirm()
+  const { openMember } = useMemberQuickView()
   const [editing, setEditing] = useState<Church | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -125,15 +127,23 @@ export default function IgrejasPage() {
 
                   <div className="space-y-1.5 text-xs text-gray-500">
                     {c.pastor && (
-                      <div className="flex items-center gap-2 pb-2 mb-2 border-b border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => openMember(c.pastor!.id)}
+                        className="w-full flex items-center gap-2 pb-2 mb-2 border-b border-gray-100 hover:bg-blue-50/40 rounded-md -mx-1 px-1 py-1 transition-colors text-left group"
+                        title="Visualizar cadastro do pastor"
+                      >
                         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                           {c.pastor.name[0]}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold leading-tight">Pastor dirigente</div>
-                          <div className="text-xs text-gray-700 font-medium truncate">{c.pastor.name}</div>
+                          <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold leading-tight flex items-center gap-1">
+                            Pastor dirigente
+                            <Eye size={9} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="text-xs text-gray-700 font-medium truncate group-hover:text-blue-700">{c.pastor.name}</div>
                         </div>
-                      </div>
+                      </button>
                     )}
                     {c.address && (
                       <div className="flex items-start gap-2">

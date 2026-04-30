@@ -9,6 +9,7 @@ import type { Matricula, MatriculaSituacao, Certificado } from '../../types'
 import MatriculaModal from './MatriculaModal'
 import { fmtDate, fmtIdade } from '../../lib/format'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import { useMemberQuickView } from '../../contexts/MemberQuickViewContext'
 import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
 import { useBulkMatriculas } from '../../components/bulk/useBulkMatriculas'
 
@@ -29,6 +30,7 @@ export default function SeminarioDetailPage() {
   } = useData()
   const toast = useToast()
   const confirm = useConfirm()
+  const { openMember } = useMemberQuickView()
 
   const [search, setSearch] = useState('')
   const [situacaoFilter, setSituacaoFilter] = useState<MatriculaSituacao | ''>('')
@@ -316,7 +318,16 @@ export default function SeminarioDetailPage() {
                         </div>
                         <div className="min-w-0">
                           <div className="font-medium text-gray-800 truncate">{m.nome}</div>
-                          {m.member_id && <div className="text-[10px] text-blue-600">Vinculado a membro</div>}
+                          {m.member_id && (
+                            <button
+                              onClick={() => openMember(m.member_id!)}
+                              className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                              title="Visualizar cadastro"
+                            >
+                              <Eye size={9} />
+                              Vinculado a membro
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -377,7 +388,16 @@ export default function SeminarioDetailPage() {
                     <div className="font-semibold text-gray-800 text-sm truncate">{m.nome}</div>
                     <span className={cfg.badge}>{cfg.label}</span>
                   </div>
-                  {m.member_id && <div className="text-[10px] text-blue-600">Vinculado a membro</div>}
+                  {m.member_id && (
+                    <button
+                      onClick={() => openMember(m.member_id!)}
+                      className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                      title="Visualizar cadastro"
+                    >
+                      <Eye size={9} />
+                      Vinculado a membro
+                    </button>
+                  )}
                   <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                     <div>{fmtIdade(m.birth_date)} · {m.telefone ?? '—'}</div>
                     <div>Freq: {m.frequencia != null ? `${m.frequencia}%` : '—'} · Nota: {m.nota_final != null ? m.nota_final.toFixed(1) : '—'}</div>
