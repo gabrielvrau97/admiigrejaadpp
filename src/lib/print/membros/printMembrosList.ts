@@ -63,14 +63,22 @@ export function printMembrosList({ pageTitle, pageSub, rows, headers, filtersSum
 
 export function buildFilterSummary(
   search: string,
-  activeFilter: string | null,
+  activeFilters: string | string[] | Set<string> | null,
   quickFiltersLabels: Record<string, string>,
   advSel: Record<string, string>,
   advSim: Record<string, string>,
 ): string[] {
   const lines: string[] = []
   if (search.trim()) lines.push(`Busca por texto: "${search}"`)
-  if (activeFilter) lines.push(`Filtro rápido: ${quickFiltersLabels[activeFilter] ?? activeFilter}`)
+  // Aceita string única (compat) ou lista
+  let filtersList: string[] = []
+  if (typeof activeFilters === 'string') filtersList = [activeFilters]
+  else if (activeFilters instanceof Set) filtersList = [...activeFilters]
+  else if (Array.isArray(activeFilters)) filtersList = activeFilters
+  if (filtersList.length > 0) {
+    const labels = filtersList.map(f => quickFiltersLabels[f] ?? f).join(' + ')
+    lines.push(`Filtro${filtersList.length > 1 ? 's' : ''} rápido${filtersList.length > 1 ? 's' : ''}: ${labels}`)
+  }
   const selLabels: Record<string, string> = {
     status: 'Status', sexo: 'Sexo', estado_civil: 'Estado Civil', tem_filhos: 'Tem filhos',
     escolaridade: 'Escolaridade', titulo: 'Título', funcao: 'Função',

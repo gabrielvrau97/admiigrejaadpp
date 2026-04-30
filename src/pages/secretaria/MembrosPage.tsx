@@ -79,7 +79,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   const confirm = useConfirm()
 
   const [search, setSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
   const [showQuickFilter, setShowQuickFilter] = useState(false)
   const [pageSize, setPageSize] = useState(10)
   const [page, setPage] = useState(1)
@@ -92,6 +92,31 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   const [advOpen, setAdvOpen] = useState(false)
   const [advSel, setAdvSel] = useState<SelectionFilters>(EMPTY_SELECTION)
   const [advSim, setAdvSim] = useState<SimilarityFilters>(EMPTY_SIMILARITY)
+
+  const toggleFilter = useCallback((key: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+    setPage(1)
+  }, [])
+  const removeFilter = useCallback((key: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
+    setPage(1)
+  }, [])
+  const clearAllFilters = useCallback(() => {
+    setActiveFilters(new Set())
+    setSearch('')
+    setAdvSel(EMPTY_SELECTION)
+    setAdvSim(EMPTY_SIMILARITY)
+    setPage(1)
+  }, [])
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [colConfigOpen, setColConfigOpen] = useState(false)
@@ -139,26 +164,29 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       data = applySelectionFilters(data, advSel)
       data = applySimilarityFilters(data, advSim)
     }
-    if (activeFilter) {
+    if (activeFilters.size > 0) {
       const today = new Date()
-      if (activeFilter === 'ativos') data = data.filter(m => m.status === 'ativo')
-      else if (activeFilter === 'inativos') data = data.filter(m => m.status === 'inativo')
-      else if (activeFilter === 'indisponiveis') data = data.filter(m => m.status === 'indisponivel')
-      else if (activeFilter === 'batizados') data = data.filter(m => m.baptism)
-      else if (activeFilter === 'batizados_espirito') data = data.filter(m => m.baptism_spirit)
-      else if (activeFilter === 'convertidos') data = data.filter(m => m.conversion)
-      else if (activeFilter === 'acompanhados') data = data.filter(m => !!m.ministry?.companion_id)
-      else if (activeFilter === 'sem_acompanhamento') data = data.filter(m => !m.ministry?.companion_id)
-      else if (activeFilter === 'discipulados') data = data.filter(m => !!m.ministry?.discipler_id)
-      else if (activeFilter === 'sem_discipulado') data = data.filter(m => !m.ministry?.discipler_id)
-      else if (activeFilter === 'aniversariantes_hoje') {
-        const mmdd = format(today, 'MM-dd')
-        data = data.filter(m => m.birth_date?.slice(5) === mmdd)
-      } else if (activeFilter === 'aniversariantes_mes') {
-        const mm = format(today, 'MM')
-        data = data.filter(m => m.birth_date?.slice(5, 7) === mm)
-      } else if (activeFilter === 'casados_hoje') {
-        data = data.filter(m => m.civil_status === 'casado')
+      const mmdd = format(today, 'MM-dd')
+      const mm = format(today, 'MM')
+      // Filtros acumulativos (AND): cada filtro ativo aperta a lista
+      const checks: Record<string, (m: Member) => boolean> = {
+        ativos: m => m.status === 'ativo',
+        inativos: m => m.status === 'inativo',
+        indisponiveis: m => m.status === 'indisponivel',
+        batizados: m => !!m.baptism,
+        batizados_espirito: m => !!m.baptism_spirit,
+        convertidos: m => !!m.conversion,
+        acompanhados: m => !!m.ministry?.companion_id,
+        sem_acompanhamento: m => !m.ministry?.companion_id,
+        discipulados: m => !!m.ministry?.discipler_id,
+        sem_discipulado: m => !m.ministry?.discipler_id,
+        aniversariantes_hoje: m => m.birth_date?.slice(5) === mmdd,
+        aniversariantes_mes: m => m.birth_date?.slice(5, 7) === mm,
+        casados_hoje: m => m.civil_status === 'casado',
+      }
+      for (const key of activeFilters) {
+        const check = checks[key]
+        if (check) data = data.filter(check)
       }
     }
 
@@ -170,7 +198,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
       return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va)
     })
     return data
-  }, [baseData, search, activeFilter, sortField, sortAsc, advActive, advSel, advSim])
+  }, [baseData, search, activeFilters, sortField, sortAsc, advActive, advSel, advSim])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
@@ -187,7 +215,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
   const filterSummary = (): string[] =>
     buildFilterSummary(
       search,
-      activeFilter,
+      activeFilters,
       quickFiltersLabels,
       advSel as unknown as Record<string, string>,
       advSim as unknown as Record<string, string>,
@@ -386,10 +414,10 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
     : Users
 
   const summaryCards = [
-    { label: 'Ativos', value: baseData.filter(m => m.status === 'ativo').length, color: 'bg-blue-500', filter: 'ativos' },
-    { label: 'Batizados', value: baseData.filter(m => m.baptism).length, color: 'bg-indigo-500', filter: 'batizados' },
-    { label: 'Convertidos', value: baseData.filter(m => m.conversion).length, color: 'bg-emerald-500', filter: 'convertidos' },
-    { label: 'Total', value: baseData.length, color: 'bg-gray-500', filter: null },
+    { label: 'Ativos', sub: 'membros com cadastro ativo', value: baseData.filter(m => m.status === 'ativo').length, color: 'bg-blue-500', filter: 'ativos' },
+    { label: 'Batizados ativos', sub: 'somente batizados em águas com status ativo', value: baseData.filter(m => m.baptism && m.status === 'ativo').length, color: 'bg-indigo-500', filter: 'batizados' },
+    { label: 'Convertidos', sub: 'com data ou marca de conversão', value: baseData.filter(m => m.conversion).length, color: 'bg-emerald-500', filter: 'convertidos' },
+    { label: 'Total', sub: 'todos os cadastros (qualquer status)', value: baseData.length, color: 'bg-gray-500', filter: null },
   ]
 
   return (
@@ -414,21 +442,28 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {summaryCards.map(c => (
-          <button
-            key={c.label}
-            onClick={() => c.filter && setActiveFilter(activeFilter === c.filter ? null : c.filter)}
-            className={`${c.color} rounded-xl p-3 text-white shadow-sm text-left transition-transform hover:scale-105 ${activeFilter === c.filter ? 'ring-2 ring-offset-2 ring-white' : ''} ${!c.filter ? 'cursor-default' : ''}`}
-          >
-            <div className="text-2xl font-bold">{c.value}</div>
-            <div className="text-xs opacity-90 mt-0.5">{c.label}</div>
-          </button>
-        ))}
+        {summaryCards.map(c => {
+          const isActive = c.filter ? activeFilters.has(c.filter) : false
+          return (
+            <button
+              key={c.label}
+              onClick={() => c.filter && toggleFilter(c.filter)}
+              title={c.sub}
+              className={`${c.color} rounded-xl p-3 text-white shadow-sm text-left transition-transform hover:scale-105 ${isActive ? 'ring-2 ring-offset-2 ring-white' : ''} ${!c.filter ? 'cursor-default' : ''}`}
+            >
+              <div className="text-2xl font-bold">{c.value}</div>
+              <div className="text-xs opacity-90 mt-0.5">{c.label}</div>
+              <div className="text-[10px] opacity-70 mt-0.5 leading-tight">{c.sub}</div>
+            </button>
+          )
+        })}
       </div>
 
-      {(search.trim() || activeFilter || advActive) && (
+      {(search.trim() || activeFilters.size > 0 || advActive) && (
         <div className="flex items-center flex-wrap gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          <span className="text-xs font-medium text-amber-700 shrink-0">Filtros ativos:</span>
+          <span className="text-xs font-medium text-amber-700 shrink-0">
+            Filtros ativos {activeFilters.size > 1 && <span className="text-[10px] text-amber-600">(combinados)</span>}:
+          </span>
 
           {search.trim() && (
             <span className="inline-flex items-center gap-1 bg-white border border-amber-300 text-amber-800 px-2 py-0.5 rounded-full text-xs font-medium">
@@ -437,12 +472,12 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
             </span>
           )}
 
-          {activeFilter && (
-            <span className="inline-flex items-center gap-1 bg-white border border-amber-300 text-amber-800 px-2 py-0.5 rounded-full text-xs font-medium">
-              {quickFilters.find(f => f.key === activeFilter)?.label ?? activeFilter}
-              <button onClick={() => setActiveFilter(null)} className="hover:text-red-500"><X size={11} /></button>
+          {[...activeFilters].map(key => (
+            <span key={key} className="inline-flex items-center gap-1 bg-white border border-amber-300 text-amber-800 px-2 py-0.5 rounded-full text-xs font-medium">
+              {quickFilters.find(f => f.key === key)?.label ?? key}
+              <button onClick={() => removeFilter(key)} className="hover:text-red-500"><X size={11} /></button>
             </span>
-          )}
+          ))}
 
           {advActive && (
             <button
@@ -456,13 +491,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
           <div className="flex-1" />
 
           <button
-            onClick={() => {
-              setSearch('')
-              setActiveFilter(null)
-              setAdvSel(EMPTY_SELECTION)
-              setAdvSim(EMPTY_SIMILARITY)
-              setPage(1)
-            }}
+            onClick={clearAllFilters}
             className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded-full border border-red-200 transition-colors"
           >
             <X size={11} /> Limpar todos os filtros
@@ -491,17 +520,37 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
               <ChevronDown size={12} />
             </button>
             {showQuickFilter && (
-              <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 max-h-64 overflow-y-auto">
-                {quickFilters.map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => { setActiveFilter(f.key); setShowQuickFilter(false); setPage(1) }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${activeFilter === f.key ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShowQuickFilter(false)} />
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 max-h-72 overflow-y-auto">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 font-bold border-b border-gray-100">
+                    Filtros combinam-se (AND)
+                  </div>
+                  {quickFilters.map(f => {
+                    const isOn = activeFilters.has(f.key)
+                    return (
+                      <button
+                        key={f.key}
+                        onClick={() => toggleFilter(f.key)}
+                        className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 ${isOn ? 'text-blue-700 bg-blue-50/40 font-medium' : 'text-gray-700'}`}
+                      >
+                        <input type="checkbox" checked={isOn} readOnly className="rounded shrink-0" />
+                        {f.label}
+                      </button>
+                    )
+                  })}
+                  {activeFilters.size > 0 && (
+                    <div className="border-t border-gray-100 mt-1 pt-1 px-2">
+                      <button
+                        onClick={() => { setActiveFilters(new Set()); setPage(1) }}
+                        className="w-full text-xs text-red-600 hover:bg-red-50 rounded py-1.5 px-2 text-left flex items-center gap-1"
+                      >
+                        <X size={11} /> Limpar todos os filtros rápidos
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 
@@ -598,7 +647,7 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
                   {filtered.length > 0 && (
                     <div className="px-3 py-1.5 border-b border-gray-100 mb-1">
                       <p className="text-[10px] text-gray-400">{filtered.length} registro(s) a exportar</p>
-                      {(search.trim() || activeFilter || advActive) && (
+                      {(search.trim() || activeFilters.size > 0 || advActive) && (
                         <p className="text-[10px] text-blue-600 font-medium mt-0.5">Com filtros aplicados</p>
                       )}
                     </div>
