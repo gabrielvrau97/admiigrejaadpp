@@ -3,20 +3,23 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCheck, Baby, Heart,
   BarChart2, Settings, Church, UserCog, Database,
-  ChevronDown, Shield, X, GraduationCap, IdCard, Award
+  ChevronDown, X, GraduationCap, IdCard, Award, DollarSign,
 } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { canAccessArea, type Area } from '../../lib/permissions'
 
 interface NavItem {
   label: string
   path?: string
   icon?: React.ReactNode
   children?: NavItem[]
+  area?: Area  // se definido, item só aparece pra papéis que acessam essa área
 }
 
 const secretariaItems: NavItem[] = [
-  { label: 'Painel', path: '/dashboard', icon: <LayoutDashboard size={14} /> },
+  { label: 'Painel', path: '/dashboard', icon: <LayoutDashboard size={14} />, area: 'dashboard' },
   {
-    label: 'Pessoas', icon: <Users size={14} />,
+    label: 'Pessoas', icon: <Users size={14} />, area: 'secretaria',
     children: [
       { label: 'Membros', path: '/secretaria/membros', icon: <UserCheck size={14} /> },
       { label: 'Visitantes', path: '/secretaria/visitantes', icon: <Users size={14} /> },
@@ -26,31 +29,44 @@ const secretariaItems: NavItem[] = [
       { label: 'Novos convertidos', path: '/secretaria/novos-convertidos', icon: <Heart size={14} /> },
     ]
   },
-  { label: 'Gráficos', path: '/secretaria/graficos', icon: <BarChart2 size={14} /> },
-  { label: 'Configurações', path: '/secretaria/configuracoes', icon: <Settings size={14} /> },
+  { label: 'Gráficos', path: '/secretaria/graficos', icon: <BarChart2 size={14} />, area: 'secretaria' },
+  { label: 'Configurações', path: '/secretaria/configuracoes', icon: <Settings size={14} />, area: 'secretaria' },
 ]
 
 const academicoItems: NavItem[] = [
-  { label: 'Seminários', path: '/seminarios', icon: <GraduationCap size={14} /> },
-  { label: 'Certificados', path: '/certificados', icon: <Award size={14} /> },
+  { label: 'Seminários', path: '/seminarios', icon: <GraduationCap size={14} />, area: 'seminarios' },
+  { label: 'Certificados', path: '/certificados', icon: <Award size={14} />, area: 'certificados' },
 ]
 
 const documentosItems: NavItem[] = [
-  { label: 'Credenciais', path: '/carteirinhas', icon: <IdCard size={14} /> },
+  { label: 'Credenciais', path: '/carteirinhas', icon: <IdCard size={14} />, area: 'carteirinhas' },
+]
+
+const financeiroItems: NavItem[] = [
+  { label: 'Financeiro', path: '/financeiro', icon: <DollarSign size={14} />, area: 'financeiro' },
 ]
 
 const controleItems: NavItem[] = [
-  { label: 'Igrejas', path: '/controle/igrejas', icon: <Church size={14} /> },
-  { label: 'Usuários', path: '/controle/usuarios', icon: <UserCog size={14} /> },
-  { label: 'Meu perfil', path: '/controle/meu-perfil', icon: <UserCheck size={14} /> },
-  { label: 'Backup', path: '/controle/backup', icon: <Database size={14} /> },
-  { label: 'Acessos', path: '/controle/acessos', icon: <Shield size={14} /> },
-  { label: 'Configurações', path: '/controle/configuracoes', icon: <Settings size={14} /> },
+  { label: 'Igrejas', path: '/controle/igrejas', icon: <Church size={14} />, area: 'igrejas' },
+  { label: 'Usuários', path: '/controle/usuarios', icon: <UserCog size={14} />, area: 'usuarios' },
+  { label: 'Meu perfil', path: '/controle/meu-perfil', icon: <UserCheck size={14} />, area: 'meu-perfil' },
+  { label: 'Backup', path: '/controle/backup', icon: <Database size={14} />, area: 'backup' },
 ]
 
 function NavGroup({ items, title, onNavigate }: { items: NavItem[]; title: string; onNavigate?: () => void }) {
   const location = useLocation()
+  const { user } = useAuth()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ 'Pessoas': true })
+
+  const role = user?.role
+  // Filtra itens conforme papel — se item tem `area`, checa permissão
+  const visibleItems = items.filter(item => {
+    if (!item.area) return true  // sem área = sempre visível
+    return canAccessArea(role, item.area)
+  })
+
+  // Se nenhum item visível, esconde o grupo inteiro
+  if (visibleItems.length === 0) return null
 
   const isActive = (item: NavItem): boolean => {
     if (item.path) return location.pathname === item.path || location.pathname.startsWith(item.path + '/')
@@ -64,7 +80,7 @@ function NavGroup({ items, title, onNavigate }: { items: NavItem[]; title: strin
         <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400/50">{title}</span>
         <div className="flex-1 h-px bg-white/5" />
       </div>
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         if (item.children) {
           const open = expanded[item.label] ?? false
           const active = isActive(item)
@@ -180,6 +196,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <NavGroup title="Secretaria" items={secretariaItems} onNavigate={onClose} />
           <NavGroup title="Acadêmico" items={academicoItems} onNavigate={onClose} />
           <NavGroup title="Documentos" items={documentosItems} onNavigate={onClose} />
+          <NavGroup title="Financeiro" items={financeiroItems} onNavigate={onClose} />
           <NavGroup title="Controle" items={controleItems} onNavigate={onClose} />
         </nav>
 

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ChurchProvider } from './contexts/ChurchContext'
 import { ConfigProvider } from './contexts/ConfigContext'
@@ -8,6 +8,7 @@ import { MemberQuickViewProvider } from './contexts/MemberQuickViewContext'
 import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
 import PageLoader from './components/ui/PageLoader'
+import { canAccessRoute } from './lib/permissions'
 
 // Eager (primeiro acesso): tela de login + dashboard + lista de membros
 import Login from './pages/Login'
@@ -26,6 +27,7 @@ const SeminariosPage = lazy(() => import('./pages/seminarios/SeminariosPage'))
 const SeminarioDetailPage = lazy(() => import('./pages/seminarios/SeminarioDetailPage'))
 const CarteirinhasPage = lazy(() => import('./pages/carteirinhas/CarteirinhasPage'))
 const CertificadosPage = lazy(() => import('./pages/certificados/CertificadosPage'))
+const FinanceiroPage = lazy(() => import('./pages/financeiro/FinanceiroPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -40,6 +42,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+/**
+ * Guarda de papel: se o usuário não pode acessar a rota atual, redireciona
+ * pro dashboard. Roda em todas as rotas protegidas.
+ */
+function RoleGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  const location = useLocation()
+  if (!user) return <>{children}</>
+  if (!canAccessRoute(user.role, location.pathname)) {
+    return <Navigate to="/dashboard" replace />
+  }
+  return <>{children}</>
+}
+
 function AppRoutes() {
   const { user } = useAuth()
   return (
@@ -48,7 +64,9 @@ function AppRoutes() {
       <Route
         element={
           <ProtectedRoute>
-            <AppLayout />
+            <RoleGuard>
+              <AppLayout />
+            </RoleGuard>
           </ProtectedRoute>
         }
       >
@@ -80,6 +98,9 @@ function AppRoutes() {
         {/* Carteirinhas e Certificados */}
         <Route path="/carteirinhas" element={<Suspense fallback={<PageLoader />}><CarteirinhasPage /></Suspense>} />
         <Route path="/certificados" element={<Suspense fallback={<PageLoader />}><CertificadosPage /></Suspense>} />
+
+        {/* Financeiro */}
+        <Route path="/financeiro" element={<Suspense fallback={<PageLoader />}><FinanceiroPage /></Suspense>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
