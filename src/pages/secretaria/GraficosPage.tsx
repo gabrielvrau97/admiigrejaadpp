@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import { useChurch } from '../../contexts/ChurchContext'
-import { mockChurches } from '../../lib/mockData'
 
 const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16']
 const MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -143,7 +142,7 @@ function YearSelect({ value, onChange }: { value: number; onChange: (y: number) 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function GraficosPage() {
   const { members, visitantes } = useData()
-  const { selectedChurch } = useChurch()
+  const { selectedChurch, churches } = useChurch()
   const [yearFilter, setYearFilter] = useState<number>(currentYear)
 
   const allPeople = useMemo(() => {
@@ -162,14 +161,14 @@ export default function GraficosPage() {
   const totalVisitantes = visitantes.filter(v => v.status !== 'deleted').length
 
   // ── Dados computados ───────────────────────────────────────────────────────
-  const byChurch = useMemo(() => mockChurches.map(c => ({
-    name: c.name.replace('ADP ', ''),
+  const byChurch = useMemo(() => churches.map(c => ({
+    name: c.name.replace(/ADP\s*—?\s*/i, '').replace(/\s*\(Sede\)|\s*\(Filial\)/i, '').trim() || c.name,
     fullName: c.name,
     tipo: c.type,
     total: members.filter(m => m.church_id === c.id && m.status !== 'deleted').length,
     ativos: members.filter(m => m.church_id === c.id && m.status === 'ativo').length,
     visitantes: visitantes.filter(v => v.church_id === c.id).length,
-  })), [members, visitantes])
+  })), [churches, members, visitantes])
 
   const byCity = useMemo(() => {
     const map: Record<string, number> = {}
@@ -238,10 +237,10 @@ export default function GraficosPage() {
 
   const radarData = useMemo(() => ['Ativos', 'Batizados', 'Convertidos', 'Visitantes', 'Jovens'].map(label => {
     const row: Record<string, string | number> = { label }
-    mockChurches.slice(0, 5).forEach(c => {
+    churches.slice(0, 5).forEach(c => {
       const cm = members.filter(m => m.church_id === c.id && m.status === 'ativo')
       const cv = visitantes.filter(v => v.church_id === c.id)
-      const key = c.name.replace('ADP ', '')
+      const key = c.name.replace(/ADP\s*—?\s*/i, '').replace(/\s*\(Sede\)|\s*\(Filial\)/i, '').trim() || c.name
       if (label === 'Ativos') row[key] = cm.length
       else if (label === 'Batizados') row[key] = cm.filter(m => m.baptism).length
       else if (label === 'Convertidos') row[key] = cm.filter(m => m.conversion).length
@@ -249,7 +248,7 @@ export default function GraficosPage() {
       else if (label === 'Jovens') row[key] = cm.filter(m => m.birth_date && getAge(m.birth_date) >= 18 && getAge(m.birth_date) <= 35).length
     })
     return row
-  }), [members, visitantes])
+  }), [churches, members, visitantes])
 
   const titlesData = useMemo(() => {
     const map: Record<string, number> = {}
@@ -363,8 +362,8 @@ export default function GraficosPage() {
           shadow="rgba(124,58,237,0.3)"
         />
         <KpiCard
-          label="Igrejas ativas" value={mockChurches.length}
-          sub={`${mockChurches.filter(c => c.type === 'sede').length} sede · ${mockChurches.filter(c => c.type === 'filial').length} filiais`}
+          label="Igrejas ativas" value={churches.length}
+          sub={`${churches.filter(c => c.type === 'sede').length} sede · ${churches.filter(c => c.type === 'filial').length} filiais`}
           icon={<Church size={18} />}
           gradient="linear-gradient(135deg,#059669,#047857)"
           shadow="rgba(5,150,105,0.3)"
@@ -588,17 +587,20 @@ export default function GraficosPage() {
               <PolarGrid stroke="#e2e8f0" strokeDasharray="3 3" />
               <PolarAngleAxis dataKey="label" tick={{ fontSize: 10, fill: '#64748b' }} />
               <PolarRadiusAxis tick={{ fontSize: 9, fill: '#94a3b8' }} />
-              {mockChurches.slice(0, 5).map((c, i) => (
+              {churches.slice(0, 5).map((c, i) => {
+                const key = c.name.replace(/ADP\s*—?\s*/i, '').replace(/\s*\(Sede\)|\s*\(Filial\)/i, '').trim() || c.name
+                return (
                 <Radar
                   key={c.id}
-                  name={c.name.replace('ADP ', '')}
-                  dataKey={c.name.replace('ADP ', '')}
+                  name={key}
+                  dataKey={key}
                   stroke={PALETTE[i]}
                   fill={PALETTE[i]}
                   fillOpacity={0.1}
                   strokeWidth={2}
                 />
-              ))}
+                )
+              })}
               <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
               <Tooltip content={<CustomTooltip />} />
             </RadarChart>
