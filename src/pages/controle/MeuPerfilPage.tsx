@@ -1,16 +1,14 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { User, Mail, Shield, Lock, Eye, EyeOff, Church, Save, CheckCircle2 } from 'lucide-react'
-
-const roleLabels: Record<string, string> = {
-  master: 'Master',
-  admin: 'Administrador',
-  secretaria: 'Secretaria',
-  visualizador: 'Visualizador',
-}
+import { useToast } from '../../components/ui/UIProvider'
+import { supabase } from '../../lib/supabase'
+import { ROLE_LABELS } from '../../lib/permissions'
+import { User, Mail, Shield, Lock, Eye, EyeOff, Church, Save, CheckCircle2, Loader2 } from 'lucide-react'
 
 const roleBadge: Record<string, string> = {
   master: 'bg-purple-100 text-purple-700 border-purple-200',
+  admin_secretaria: 'bg-blue-100 text-blue-700 border-blue-200',
+  admin_financeiro: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   admin: 'bg-blue-100 text-blue-700 border-blue-200',
   secretaria: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   visualizador: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -18,12 +16,14 @@ const roleBadge: Record<string, string> = {
 
 const roleGradient: Record<string, string> = {
   master: 'linear-gradient(135deg,#a855f7,#7c3aed)',
+  admin_secretaria: 'linear-gradient(135deg,#3b82f6,#2563eb)',
+  admin_financeiro: 'linear-gradient(135deg,#10b981,#059669)',
   admin: 'linear-gradient(135deg,#3b82f6,#2563eb)',
   secretaria: 'linear-gradient(135deg,#34d399,#059669)',
   visualizador: 'linear-gradient(135deg,#9ca3af,#6b7280)',
 }
 
-function PasswordField({ label, placeholder }: { label: string; placeholder?: string }) {
+function PasswordField({ label, placeholder, value, onChange }: { label: string; placeholder?: string; value: string; onChange: (v: string) => void }) {
   const [show, setShow] = useState(false)
   return (
     <div>
@@ -33,6 +33,8 @@ function PasswordField({ label, placeholder }: { label: string; placeholder?: st
           type={show ? 'text' : 'password'}
           className="form-input pr-10"
           placeholder={placeholder ?? '••••••••'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
         />
         <button
           type="button"
@@ -48,12 +50,48 @@ function PasswordField({ label, placeholder }: { label: string; placeholder?: st
 
 export default function MeuPerfilPage() {
   const { user } = useAuth()
+  const toast = useToast()
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [currentPwd, setCurrentPwd] = useState('')
+  const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
   const role = user?.role ?? 'visualizador'
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+  const handleSave = async () => {
+    if (saving) return
+    if (!currentPwd) { toast.warning('Informe a senha atual.'); return }
+    if (newPwd.length < 8) { toast.warning('A nova senha precisa ter no mínimo 8 caracteres.'); return }
+    if (newPwd !== confirmPwd) { toast.warning('As senhas não conferem.'); return }
+    if (!user?.email) { toast.error('Sessão inválida.'); return }
+
+    setSaving(true)
+    try {
+      // 1) Confere senha atual com login efêmero
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPwd,
+      })
+      if (authErr) {
+        toast.error('Senha atual incorreta.')
+        return
+      }
+      // 2) Atualiza pra nova
+      const { error: updErr } = await supabase.auth.updateUser({ password: newPwd })
+      if (updErr) {
+        toast.error(`Erro: ${updErr.message}`)
+        return
+      }
+      setSaved(true)
+      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
+      setTimeout(() => setSaved(false), 2500)
+      toast.success('Senha alterada com sucesso.')
+    } catch (e) {
+      console.error(e)
+      toast.error('Erro inesperado ao alterar senha.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -87,7 +125,7 @@ export default function MeuPerfilPage() {
             </div>
             <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${roleBadge[role] ?? roleBadge.visualizador}`}>
               <Shield size={10} />
-              {roleLabels[role] ?? role}
+              {ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role}
             </span>
           </div>
 
@@ -112,7 +150,7 @@ export default function MeuPerfilPage() {
               </div>
               <div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nível de acesso</div>
-                <div className="text-sm font-medium text-gray-700">{roleLabels[role] ?? role}</div>
+                <div className="text-sm font-medium text-gray-700">{ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role}</div>
               </div>
             </div>
 
@@ -136,16 +174,17 @@ export default function MeuPerfilPage() {
           <span className="text-sm font-semibold text-gray-700">Alterar senha</span>
         </div>
         <div className="p-5 space-y-4">
-          <PasswordField label="Senha atual" placeholder="Sua senha atual" />
-          <PasswordField label="Nova senha" placeholder="Mínimo 8 caracteres" />
-          <PasswordField label="Confirmar nova senha" placeholder="Repita a nova senha" />
+          <PasswordField label="Senha atual" placeholder="Sua senha atual" value={currentPwd} onChange={setCurrentPwd} />
+          <PasswordField label="Nova senha" placeholder="Mínimo 8 caracteres" value={newPwd} onChange={setNewPwd} />
+          <PasswordField label="Confirmar nova senha" placeholder="Repita a nova senha" value={confirmPwd} onChange={setConfirmPwd} />
           <div className="pt-1">
             <button
               onClick={handleSave}
-              className={`btn-primary flex items-center gap-2 transition-all ${saved ? '!bg-green-600 !shadow-green-200' : ''}`}
+              disabled={saving}
+              className={`btn-primary flex items-center gap-2 transition-all disabled:opacity-60 ${saved ? '!bg-green-600 !shadow-green-200' : ''}`}
             >
-              {saved ? <CheckCircle2 size={14} /> : <Save size={14} />}
-              {saved ? 'Senha alterada!' : 'Salvar alterações'}
+              {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle2 size={14} /> : <Save size={14} />}
+              {saving ? 'Salvando...' : saved ? 'Senha alterada!' : 'Salvar alterações'}
             </button>
           </div>
         </div>
