@@ -44,6 +44,7 @@ const documentosItems: NavItem[] = [
 
 const financeiroItems: NavItem[] = [
   { label: 'Financeiro', path: '/financeiro', icon: <DollarSign size={14} />, area: 'financeiro' },
+  { label: 'Config. Financeiras', path: '/financeiro/configuracoes', icon: <Settings size={14} />, area: 'financeiro-config' },
 ]
 
 const controleItems: NavItem[] = [

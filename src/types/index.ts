@@ -226,6 +226,61 @@ export interface Carteirinha {
   created_at: string
 }
 
+// ── Financeiro ───────────────────────────────────────────────────────────
+
+export type FinTipo = 'entrada' | 'saida'
+export type FinOrigem = 'manual' | 'importado'
+
+export interface FinCategoria {
+  id: string
+  church_group_id: string
+  tipo: FinTipo
+  nome: string
+  cor: string
+  ativo: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FinFornecedor {
+  id: string
+  church_group_id: string
+  nome: string
+  documento?: string
+  contato?: string
+  observacao?: string
+  ativo: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FinLancamento {
+  id: string
+  church_group_id: string
+  church_id: string
+  tipo: FinTipo
+  categoria_id?: string
+  fornecedor_id?: string
+  member_id?: string
+  member_nome_manual?: string
+  valor: number
+  descricao?: string
+  referencia_culto?: string
+  data_lancamento: string
+  origem: FinOrigem
+  periodo_referencia?: string
+  created_by: string
+  observacao?: string
+  created_at: string
+  updated_at: string
+  // joins opcionais
+  categoria?: Pick<FinCategoria, 'id' | 'nome' | 'cor' | 'tipo'>
+  fornecedor?: Pick<FinFornecedor, 'id' | 'nome'>
+  member?: { id: string; name: string; apelido?: string } | null
+  church?: { id: string; name: string } | null
+  created_by_user?: { id: string; name: string } | null
+}
+
 // ── Certificados ──────────────────────────────────────────────────────────
 export type CertificadoStatus = 'emitido' | 'cancelado' | 'reemitido'
 

@@ -16,20 +16,21 @@ import type { UserRole } from '../types'
 
 export type Area =
   | 'dashboard'
-  | 'secretaria'    // membros, visitantes, criancas, adolescentes, jovens, novos-convertidos, graficos, configuracoes
-  | 'seminarios'    // seminarios, seminarios/:id
+  | 'secretaria'         // membros, visitantes, criancas, adolescentes, jovens, novos-convertidos, graficos, configuracoes
+  | 'seminarios'         // seminarios, seminarios/:id
   | 'certificados'
-  | 'carteirinhas'  // credenciais
+  | 'carteirinhas'       // credenciais
   | 'igrejas'
-  | 'usuarios'      // gestão de usuários (master only)
+  | 'usuarios'           // gestão de usuários (master only)
   | 'backup'
   | 'meu-perfil'
-  | 'financeiro'
+  | 'financeiro'         // tesouraria, extrato, dashboard financeiro
+  | 'financeiro-config'  // configurações financeiras (master only)
 
 export const ROLE_AREAS: Record<UserRole, Set<Area>> = {
   master: new Set<Area>([
     'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas',
-    'igrejas', 'usuarios', 'backup', 'meu-perfil', 'financeiro',
+    'igrejas', 'usuarios', 'backup', 'meu-perfil', 'financeiro', 'financeiro-config',
   ]),
   admin_secretaria: new Set<Area>([
     'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas',
@@ -70,6 +71,7 @@ export function routeToArea(pathname: string): Area | null {
   if (pathname.startsWith('/seminarios')) return 'seminarios'
   if (pathname.startsWith('/certificados')) return 'certificados'
   if (pathname.startsWith('/carteirinhas')) return 'carteirinhas'
+  if (pathname.startsWith('/financeiro/configuracoes')) return 'financeiro-config'
   if (pathname.startsWith('/financeiro')) return 'financeiro'
   if (pathname.startsWith('/controle/igrejas')) return 'igrejas'
   if (pathname.startsWith('/controle/usuarios')) return 'usuarios'
