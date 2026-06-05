@@ -107,7 +107,7 @@ export default function SeminarioDetailPage() {
   const handleDelete = async (matId: string) => {
     const ok = await confirm({
       title: 'Excluir matrícula',
-      message: 'Deseja realmente excluir esta matrícula?',
+      message: 'Isso vai apagar permanentemente a matrícula e todos os certificados vinculados a ela. Essa ação não pode ser desfeita.',
       danger: true,
     })
     if (!ok) return

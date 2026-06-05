@@ -79,7 +79,7 @@ export default function SeminariosPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: 'Excluir seminário',
-      message: 'Deseja realmente excluir este seminário? Os alunos matriculados também serão afetados.',
+      message: 'Isso vai apagar permanentemente o seminário, todas as matrículas e todos os certificados vinculados. Essa ação não pode ser desfeita.',
       danger: true,
     })
     if (!ok) return
