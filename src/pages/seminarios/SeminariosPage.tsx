@@ -88,7 +88,17 @@ export default function SeminariosPage() {
       toast.success('Seminário excluído.')
     } catch (err) {
       console.error(err)
-      toast.error('Erro ao excluir seminário.')
+      const msg = err instanceof Error ? err.message : String(err)
+      const isFkBlock =
+        msg.includes('foreign key') ||
+        msg.includes('violates') ||
+        msg.includes('23503') ||
+        msg.toLowerCase().includes('certificad')
+      if (isFkBlock) {
+        toast.error('Não é possível excluir: existem certificados emitidos vinculados a este seminário. Cancele os certificados antes de excluir.')
+      } else {
+        toast.error('Erro ao excluir seminário.')
+      }
     }
   }
   const handleSave = async (data: Partial<Seminario>) => {

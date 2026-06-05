@@ -279,8 +279,14 @@ export function filterByType(members: Member[], type: string): Member[] {
         const age = getAge(m.birth_date)
         return age >= 18 && m.civil_status === 'solteiro'
       })
-    case 'novos-convertidos':
-      return active.filter(m => m.conversion)
+    case 'novos-convertidos': {
+      const currentYear = new Date().getFullYear()
+      return active.filter(m => {
+        if (!m.conversion_date) return false
+        const year = parseInt(m.conversion_date.slice(0, 4), 10)
+        return year === currentYear
+      })
+    }
     default:
       return active
   }
