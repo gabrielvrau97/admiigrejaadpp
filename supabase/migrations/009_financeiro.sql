@@ -25,7 +25,7 @@ create index idx_fin_categorias_tipo on fin_categorias(tipo);
 
 create trigger trg_fin_categorias_updated_at
   before update on fin_categorias
-  for each row execute function update_updated_at();
+  for each row execute function set_updated_at();
 
 -- ============================================================================
 -- 2) FORNECEDORES / BENEFICIÁRIOS
@@ -47,7 +47,7 @@ create index idx_fin_fornecedores_group on fin_fornecedores(church_group_id);
 
 create trigger trg_fin_fornecedores_updated_at
   before update on fin_fornecedores
-  for each row execute function update_updated_at();
+  for each row execute function set_updated_at();
 
 -- ============================================================================
 -- 3) LANÇAMENTOS FINANCEIROS
@@ -83,7 +83,7 @@ create index idx_fin_lancamentos_member on fin_lancamentos(member_id);
 
 create trigger trg_fin_lancamentos_updated_at
   before update on fin_lancamentos
-  for each row execute function update_updated_at();
+  for each row execute function set_updated_at();
 
 -- ============================================================================
 -- 4) RLS
