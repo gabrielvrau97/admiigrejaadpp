@@ -29,6 +29,7 @@ const CarteirinhasPage = lazy(() => import('./pages/carteirinhas/CarteirinhasPag
 const CertificadosPage = lazy(() => import('./pages/certificados/CertificadosPage'))
 const FinanceiroPage = lazy(() => import('./pages/financeiro/FinanceiroPage'))
 const FinanceiroConfigPage = lazy(() => import('./pages/financeiro/FinanceiroConfigPage'))
+const FinanceiroTesourariaPage = lazy(() => import('./pages/financeiro/FinanceiroTesourariaPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -102,6 +103,7 @@ function AppRoutes() {
 
         {/* Financeiro */}
         <Route path="/financeiro" element={<Suspense fallback={<PageLoader />}><FinanceiroPage /></Suspense>} />
+        <Route path="/financeiro/tesouraria" element={<Suspense fallback={<PageLoader />}><FinanceiroTesourariaPage /></Suspense>} />
         <Route path="/financeiro/configuracoes" element={<Suspense fallback={<PageLoader />}><FinanceiroConfigPage /></Suspense>} />
 
         {/* Default */}
