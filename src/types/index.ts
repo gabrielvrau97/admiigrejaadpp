@@ -238,6 +238,7 @@ export interface FinCategoria {
   nome: string
   cor: string
   ativo: boolean
+  acesso_rapido: boolean
   created_at: string
   updated_at: string
 }

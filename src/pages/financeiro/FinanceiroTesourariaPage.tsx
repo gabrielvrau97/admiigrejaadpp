@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
-  Wallet, TrendingUp, TrendingDown, Plus, Edit2, Trash2,
+  Wallet, TrendingDown, Plus, Edit2, Trash2,
   CalendarDays, History, Loader2, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -9,9 +9,10 @@ import {
   listFinLancamentosHoje, listFinLancamentos,
   deleteFinLancamento, getFinCaixaDia,
 } from '../../lib/api/fin_lancamentos'
+import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import LancamentoModal from './LancamentoModal'
-import type { FinLancamento, FinTipo } from '../../types'
+import type { FinCategoria, FinLancamento, FinTipo } from '../../types'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -29,6 +30,7 @@ interface ModalState {
   open: boolean
   tipo: FinTipo
   editing: FinLancamento | null
+  categoriaPreSelecionada?: string
 }
 
 export default function FinanceiroTesourariaPage() {
@@ -42,6 +44,7 @@ export default function FinanceiroTesourariaPage() {
   const [caixa, setCaixa] = useState({ entradas: 0, saidas: 0 })
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false, tipo: 'entrada', editing: null })
+  const [categoriasRapidas, setCategoriasRapidas] = useState<FinCategoria[]>([])
 
   // filtros de histórico
   const [dataInicio, setDataInicio] = useState(() => {
@@ -74,7 +77,12 @@ export default function FinanceiroTesourariaPage() {
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      await Promise.all([loadHoje(), loadHistorico()])
+      const [, , cats] = await Promise.all([
+        loadHoje(),
+        loadHistorico(),
+        listFinCategoriasByTipo(APP_GROUP_ID, 'entrada'),
+      ])
+      setCategoriasRapidas(cats.filter(c => c.acesso_rapido && c.ativo))
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar lançamentos.')
@@ -85,8 +93,8 @@ export default function FinanceiroTesourariaPage() {
 
   useEffect(() => { loadAll() }, [loadAll])
 
-  function handleNovoLancamento(tipo: FinTipo) {
-    setModal({ open: true, tipo, editing: null })
+  function handleNovoLancamento(tipo: FinTipo, categoriaId?: string) {
+    setModal({ open: true, tipo, editing: null, categoriaPreSelecionada: categoriaId })
   }
 
   function handleEdit(l: FinLancamento) {
@@ -191,13 +199,27 @@ export default function FinanceiroTesourariaPage() {
             <p className="text-sm text-gray-500">Seus lançamentos do dia e histórico</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleNovoLancamento('entrada')}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700"
-          >
-            <TrendingUp size={15} /> Entrada
-          </button>
+        <div className="flex flex-wrap gap-2">
+          {/* Botões de acesso rápido por categoria de entrada */}
+          {categoriasRapidas.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => handleNovoLancamento('entrada', cat.id)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: cat.cor }}
+            >
+              <ArrowUpRight size={15} /> {cat.nome}
+            </button>
+          ))}
+          {/* Fallback: botão genérico de entrada se não houver acesso rápido */}
+          {categoriasRapidas.length === 0 && (
+            <button
+              onClick={() => handleNovoLancamento('entrada')}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700"
+            >
+              <Plus size={15} /> Entrada
+            </button>
+          )}
           <button
             onClick={() => handleNovoLancamento('saida')}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600"
@@ -359,6 +381,7 @@ export default function FinanceiroTesourariaPage() {
         <LancamentoModal
           tipo={modal.tipo}
           editing={modal.editing}
+          categoriaPreSelecionada={modal.categoriaPreSelecionada}
           onClose={() => setModal(m => ({ ...m, open: false }))}
           onSaved={handleSaved}
         />

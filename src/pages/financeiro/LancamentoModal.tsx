@@ -12,17 +12,18 @@ import type { FinCategoria, FinFornecedor, FinLancamento, FinTipo } from '../../
 interface Props {
   tipo: FinTipo
   editing?: FinLancamento | null
+  categoriaPreSelecionada?: string
   onClose: () => void
   onSaved: (l: FinLancamento) => void
 }
 
-export default function LancamentoModal({ tipo, editing, onClose, onSaved }: Props) {
+export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada, onClose, onSaved }: Props) {
   const { user } = useAuth()
   const { churches } = useChurch()
   const { members, visitantes } = useData()
 
   // form
-  const [categoriaId, setCategoriaId] = useState(editing?.categoria_id ?? '')
+  const [categoriaId, setCategoriaId] = useState(editing?.categoria_id ?? categoriaPreSelecionada ?? '')
   const [churchId, setChurchId] = useState(editing?.church_id ?? (churches[0]?.id ?? ''))
   const [valor, setValor] = useState(editing ? String(editing.valor) : '')
   const [descricao, setDescricao] = useState(editing?.descricao ?? '')

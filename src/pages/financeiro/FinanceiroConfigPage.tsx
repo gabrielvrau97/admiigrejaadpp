@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Settings, Tag, Truck, Plus, Edit2, Power, Search, X, Check, Loader2 } from 'lucide-react'
+import { Settings, Tag, Truck, Plus, Edit2, Power, Search, X, Check, Loader2, Zap } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import {
@@ -29,6 +29,7 @@ interface CatModalProps {
 function CategoriaModal({ tipo, editing, onClose, onSave }: CatModalProps) {
   const [nome, setNome] = useState(editing?.nome ?? '')
   const [cor, setCor] = useState(editing?.cor ?? CORES_PRESET[0])
+  const [acessoRapido, setAcessoRapido] = useState(editing?.acesso_rapido ?? false)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,7 +37,7 @@ function CategoriaModal({ tipo, editing, onClose, onSave }: CatModalProps) {
     if (!nome.trim()) return
     setSaving(true)
     try {
-      await onSave({ nome: nome.trim(), cor, tipo, church_group_id: APP_GROUP_ID, ativo: true })
+      await onSave({ nome: nome.trim(), cor, tipo, church_group_id: APP_GROUP_ID, ativo: true, acesso_rapido: acessoRapido })
       onClose()
     } finally {
       setSaving(false)
@@ -81,6 +82,22 @@ function CategoriaModal({ tipo, editing, onClose, onSave }: CatModalProps) {
               ))}
             </div>
           </div>
+          {tipo === 'entrada' && (
+            <label className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acessoRapido}
+                onChange={e => setAcessoRapido(e.target.checked)}
+                className="w-4 h-4 accent-amber-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-amber-800 flex items-center gap-1">
+                  <Zap size={13} /> Acesso rápido na tesouraria
+                </p>
+                <p className="text-xs text-amber-600">Aparece como botão fixo na tela de lançamento</p>
+              </div>
+            </label>
+          )}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
               Cancelar
@@ -365,6 +382,11 @@ export default function FinanceiroConfigPage() {
                           <span className={`flex-1 text-sm font-medium ${cat.ativo ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
                             {cat.nome}
                           </span>
+                          {cat.acesso_rapido && cat.tipo === 'entrada' && (
+                            <span className="text-xs text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Zap size={10} /> Rápido
+                            </span>
+                          )}
                           {!cat.ativo && (
                             <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Inativa</span>
                           )}
