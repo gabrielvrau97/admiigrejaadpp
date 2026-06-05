@@ -25,6 +25,8 @@ export async function updateMatricula(id: string, patch: Partial<Matricula>): Pr
 }
 
 export async function deleteMatricula(id: string): Promise<void> {
+  const { error: errCert } = await supabase.from('certificados').delete().eq('matricula_id', id)
+  if (errCert) throw errCert
   const { error } = await supabase.from('matriculas').delete().eq('id', id)
   if (error) throw error
 }

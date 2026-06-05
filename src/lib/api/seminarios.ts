@@ -25,6 +25,8 @@ export async function updateSeminario(id: string, patch: Partial<Seminario>): Pr
 }
 
 export async function deleteSeminario(id: string): Promise<void> {
+  const { error: errCert } = await supabase.from('certificados').delete().eq('seminario_id', id)
+  if (errCert) throw errCert
   const { error } = await supabase.from('seminarios').delete().eq('id', id)
   if (error) throw error
 }
