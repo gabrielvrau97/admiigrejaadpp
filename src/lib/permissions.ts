@@ -72,6 +72,7 @@ export function routeToArea(pathname: string): Area | null {
   if (pathname.startsWith('/certificados')) return 'certificados'
   if (pathname.startsWith('/carteirinhas')) return 'carteirinhas'
   if (pathname.startsWith('/financeiro/configuracoes')) return 'financeiro-config'
+  if (pathname.startsWith('/financeiro/extrato')) return 'financeiro'
   if (pathname.startsWith('/financeiro/tesouraria')) return 'financeiro'
   if (pathname.startsWith('/financeiro')) return 'financeiro'
   if (pathname.startsWith('/controle/igrejas')) return 'igrejas'

@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, UserCheck, Baby, Heart,
   BarChart2, Settings, Church, UserCog, Database,
-  ChevronDown, X, GraduationCap, IdCard, Award, DollarSign,
+  ChevronDown, X, GraduationCap, IdCard, Award, DollarSign, ScrollText,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { canAccessArea, type Area } from '../../lib/permissions'
@@ -44,6 +44,7 @@ const documentosItems: NavItem[] = [
 
 const financeiroItems: NavItem[] = [
   { label: 'Tesouraria', path: '/financeiro/tesouraria', icon: <DollarSign size={14} />, area: 'financeiro' },
+  { label: 'Extrato', path: '/financeiro/extrato', icon: <ScrollText size={14} />, area: 'financeiro' },
   { label: 'Config. Financeiras', path: '/financeiro/configuracoes', icon: <Settings size={14} />, area: 'financeiro-config' },
 ]
 
