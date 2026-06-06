@@ -16,16 +16,17 @@ import type { UserRole } from '../types'
 
 export type Area =
   | 'dashboard'
-  | 'secretaria'         // membros, visitantes, criancas, adolescentes, jovens, novos-convertidos, graficos, configuracoes
-  | 'seminarios'         // seminarios, seminarios/:id
+  | 'secretaria'              // membros, visitantes, criancas, adolescentes, jovens, novos-convertidos, graficos, configuracoes
+  | 'seminarios'              // seminarios, seminarios/:id
   | 'certificados'
-  | 'carteirinhas'       // credenciais
+  | 'carteirinhas'            // credenciais
   | 'igrejas'
-  | 'usuarios'           // gestão de usuários (master only)
+  | 'usuarios'                // gestão de usuários (master only)
   | 'backup'
   | 'meu-perfil'
-  | 'financeiro'         // tesouraria, extrato, dashboard financeiro
-  | 'financeiro-config'  // configurações financeiras (master only)
+  | 'financeiro'              // dashboard + extrato + recibos (admin_financeiro e master)
+  | 'financeiro-tesouraria'   // só /financeiro/tesouraria (tesoureiro)
+  | 'financeiro-config'       // configurações financeiras (master only)
 
 export const ROLE_AREAS: Record<UserRole, Set<Area>> = {
   master: new Set<Area>([
@@ -38,6 +39,9 @@ export const ROLE_AREAS: Record<UserRole, Set<Area>> = {
   ]),
   admin_financeiro: new Set<Area>([
     'dashboard', 'financeiro', 'meu-perfil',
+  ]),
+  tesoureiro: new Set<Area>([
+    'financeiro-tesouraria', 'meu-perfil',
   ]),
   // Legados (papéis antigos) — mantidos por compatibilidade, equivalem a admin_secretaria
   admin: new Set<Area>([
@@ -57,6 +61,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   master: 'Master',
   admin_secretaria: 'Admin Secretaria',
   admin_financeiro: 'Admin Financeiro',
+  tesoureiro: 'Tesoureiro',
   admin: 'Admin (legado)',
   secretaria: 'Secretaria (legado)',
   visualizador: 'Visualizador (legado)',
@@ -75,7 +80,7 @@ export function routeToArea(pathname: string): Area | null {
   if (pathname.startsWith('/financeiro/extrato')) return 'financeiro'
   if (pathname.startsWith('/financeiro/dashboard')) return 'financeiro'
   if (pathname.startsWith('/financeiro/recibos')) return 'financeiro'
-  if (pathname.startsWith('/financeiro/tesouraria')) return 'financeiro'
+  if (pathname.startsWith('/financeiro/tesouraria')) return 'financeiro-tesouraria'
   if (pathname.startsWith('/financeiro')) return 'financeiro'
   if (pathname.startsWith('/controle/igrejas')) return 'igrejas'
   if (pathname.startsWith('/controle/usuarios')) return 'usuarios'
@@ -94,6 +99,10 @@ export function canAccessArea(role: UserRole | undefined, area: Area): boolean {
 export function canAccessRoute(role: UserRole | undefined, pathname: string): boolean {
   const area = routeToArea(pathname)
   if (!area) return true  // rota desconhecida — libera (fail-open pra não quebrar)
+  // tesouraria: aceita quem tem 'financeiro-tesouraria' OU 'financeiro'
+  if (area === 'financeiro-tesouraria') {
+    return canAccessArea(role, 'financeiro-tesouraria') || canAccessArea(role, 'financeiro')
+  }
   return canAccessArea(role, area)
 }
 

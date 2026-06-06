@@ -1,4 +1,4 @@
-export type UserRole = 'master' | 'admin_secretaria' | 'admin_financeiro' | 'admin' | 'secretaria' | 'visualizador'
+export type UserRole = 'master' | 'admin_secretaria' | 'admin_financeiro' | 'tesoureiro' | 'admin' | 'secretaria' | 'visualizador'
 export type ChurchType = 'sede' | 'filial'
 export type MemberStatus = 'ativo' | 'inativo' | 'indisponivel' | 'deleted'
 export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'

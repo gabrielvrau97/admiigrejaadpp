@@ -27,6 +27,11 @@ const roleConfig: Record<UserRole, { badge: string; dot: string; avatarBg: strin
     dot: 'bg-emerald-500',
     avatarBg: 'linear-gradient(135deg,#10b981,#059669)',
   },
+  tesoureiro: {
+    badge: 'bg-amber-50 text-amber-700 border border-amber-200',
+    dot: 'bg-amber-500',
+    avatarBg: 'linear-gradient(135deg,#f59e0b,#d97706)',
+  },
   admin: {
     badge: 'bg-gray-50 text-gray-600 border border-gray-200',
     dot: 'bg-gray-400',
@@ -386,7 +391,8 @@ function UserFormModal({ user, onClose, onSaved }: UserFormProps) {
   const ROLES: { value: UserRole; label: string; sub: string }[] = [
     { value: 'master', label: 'Master', sub: 'Acesso total. Único que gerencia usuários.' },
     { value: 'admin_secretaria', label: 'Admin Secretaria', sub: 'Acesso à secretaria, seminários, igrejas, credenciais e certificados.' },
-    { value: 'admin_financeiro', label: 'Admin Financeiro', sub: 'Acesso apenas ao módulo financeiro.' },
+    { value: 'admin_financeiro', label: 'Admin Financeiro', sub: 'Acesso completo ao módulo financeiro (dashboard, extrato, tesouraria).' },
+    { value: 'tesoureiro', label: 'Tesoureiro', sub: 'Acesso somente à tesouraria — lança entradas e saídas e emite recibos.' },
   ]
 
   return (

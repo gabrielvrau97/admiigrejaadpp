@@ -44,7 +44,7 @@ const documentosItems: NavItem[] = [
 
 const financeiroItems: NavItem[] = [
   { label: 'Dashboard', path: '/financeiro/dashboard', icon: <PieChart size={14} />, area: 'financeiro' },
-  { label: 'Tesouraria', path: '/financeiro/tesouraria', icon: <DollarSign size={14} />, area: 'financeiro' },
+  { label: 'Tesouraria', path: '/financeiro/tesouraria', icon: <DollarSign size={14} />, area: 'financeiro-tesouraria' },
   { label: 'Extrato', path: '/financeiro/extrato', icon: <ScrollText size={14} />, area: 'financeiro' },
   { label: 'Recibos', path: '/financeiro/recibos', icon: <FileText size={14} />, area: 'financeiro' },
   { label: 'Config. Financeiras', path: '/financeiro/configuracoes', icon: <Settings size={14} />, area: 'financeiro-config' },
