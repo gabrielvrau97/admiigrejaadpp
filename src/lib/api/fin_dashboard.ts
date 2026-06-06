@@ -278,11 +278,25 @@ export async function getStatsPorTitulo(
     .lte('data_lancamento', dataFim)
   if (e1) throw e1
 
-  // busca membros com títulos — apenas do grupo, apenas ativos
+  // busca member_ministry sem join (evita ambiguidade de FK com discipler_id)
   const { data: ministerios, error: e2 } = await supabase
     .from('member_ministry')
-    .select('member_id, titles, member:members!member_ministry_member_id_fkey(status, church_group_id)')
+    .select('member_id, titles')
   if (e2) throw e2
+
+  // busca membros ativos do grupo em query separada
+  const memberIds = (ministerios ?? []).map(m => m.member_id).filter(Boolean)
+  const { data: membersData, error: e3 } = memberIds.length > 0
+    ? await supabase
+        .from('members')
+        .select('id, status, church_group_id')
+        .in('id', memberIds)
+        .eq('church_group_id', groupId)
+        .eq('status', 'ativo')
+    : { data: [], error: null }
+  if (e3) throw e3
+
+  const activeMemberIds = new Set((membersData ?? []).map(m => m.id))
 
   // IDs que contribuíram + total
   const contribMap = new Map<string, number>()
@@ -291,14 +305,12 @@ export async function getStatsPorTitulo(
     contribMap.set(l.member_id, (contribMap.get(l.member_id) ?? 0) + Number(l.valor))
   }
 
-  // agrupa por título — apenas membros ativos
+  // agrupa por título — apenas membros ativos do grupo
   const map = new Map<string, { totalMembros: number; contribuiram: number; totalContribuido: number }>()
 
-  for (const m of (ministerios ?? []) as any[]) {
-    const member = Array.isArray(m.member) ? m.member[0] : m.member
-    if (member?.status !== 'ativo') continue
-    if (member?.church_group_id && member.church_group_id !== groupId) continue
-    const titles: string[] = m.titles ?? []
+  for (const m of (ministerios ?? [])) {
+    if (!activeMemberIds.has(m.member_id)) continue
+    const titles: string[] = (m.titles as string[]) ?? []
     for (const t of titles) {
       if (!t) continue
       const prev = map.get(t) ?? { totalMembros: 0, contribuiram: 0, totalContribuido: 0 }
@@ -416,10 +428,29 @@ export async function getMembrosDoTitulo(
       .lte('data_lancamento', dataFim),
     supabase
       .from('member_ministry')
-      .select('member_id, titles, member:members!member_ministry_member_id_fkey(id, name, status, church_group_id)'),
+      .select('member_id, titles'),
   ])
   if (e1) throw e1
   if (e2) throw e2
+
+  // filtra quem tem o título primeiro
+  const tituloNorm = titulo.trim()
+  const idsComTitulo = (ministerios ?? [])
+    .filter(m => ((m.titles as string[]) ?? []).some(t => t.trim() === tituloNorm))
+    .map(m => m.member_id)
+
+  // busca dados dos membros em query separada
+  const { data: membersData, error: e3 } = idsComTitulo.length > 0
+    ? await supabase
+        .from('members')
+        .select('id, name, status, church_group_id')
+        .in('id', idsComTitulo)
+        .eq('church_group_id', groupId)
+        .eq('status', 'ativo')
+    : { data: [], error: null }
+  if (e3) throw e3
+
+  const memberMap = new Map((membersData ?? []).map(m => [m.id, m]))
 
   // mapa de contribuições por member_id
   const contribMap = new Map<string, { total: number; qtd: number }>()
@@ -429,20 +460,13 @@ export async function getMembrosDoTitulo(
     contribMap.set(l.member_id, { total: prev.total + Number(l.valor), qtd: prev.qtd + 1 })
   }
 
-  // filtra membros com esse título — apenas ativos do grupo
-  const tituloNorm = titulo.trim()
   const result: MembroDoTitulo[] = []
-
-  for (const m of (ministerios ?? []) as any[]) {
-    const titles: string[] = m.titles ?? []
-    if (!titles.some((t: string) => t.trim() === tituloNorm)) continue
-    const member = Array.isArray(m.member) ? m.member[0] : m.member
-    if (!member?.name) continue
-    if (member.status !== 'ativo') continue
-    if (member?.church_group_id && member.church_group_id !== groupId) continue
-    const c = contribMap.get(m.member_id)
+  for (const id of idsComTitulo) {
+    const member = memberMap.get(id)
+    if (!member) continue
+    const c = contribMap.get(id)
     result.push({
-      memberId: m.member_id,
+      memberId: id,
       nome: member.name,
       totalContribuido: c?.total ?? 0,
       qtdLancamentos: c?.qtd ?? 0,
