@@ -408,21 +408,32 @@ export async function getMembrosDoTitulo(
   dataInicio: string,
   dataFim: string,
 ): Promise<MembroDoTitulo[]> {
-  // 1. membros com esse título
+  // 1. todos os member_ids com esse título (sem filtro de grupo aqui)
   const { data: ministerios, error: e1 } = await supabase
     .from('member_ministry')
-    .select('member_id, titles, member:members!member_id(id, name, church_group_id, status)')
+    .select('member_id, titles')
+    .contains('titles', [titulo])
   if (e1) throw e1
 
-  const membrosDoTitulo = ((ministerios ?? []) as any[])
-    .filter(m => (m.titles ?? []).includes(titulo) && m.member?.church_group_id === groupId && m.member?.status === 'ativo')
+  const candidatos = ((ministerios ?? []) as any[]).map((m: any) => m.member_id as string)
+  if (candidatos.length === 0) return []
 
-  if (membrosDoTitulo.length === 0) return []
+  // 2. filtra apenas membros ativos do group correto
+  const { data: membrosData, error: e2 } = await supabase
+    .from('members')
+    .select('id, name')
+    .eq('church_group_id', groupId)
+    .eq('status', 'ativo')
+    .in('id', candidatos)
+  if (e2) throw e2
 
-  const memberIds = membrosDoTitulo.map((m: any) => m.member_id)
+  const membros = (membrosData ?? []) as { id: string; name: string }[]
+  if (membros.length === 0) return []
 
-  // 2. lançamentos de entrada desses membros no período
-  const { data: lancs, error: e2 } = await supabase
+  const memberIds = membros.map(m => m.id)
+
+  // 3. lançamentos de entrada desses membros no período
+  const { data: lancs, error: e3 } = await supabase
     .from('fin_lancamentos')
     .select('member_id, valor')
     .eq('church_group_id', groupId)
@@ -430,7 +441,7 @@ export async function getMembrosDoTitulo(
     .in('member_id', memberIds)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-  if (e2) throw e2
+  if (e3) throw e3
 
   const contribMap = new Map<string, { total: number; qtd: number }>()
   for (const l of (lancs ?? [])) {
@@ -439,12 +450,12 @@ export async function getMembrosDoTitulo(
     contribMap.set(l.member_id, { total: prev.total + Number(l.valor), qtd: prev.qtd + 1 })
   }
 
-  return membrosDoTitulo
-    .map((m: any) => {
-      const c = contribMap.get(m.member_id)
+  return membros
+    .map(m => {
+      const c = contribMap.get(m.id)
       return {
-        memberId: m.member_id,
-        nome: m.member?.name ?? '—',
+        memberId: m.id,
+        nome: m.name,
         totalContribuido: c?.total ?? 0,
         qtdLancamentos: c?.qtd ?? 0,
         contribuiu: !!c && c.total > 0,
