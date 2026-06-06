@@ -278,25 +278,36 @@ export async function getStatsPorTitulo(
     .lte('data_lancamento', dataFim)
   if (e1) throw e1
 
-  // busca membros ativos do grupo primeiro
-  const { data: membersData, error: e2 } = await supabase
-    .from('members')
+  // busca igrejas do grupo para filtrar members (members não tem church_group_id)
+  const { data: churches, error: e2 } = await supabase
+    .from('churches')
     .select('id')
     .eq('church_group_id', groupId)
-    .eq('status', 'ativo')
   if (e2) throw e2
+
+  const churchIds = (churches ?? []).map(c => c.id)
+
+  // busca membros ativos das igrejas do grupo
+  const { data: membersData, error: e3 } = churchIds.length > 0
+    ? await supabase
+        .from('members')
+        .select('id')
+        .in('church_id', churchIds)
+        .eq('status', 'ativo')
+    : { data: [], error: null }
+  if (e3) throw e3
 
   const activeMemberIds = new Set((membersData ?? []).map(m => m.id))
   const activeIdsList = [...activeMemberIds]
 
   // busca member_ministry filtrado pelos membros ativos do grupo
-  const { data: ministerios, error: e3 } = activeIdsList.length > 0
+  const { data: ministerios, error: e4 } = activeIdsList.length > 0
     ? await supabase
         .from('member_ministry')
         .select('member_id, titles')
         .in('member_id', activeIdsList)
     : { data: [], error: null }
-  if (e3) throw e3
+  if (e4) throw e4
 
   // IDs que contribuíram + total
   const contribMap = new Map<string, number>()
@@ -417,8 +428,8 @@ export async function getMembrosDoTitulo(
   dataFim: string,
 ): Promise<MembroDoTitulo[]> {
   // Mesmas duas queries que getStatsPorTitulo usa (sem filtros extras que quebram)
-  // busca membros ativos do grupo + lançamentos em paralelo
-  const [{ data: lancs, error: e1 }, { data: membrosAtivos, error: e2 }] = await Promise.all([
+  // busca igrejas do grupo + lançamentos em paralelo
+  const [{ data: lancs, error: e1 }, { data: churches, error: e2 }] = await Promise.all([
     supabase
       .from('fin_lancamentos')
       .select('member_id, valor')
@@ -428,24 +439,35 @@ export async function getMembrosDoTitulo(
       .gte('data_lancamento', dataInicio)
       .lte('data_lancamento', dataFim),
     supabase
-      .from('members')
-      .select('id, name')
-      .eq('church_group_id', groupId)
-      .eq('status', 'ativo'),
+      .from('churches')
+      .select('id')
+      .eq('church_group_id', groupId),
   ])
   if (e1) throw e1
   if (e2) throw e2
 
+  const churchIds = (churches ?? []).map(c => c.id)
+
+  // busca membros ativos das igrejas do grupo
+  const { data: membrosAtivos, error: e3 } = churchIds.length > 0
+    ? await supabase
+        .from('members')
+        .select('id, name')
+        .in('church_id', churchIds)
+        .eq('status', 'ativo')
+    : { data: [], error: null }
+  if (e3) throw e3
+
   const activoIds = (membrosAtivos ?? []).map(m => m.id)
 
   // busca member_ministry filtrado pelos ativos do grupo
-  const { data: ministerios, error: e3 } = activoIds.length > 0
+  const { data: ministerios, error: e4 } = activoIds.length > 0
     ? await supabase
         .from('member_ministry')
         .select('member_id, titles')
         .in('member_id', activoIds)
     : { data: [], error: null }
-  if (e3) throw e3
+  if (e4) throw e4
 
   const memberMap = new Map((membrosAtivos ?? []).map(m => [m.id, m]))
 
