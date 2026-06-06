@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Settings, Tag, Truck, Plus, Edit2, Power, Search, X, Check, Loader2, Zap } from 'lucide-react'
+import { Settings, Tag, Truck, Plus, Edit2, Power, Search, X, Check, Loader2, Zap, Users } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import {
   listFinCategorias, createFinCategoria, updateFinCategoria, deleteFinCategoria, seedFinCategorias
@@ -8,9 +9,13 @@ import {
 import {
   listFinFornecedores, createFinFornecedor, updateFinFornecedor, deleteFinFornecedor
 } from '../../lib/api/fin_fornecedores'
+import {
+  listFinTesoureiros, createFinTesoureiro, updateFinTesoureiro, deleteFinTesoureiro
+} from '../../lib/api/fin_tesoureiros'
+import type { FinTesoureiro } from '../../lib/api/fin_tesoureiros'
 import type { FinCategoria, FinFornecedor, FinTipo } from '../../types'
 
-type Tab = 'entradas' | 'saidas' | 'fornecedores'
+type Tab = 'entradas' | 'saidas' | 'fornecedores' | 'tesoureiros'
 
 const CORES_PRESET = [
   '#22c55e', '#16a34a', '#3b82f6', '#6366f1', '#f97316',
@@ -196,27 +201,107 @@ function FornecedorModal({ editing, onClose, onSave }: FornModalProps) {
   )
 }
 
+// ── Modal de Tesoureiro ───────────────────────────────────────────────────────
+
+interface TesModalProps {
+  editing: FinTesoureiro | null
+  onClose: () => void
+  onSave: (nome: string, ordem: number) => Promise<void>
+}
+
+function TesureiroModal({ editing, onClose, onSave }: TesModalProps) {
+  const [nome, setNome] = useState(editing?.nome ?? '')
+  const [ordem, setOrdem] = useState(editing?.ordem ?? 0)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!nome.trim()) return
+    setSaving(true)
+    try {
+      await onSave(nome.trim(), ordem)
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-800">
+            {editing ? 'Editar tesoureiro' : 'Novo tesoureiro'}
+          </h2>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-400">
+            <X size={18} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Nome *</label>
+            <input
+              className="form-input w-full"
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              placeholder="Ex: João Silva"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Ordem de exibição</label>
+            <input
+              className="form-input w-full"
+              type="number"
+              min={0}
+              value={ordem}
+              onChange={e => setOrdem(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !nome.trim()}
+              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function FinanceiroConfigPage() {
   const toast = useToast()
   const confirm = useConfirm()
+  const { user } = useAuth()
+  const isMaster = user?.role === 'master'
   const [tab, setTab] = useState<Tab>('entradas')
   const [categorias, setCategorias] = useState<FinCategoria[]>([])
   const [fornecedores, setFornecedores] = useState<FinFornecedor[]>([])
+  const [tesoureiros, setTesoureiros] = useState<FinTesoureiro[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [catModal, setCatModal] = useState<{ open: boolean; editing: FinCategoria | null }>({ open: false, editing: null })
   const [fornModal, setFornModal] = useState<{ open: boolean; editing: FinFornecedor | null }>({ open: false, editing: null })
+  const [tesModal, setTesModal] = useState<{ open: boolean; editing: FinTesoureiro | null }>({ open: false, editing: null })
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [cats, forns] = await Promise.all([
+      const [cats, forns, tes] = await Promise.all([
         listFinCategorias(APP_GROUP_ID),
         listFinFornecedores(APP_GROUP_ID),
+        listFinTesoureiros(APP_GROUP_ID),
       ])
-      // Se não há categorias, popula os defaults
       if (cats.length === 0) {
         await seedFinCategorias(APP_GROUP_ID)
         const seeded = await listFinCategorias(APP_GROUP_ID)
@@ -225,6 +310,7 @@ export default function FinanceiroConfigPage() {
         setCategorias(cats)
       }
       setFornecedores(forns)
+      setTesoureiros(tes)
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar configurações financeiras.')
@@ -307,13 +393,54 @@ export default function FinanceiroConfigPage() {
     }
   }
 
+  // ── Tesoureiros ──
+
+  async function handleSaveTesoureiro(nome: string, ordem: number) {
+    if (tesModal.editing) {
+      await updateFinTesoureiro(tesModal.editing.id, { nome, ordem })
+      setTesoureiros(prev => prev.map(t => t.id === tesModal.editing!.id ? { ...t, nome, ordem } : t))
+      toast.success('Tesoureiro atualizado.')
+    } else {
+      const created = await createFinTesoureiro(nome)
+      setTesoureiros(prev => [...prev, created].sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome)))
+      toast.success('Tesoureiro cadastrado.')
+    }
+  }
+
+  async function handleToggleTesoureiro(tes: FinTesoureiro) {
+    const acao = tes.ativo ? 'desativar' : 'ativar'
+    const ok = await confirm({ title: `${acao.charAt(0).toUpperCase() + acao.slice(1)} tesoureiro`, message: `Deseja ${acao} "${tes.nome}"?`, danger: !tes.ativo })
+    if (!ok) return
+    try {
+      await updateFinTesoureiro(tes.id, { ativo: !tes.ativo })
+      setTesoureiros(prev => prev.map(t => t.id === tes.id ? { ...t, ativo: !tes.ativo } : t))
+      toast.success(`Tesoureiro ${tes.ativo ? 'desativado' : 'ativado'}.`)
+    } catch {
+      toast.error('Erro ao atualizar tesoureiro.')
+    }
+  }
+
+  async function handleDeleteTesoureiro(tes: FinTesoureiro) {
+    const ok = await confirm({ title: 'Excluir tesoureiro', message: `Deseja excluir "${tes.nome}" permanentemente?`, danger: true })
+    if (!ok) return
+    try {
+      await deleteFinTesoureiro(tes.id)
+      setTesoureiros(prev => prev.filter(t => t.id !== tes.id))
+      toast.success('Tesoureiro excluído.')
+    } catch {
+      toast.error('Erro ao excluir tesoureiro.')
+    }
+  }
+
   // ── Render ──
 
-  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  const ALL_TABS: { key: Tab; label: string; icon: React.ReactNode; masterOnly?: boolean }[] = [
     { key: 'entradas', label: 'Categorias de Entrada', icon: <Tag size={15} /> },
     { key: 'saidas', label: 'Categorias de Saída', icon: <Tag size={15} /> },
     { key: 'fornecedores', label: 'Fornecedores', icon: <Truck size={15} /> },
+    { key: 'tesoureiros', label: 'Tesoureiros', icon: <Users size={15} />, masterOnly: true },
   ]
+  const TABS = ALL_TABS.filter(t => !t.masterOnly || isMaster)
 
   return (
     <div className="space-y-5">
@@ -403,6 +530,71 @@ export default function FinanceiroConfigPage() {
                             title={cat.ativo ? 'Desativar' : 'Ativar'}
                           >
                             <Power size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Tesoureiros ── */}
+              {tab === 'tesoureiros' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-gray-500">
+                      {tesoureiros.filter(t => t.ativo).length} ativos · {tesoureiros.filter(t => !t.ativo).length} inativos
+                    </p>
+                    <button
+                      onClick={() => setTesModal({ open: true, editing: null })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                    >
+                      <Plus size={14} /> Novo tesoureiro
+                    </button>
+                  </div>
+                  {tesoureiros.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400 text-sm">Nenhum tesoureiro cadastrado.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {tesoureiros.map(tes => (
+                        <div
+                          key={tes.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${tes.ativo ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 flex-shrink-0">
+                            <Users size={14} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${tes.ativo ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
+                              {tes.nome}
+                            </p>
+                            {tes.ordem > 0 && (
+                              <p className="text-xs text-gray-400">Ordem: {tes.ordem}</p>
+                            )}
+                          </div>
+                          {!tes.ativo && (
+                            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">Inativo</span>
+                          )}
+                          <button
+                            onClick={() => setTesModal({ open: true, editing: tes })}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            title="Editar"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleTesoureiro(tes)}
+                            className={`p-1.5 rounded-lg ${tes.ativo ? 'text-gray-400 hover:text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                            title={tes.ativo ? 'Desativar' : 'Ativar'}
+                          >
+                            <Power size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTesoureiro(tes)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                            title="Excluir"
+                          >
+                            <X size={14} />
                           </button>
                         </div>
                       ))}
@@ -510,6 +702,13 @@ export default function FinanceiroConfigPage() {
           editing={fornModal.editing}
           onClose={() => setFornModal({ open: false, editing: null })}
           onSave={handleSaveFornecedor}
+        />
+      )}
+      {tesModal.open && (
+        <TesureiroModal
+          editing={tesModal.editing}
+          onClose={() => setTesModal({ open: false, editing: null })}
+          onSave={handleSaveTesoureiro}
         />
       )}
     </div>

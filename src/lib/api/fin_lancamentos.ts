@@ -7,7 +7,8 @@ const LANCAMENTO_COLUMNS = `
   fornecedor:fin_fornecedores!fornecedor_id ( id, nome ),
   member:members!member_id ( id, name, apelido ),
   church:churches!church_id ( id, name ),
-  created_by_user:app_users!created_by ( id, name )
+  created_by_user:app_users!created_by ( id, name ),
+  tesoureiro:fin_tesoureiros!tesoureiro_id ( id, nome )
 `
 
 export interface FinLancamentoFilters {
@@ -71,8 +72,8 @@ export async function createFinLancamento(
 }
 
 export async function updateFinLancamento(id: string, patch: Partial<FinLancamento>): Promise<FinLancamento> {
-  const { id: _id, created_at, updated_at, categoria, fornecedor, member, church, created_by_user, ...rest } = patch as FinLancamento
-  void _id; void created_at; void updated_at; void categoria; void fornecedor; void member; void church; void created_by_user
+  const { id: _id, created_at, updated_at, categoria, fornecedor, member, church, created_by_user, tesoureiro, ...rest } = patch as FinLancamento
+  void _id; void created_at; void updated_at; void categoria; void fornecedor; void member; void church; void created_by_user; void tesoureiro
   const { data, error } = await supabase
     .from('fin_lancamentos')
     .update(rest)

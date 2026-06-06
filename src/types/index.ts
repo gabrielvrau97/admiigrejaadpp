@@ -274,6 +274,7 @@ export interface FinLancamento {
   origem: FinOrigem
   periodo_referencia?: string
   created_by: string
+  tesoureiro_id?: string
   observacao?: string
   created_at: string
   updated_at: string
@@ -283,6 +284,7 @@ export interface FinLancamento {
   member?: { id: string; name: string; apelido?: string } | null
   church?: { id: string; name: string } | null
   created_by_user?: { id: string; name: string } | null
+  tesoureiro?: { id: string; nome: string } | null
 }
 
 // ── Certificados ──────────────────────────────────────────────────────────

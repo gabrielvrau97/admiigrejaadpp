@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   Wallet, TrendingDown, Plus, Edit2, Trash2,
-  Loader2, ArrowUpRight, ArrowDownRight,
+  Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useTesoureiro } from '../../contexts/TesureiroContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import {
   listFinLancamentosHoje,
   deleteFinLancamento,
 } from '../../lib/api/fin_lancamentos'
 import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
+import { listFinTesoureiros } from '../../lib/api/fin_tesoureiros'
+import type { FinTesoureiro } from '../../lib/api/fin_tesoureiros'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import LancamentoModal from './LancamentoModal'
 import type { FinCategoria, FinLancamento, FinTipo } from '../../types'
@@ -31,8 +34,75 @@ interface ModalState {
   categoriaPreSelecionada?: string
 }
 
+// ── Modal obrigatório de seleção de tesoureiro ────────────────────────────────
+
+function SelecionarTesureiroModal({
+  tesoureiros,
+  onSelect,
+}: {
+  tesoureiros: FinTesoureiro[]
+  onSelect: (t: FinTesoureiro) => void
+}) {
+  const [selected, setSelected] = useState<string>('')
+
+  const ativos = tesoureiros.filter(t => t.ativo)
+
+  function handleConfirm() {
+    const found = ativos.find(t => t.id === selected)
+    if (found) onSelect(found)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="bg-emerald-600 px-6 py-5">
+          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+            <Users size={24} className="text-white" />
+          </div>
+          <h2 className="text-lg font-bold text-white">Selecione o tesoureiro</h2>
+          <p className="text-sm text-emerald-100 mt-1">Quem está realizando os lançamentos agora?</p>
+        </div>
+        <div className="p-5">
+          {ativos.length === 0 ? (
+            <div className="text-center py-6 text-gray-400 text-sm">
+              Nenhum tesoureiro cadastrado. Acesse Configurações Financeiras para adicionar.
+            </div>
+          ) : (
+            <div className="space-y-2 mb-5">
+              {ativos.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelected(t.id)}
+                  className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                    selected === t.id
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-200 hover:bg-emerald-50/50'
+                  }`}
+                >
+                  {t.nome}
+                </button>
+              ))}
+            </div>
+          )}
+          {ativos.length > 0 && (
+            <button
+              onClick={handleConfirm}
+              disabled={!selected}
+              className="w-full py-3 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 disabled:opacity-40 transition-opacity"
+            >
+              Confirmar e entrar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FinanceiroTesourariaPage() {
   const { user } = useAuth()
+  const { tesoureiro, setTesoureiro } = useTesoureiro()
   const toast = useToast()
   const confirm = useConfirm()
 
@@ -40,6 +110,18 @@ export default function FinanceiroTesourariaPage() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false, tipo: 'entrada', editing: null })
   const [categoriasRapidas, setCategoriasRapidas] = useState<FinCategoria[]>([])
+
+  // tesoureiro
+  const [tesoureiros, setTesoureiros] = useState<FinTesoureiro[]>([])
+  const [loadingTes, setLoadingTes] = useState(true)
+  const [showTrocaTes, setShowTrocaTes] = useState(false)
+
+  useEffect(() => {
+    listFinTesoureiros(APP_GROUP_ID)
+      .then(setTesoureiros)
+      .catch(console.error)
+      .finally(() => setLoadingTes(false))
+  }, [])
 
 const loadHoje = useCallback(async () => {
     if (!user) return
@@ -168,8 +250,36 @@ const loadHoje = useCallback(async () => {
     )
   }
 
+  // Enquanto carrega a lista de tesoureiros, mostra loader simples
+  if (loadingTes) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px] text-gray-400">
+        <Loader2 size={24} className="animate-spin mr-2" /> Carregando...
+      </div>
+    )
+  }
+
+  // Modal obrigatório — aparece se nenhum tesoureiro selecionado
+  const showSelecao = !tesoureiro
+
   return (
     <div className="space-y-5">
+      {/* Modal de seleção obrigatório */}
+      {showSelecao && (
+        <SelecionarTesureiroModal
+          tesoureiros={tesoureiros}
+          onSelect={t => setTesoureiro(t)}
+        />
+      )}
+
+      {/* Modal de troca de tesoureiro */}
+      {showTrocaTes && (
+        <SelecionarTesureiroModal
+          tesoureiros={tesoureiros}
+          onSelect={t => { setTesoureiro(t); setShowTrocaTes(false) }}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -181,7 +291,21 @@ const loadHoje = useCallback(async () => {
             <p className="text-sm text-gray-500">Lançamentos do dia</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Badge do tesoureiro ativo */}
+          {tesoureiro && (
+            <button
+              onClick={() => setShowTrocaTes(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm font-medium hover:bg-blue-100 transition-colors"
+              title="Clique para trocar de tesoureiro"
+            >
+              <Users size={14} />
+              {tesoureiro.nome}
+              <ChevronDown size={13} className="text-blue-400" />
+            </button>
+          )}
+
           {/* Botões de acesso rápido por categoria de entrada */}
           {categoriasRapidas.map(cat => (
             <button
@@ -193,7 +317,6 @@ const loadHoje = useCallback(async () => {
               <ArrowUpRight size={15} /> {cat.nome}
             </button>
           ))}
-          {/* Fallback: botão genérico de entrada se não houver acesso rápido */}
           {categoriasRapidas.length === 0 && (
             <button
               onClick={() => handleNovoLancamento('entrada')}
@@ -276,6 +399,7 @@ const loadHoje = useCallback(async () => {
           tipo={modal.tipo}
           editing={modal.editing}
           categoriaPreSelecionada={modal.categoriaPreSelecionada}
+          tesoureiro={tesoureiro}
           onClose={() => setModal(m => ({ ...m, open: false }))}
           onSaved={handleSaved}
         />

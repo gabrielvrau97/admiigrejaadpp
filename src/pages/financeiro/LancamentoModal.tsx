@@ -6,6 +6,8 @@ import { useData } from '../../contexts/DataContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
 import { searchFinFornecedores } from '../../lib/api/fin_fornecedores'
+import { listFinTesoureiros } from '../../lib/api/fin_tesoureiros'
+import type { FinTesoureiro } from '../../lib/api/fin_tesoureiros'
 import { createFinLancamento, updateFinLancamento } from '../../lib/api/fin_lancamentos'
 import { createFinRecibo, getFinReciboByLancamento } from '../../lib/api/fin_recibos'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
@@ -16,11 +18,12 @@ interface Props {
   tipo: FinTipo
   editing?: FinLancamento | null
   categoriaPreSelecionada?: string
+  tesoureiro?: FinTesoureiro | null
   onClose: () => void
   onSaved: (l: FinLancamento) => void
 }
 
-export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada, onClose, onSaved }: Props) {
+export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada, tesoureiro: tesoureiroProp, onClose, onSaved }: Props) {
   const { user } = useAuth()
   const { churches } = useChurch()
   const { members, visitantes } = useData()
@@ -37,6 +40,10 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
   const [observacao, setObservacao] = useState(editing?.observacao ?? '')
   const [formaPagamento, setFormaPagamento] = useState<FinFormaPagamento | ''>(editing?.forma_pagamento ?? '')
   const [parcelas, setParcelas] = useState(editing?.parcelas ? String(editing.parcelas) : '1')
+
+  // tesoureiro
+  const [tesoureiros, setTesoureiros] = useState<FinTesoureiro[]>([])
+  const [tesoreiroId, setTesoreiroId] = useState<string>(tesoureiroProp?.id ?? '')
 
   // membro
   const [memberQuery, setMemberQuery] = useState(
@@ -61,6 +68,15 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
   useEffect(() => {
     listFinCategoriasByTipo(APP_GROUP_ID, tipo).then(setCategorias).catch(console.error)
   }, [tipo])
+
+  useEffect(() => {
+    listFinTesoureiros(APP_GROUP_ID).then(ts => setTesoureiros(ts.filter(t => t.ativo))).catch(console.error)
+  }, [])
+
+  // sincroniza prop do tesoureiro quando muda (ex: troca de tesoureiro na tesouraria)
+  useEffect(() => {
+    if (tesoureiroProp) setTesoreiroId(tesoureiroProp.id)
+  }, [tesoureiroProp])
 
   // busca de membro
   useEffect(() => {
@@ -132,6 +148,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
         parcelas: formaPagamento === 'cartao_credito' ? (parseInt(parcelas) || 1) : undefined,
         origem: 'manual' as const,
         created_by: user.id,
+        tesoureiro_id: tesoreiroId || undefined,
         observacao: observacao.trim() || undefined,
       }
 
@@ -351,6 +368,23 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
                 value={referenciaCulto}
                 onChange={e => setReferenciaCulto(e.target.value)}
               />
+            </div>
+          )}
+
+          {/* Tesoureiro */}
+          {tesoureiros.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tesoureiro</label>
+              <select
+                className="form-input w-full"
+                value={tesoreiroId}
+                onChange={e => setTesoreiroId(e.target.value)}
+              >
+                <option value="">Sem tesoureiro</option>
+                {tesoureiros.map(t => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
             </div>
           )}
 

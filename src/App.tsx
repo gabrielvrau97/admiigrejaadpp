@@ -5,6 +5,7 @@ import { ChurchProvider } from './contexts/ChurchContext'
 import { ConfigProvider } from './contexts/ConfigContext'
 import { DataProvider } from './contexts/DataContext'
 import { MemberQuickViewProvider } from './contexts/MemberQuickViewContext'
+import { TesureiroProvider } from './contexts/TesureiroContext'
 import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
 import PageLoader from './components/ui/PageLoader'
@@ -128,9 +129,11 @@ export default function App() {
           <ChurchProvider>
             <ConfigProvider>
               <DataProvider>
-                <MemberQuickViewProvider>
-                  <AppRoutes />
-                </MemberQuickViewProvider>
+                <TesureiroProvider>
+                  <MemberQuickViewProvider>
+                    <AppRoutes />
+                  </MemberQuickViewProvider>
+                </TesureiroProvider>
               </DataProvider>
             </ConfigProvider>
           </ChurchProvider>
