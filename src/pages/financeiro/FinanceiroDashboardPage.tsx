@@ -233,7 +233,7 @@ function MembroEvolucaoDrawer({
       {/* overlay */}
       <div className="flex-1 bg-black/40" onClick={onClose} />
       {/* painel */}
-      <div className="w-full max-w-sm bg-white shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
         {/* header */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
@@ -289,25 +289,38 @@ function MembroEvolucaoDrawer({
             </div>
           )}
 
-          {/* calendário mensal */}
+          {/* mês a mês — grid de cards */}
           <div>
-            <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Mês a mês</p>
-            <div className="space-y-1">
-              {evolucao.map(e => (
-                <div key={e.mes} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${e.total > 0 ? 'bg-teal-50' : 'bg-gray-50'}`}>
-                  <span className="text-xs font-semibold text-gray-600 w-14 flex-shrink-0">{e.label}</span>
-                  <div className="flex-1 bg-white rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-teal-400 transition-all duration-500"
-                      style={{ width: `${e.total > 0 ? (e.total / maxMes) * 100 : 0}%` }}
-                    />
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-3">Mês a mês</p>
+            <div className="grid grid-cols-3 gap-2">
+              {evolucao.map(e => {
+                const pctBar = e.total > 0 ? (e.total / maxMes) * 100 : 0
+                return (
+                  <div
+                    key={e.mes}
+                    className={`rounded-xl p-3 flex flex-col gap-1.5 border transition-colors ${
+                      e.total > 0
+                        ? 'bg-teal-50 border-teal-100'
+                        : 'bg-gray-50 border-gray-100'
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{e.label}</span>
+                    {e.total > 0 ? (
+                      <>
+                        <span className="text-sm font-black text-teal-700 leading-none">{fmt(e.total)}</span>
+                        <div className="w-full bg-teal-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-teal-400 transition-all duration-700"
+                            style={{ width: `${pctBar}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 leading-none mt-0.5">Não contribuiu</span>
+                    )}
                   </div>
-                  {e.total > 0
-                    ? <span className="text-xs font-bold text-teal-700 w-20 text-right flex-shrink-0">{fmt(e.total)}</span>
-                    : <span className="text-[10px] text-gray-400 w-20 text-right flex-shrink-0">— não contrib.</span>
-                  }
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
