@@ -408,45 +408,24 @@ export async function getMembrosDoTitulo(
   dataInicio: string,
   dataFim: string,
 ): Promise<MembroDoTitulo[]> {
-  // 1. mesma query que getStatsPorTitulo — sem filtro no banco, filtra em JS
-  const { data: ministerios, error: e1 } = await supabase
-    .from('member_ministry')
-    .select('member_id, titles')
+  // Mesmas duas queries que getStatsPorTitulo usa (sem filtros extras que quebram)
+  const [{ data: lancs, error: e1 }, { data: ministerios, error: e2 }] = await Promise.all([
+    supabase
+      .from('fin_lancamentos')
+      .select('member_id, valor')
+      .eq('church_group_id', groupId)
+      .eq('tipo', 'entrada')
+      .not('member_id', 'is', null)
+      .gte('data_lancamento', dataInicio)
+      .lte('data_lancamento', dataFim),
+    supabase
+      .from('member_ministry')
+      .select('member_id, titles, member:members!member_id(id, name)'),
+  ])
   if (e1) throw e1
-
-  // filtra em JS: título exato (trim para evitar espaços)
-  const tituloNorm = titulo.trim()
-  const candidatos = ((ministerios ?? []) as any[])
-    .filter(m => (m.titles ?? []).some((t: string) => t.trim() === tituloNorm))
-    .map(m => m.member_id as string)
-
-  if (candidatos.length === 0) return []
-
-  // 2. membros ativos do grupo
-  const { data: membrosData, error: e2 } = await supabase
-    .from('members')
-    .select('id, name')
-    .eq('church_group_id', groupId)
-    .in('id', candidatos)
-    .neq('status', 'deleted')
   if (e2) throw e2
 
-  const membros = (membrosData ?? []) as { id: string; name: string }[]
-  if (membros.length === 0) return []
-
-  const memberIds = membros.map(m => m.id)
-
-  // 3. lançamentos de entrada desses membros no período
-  const { data: lancs, error: e3 } = await supabase
-    .from('fin_lancamentos')
-    .select('member_id, valor')
-    .eq('church_group_id', groupId)
-    .eq('tipo', 'entrada')
-    .in('member_id', memberIds)
-    .gte('data_lancamento', dataInicio)
-    .lte('data_lancamento', dataFim)
-  if (e3) throw e3
-
+  // mapa de contribuições por member_id
   const contribMap = new Map<string, { total: number; qtd: number }>()
   for (const l of (lancs ?? [])) {
     if (!l.member_id) continue
@@ -454,18 +433,26 @@ export async function getMembrosDoTitulo(
     contribMap.set(l.member_id, { total: prev.total + Number(l.valor), qtd: prev.qtd + 1 })
   }
 
-  return membros
-    .map(m => {
-      const c = contribMap.get(m.id)
-      return {
-        memberId: m.id,
-        nome: m.name,
-        totalContribuido: c?.total ?? 0,
-        qtdLancamentos: c?.qtd ?? 0,
-        contribuiu: !!c && c.total > 0,
-      }
+  // filtra membros com esse título (mesmo critério de getStatsPorTitulo)
+  const tituloNorm = titulo.trim()
+  const result: MembroDoTitulo[] = []
+
+  for (const m of (ministerios ?? []) as any[]) {
+    const titles: string[] = m.titles ?? []
+    if (!titles.some((t: string) => t.trim() === tituloNorm)) continue
+    const member = Array.isArray(m.member) ? m.member[0] : m.member
+    if (!member?.name) continue
+    const c = contribMap.get(m.member_id)
+    result.push({
+      memberId: m.member_id,
+      nome: member.name,
+      totalContribuido: c?.total ?? 0,
+      qtdLancamentos: c?.qtd ?? 0,
+      contribuiu: !!c && c.total > 0,
     })
-    .sort((a, b) => b.totalContribuido - a.totalContribuido)
+  }
+
+  return result.sort((a, b) => b.totalContribuido - a.totalContribuido)
 }
 
 // ── evolução de contribuição de um membro nos últimos 12 meses ────────────
