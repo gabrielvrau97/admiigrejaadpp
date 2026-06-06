@@ -45,7 +45,8 @@ export async function listFinLancamentos(filters: FinLancamentoFilters): Promise
 }
 
 export async function listFinLancamentosHoje(userId: string, groupId: string): Promise<FinLancamento[]> {
-  const hoje = new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const hoje = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const { data, error } = await supabase
     .from('fin_lancamentos')
     .select(LANCAMENTO_COLUMNS)
@@ -89,7 +90,8 @@ export async function deleteFinLancamento(id: string): Promise<void> {
 
 // Resumo do dia (caixa) para um usuário
 export async function getFinCaixaDia(userId: string, groupId: string): Promise<{ entradas: number; saidas: number }> {
-  const hoje = new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const hoje = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const { data, error } = await supabase
     .from('fin_lancamentos')
     .select('tipo, valor')
