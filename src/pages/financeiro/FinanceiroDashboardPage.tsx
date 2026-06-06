@@ -529,23 +529,39 @@ export default function FinanceiroDashboardPage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([
-      getDashKpis(APP_GROUP_ID, inicio, fim),
-      getFluxo12Meses(APP_GROUP_ID),
-      getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim),
-      getDistribuicaoCategoria(APP_GROUP_ID, 'saida', inicio, fim),
-      getTopContribuintes(APP_GROUP_ID, inicio, fim),
-      getDistribuicaoFormaPagamento(APP_GROUP_ID, 'entrada', inicio, fim),
-      getDistribuicaoFormaPagamento(APP_GROUP_ID, 'saida', inicio, fim),
-      getStatsPorTitulo(APP_GROUP_ID, inicio, fim),
-      getContribNaoCadastrados(APP_GROUP_ID, inicio, fim),
-      getEvolucaoContribuicao(APP_GROUP_ID),
-    ]).then(([k, f, de, ds, tc, fe, fs, ts, nc, ev]) => {
+
+    async function load() {
+      function safe<T>(p: Promise<T>, fallback: T, label: string): Promise<T> {
+        return p.catch(e => { console.error(`[dashboard] ${label}:`, e); return fallback })
+      }
+
+      const [k, f, de, ds, tc, fe, fs, ts, nc, ev] = await Promise.all([
+        safe(getDashKpis(APP_GROUP_ID, inicio, fim), null, 'kpis'),
+        safe(getFluxo12Meses(APP_GROUP_ID), [], 'fluxo'),
+        safe(getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim), [], 'distEntrada'),
+        safe(getDistribuicaoCategoria(APP_GROUP_ID, 'saida', inicio, fim), [], 'distSaida'),
+        safe(getTopContribuintes(APP_GROUP_ID, inicio, fim), [], 'topContrib'),
+        safe(getDistribuicaoFormaPagamento(APP_GROUP_ID, 'entrada', inicio, fim), [], 'formaEntrada'),
+        safe(getDistribuicaoFormaPagamento(APP_GROUP_ID, 'saida', inicio, fim), [], 'formaSaida'),
+        safe(getStatsPorTitulo(APP_GROUP_ID, inicio, fim), [], 'titulos'),
+        safe(getContribNaoCadastrados(APP_GROUP_ID, inicio, fim), [], 'naoCadastrados'),
+        safe(getEvolucaoContribuicao(APP_GROUP_ID), [], 'evolucao'),
+      ])
+
       if (cancelled) return
-      setKpis(k); setFluxo(f); setDistEntrada(de); setDistSaida(ds); setTopContrib(tc)
-      setFormaEntrada(fe); setFormaSaida(fs); setTituloStats(ts)
-      setNaoCadastrados(nc); setEvolucao(ev)
-    }).catch(console.error).finally(() => { if (!cancelled) setLoading(false) })
+      if (k) setKpis(k)
+      setFluxo(f as MesFluxo[])
+      setDistEntrada(de as CatFatia[])
+      setDistSaida(ds as CatFatia[])
+      setTopContrib(tc as TopContribuinte[])
+      setFormaEntrada(fe as FormaPagamentoStat[])
+      setFormaSaida(fs as FormaPagamentoStat[])
+      setTituloStats(ts as TituloStat[])
+      setNaoCadastrados(nc as ContribNaoCadastrado[])
+      setEvolucao(ev as EvolucaoMes[])
+    }
+
+    load().finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [inicio, fim, refreshKey])
 
