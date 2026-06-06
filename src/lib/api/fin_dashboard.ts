@@ -278,10 +278,10 @@ export async function getStatsPorTitulo(
     .lte('data_lancamento', dataFim)
   if (e1) throw e1
 
-  // busca membros com títulos
+  // busca membros com títulos — só ativos
   const { data: ministerios, error: e2 } = await supabase
     .from('member_ministry')
-    .select('member_id, titles')
+    .select('member_id, titles, member:members!member_id(status)')
   if (e2) throw e2
 
   // IDs que contribuíram + total
@@ -291,10 +291,12 @@ export async function getStatsPorTitulo(
     contribMap.set(l.member_id, (contribMap.get(l.member_id) ?? 0) + Number(l.valor))
   }
 
-  // agrupa por título
+  // agrupa por título — apenas membros ativos
   const map = new Map<string, { totalMembros: number; contribuiram: number; totalContribuido: number }>()
 
   for (const m of (ministerios ?? []) as any[]) {
+    const member = Array.isArray(m.member) ? m.member[0] : m.member
+    if (member?.status !== 'ativo') continue
     const titles: string[] = m.titles ?? []
     for (const t of titles) {
       if (!t) continue
@@ -420,7 +422,7 @@ export async function getMembrosDoTitulo(
       .lte('data_lancamento', dataFim),
     supabase
       .from('member_ministry')
-      .select('member_id, titles, member:members!member_id(id, name)'),
+      .select('member_id, titles, member:members!member_id(id, name, status)'),
   ])
   if (e1) throw e1
   if (e2) throw e2
@@ -433,7 +435,7 @@ export async function getMembrosDoTitulo(
     contribMap.set(l.member_id, { total: prev.total + Number(l.valor), qtd: prev.qtd + 1 })
   }
 
-  // filtra membros com esse título (mesmo critério de getStatsPorTitulo)
+  // filtra membros com esse título — apenas ativos
   const tituloNorm = titulo.trim()
   const result: MembroDoTitulo[] = []
 
@@ -442,6 +444,7 @@ export async function getMembrosDoTitulo(
     if (!titles.some((t: string) => t.trim() === tituloNorm)) continue
     const member = Array.isArray(m.member) ? m.member[0] : m.member
     if (!member?.name) continue
+    if (member.status !== 'ativo') continue
     const c = contribMap.get(m.member_id)
     result.push({
       memberId: m.member_id,
