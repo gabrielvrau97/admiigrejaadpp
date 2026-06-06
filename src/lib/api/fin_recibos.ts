@@ -20,7 +20,8 @@ const COLS = `
     categoria:fin_categorias!categoria_id ( id, nome, cor ),
     member:members!member_id ( id, name, apelido, cpf, contacts:member_contacts!member_contacts_member_id_fkey(cellphone1, phones) ),
     church:churches!church_id ( id, name, address, phone ),
-    created_by_user:app_users!created_by ( id, name )
+    created_by_user:app_users!created_by ( id, name ),
+    tesoureiro:fin_tesoureiros!tesoureiro_id ( id, nome )
   )
 `
 
@@ -46,6 +47,7 @@ export interface FinReciboComLancamento extends FinRecibo {
     } | null
     church?: { id: string; name: string; address?: string; phone?: string } | null
     created_by_user?: { id: string; name: string } | null
+    tesoureiro?: { id: string; nome: string } | null
   }
 }
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Printer, MessageCircle, CheckCircle } from 'lucide-react'
+import { X, Printer, MessageCircle, CheckCircle, Download } from 'lucide-react'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import { useAuth } from '../../contexts/AuthContext'
 import { ROLE_LABELS } from '../../lib/permissions'
@@ -47,7 +47,6 @@ function fmtCpf(cpf?: string) {
 function getMemberPhone(recibo: FinReciboComLancamento): string {
   const raw = recibo.lancamento.member?.contacts
   if (!raw) return ''
-  // Supabase pode retornar objeto único ou array em joins 1-para-1
   const contacts = Array.isArray(raw) ? raw[0] : raw
   if (!contacts) return ''
   if (contacts.cellphone1) return contacts.cellphone1
@@ -55,11 +54,21 @@ function getMemberPhone(recibo: FinReciboComLancamento): string {
   return ''
 }
 
+function slugify(nome: string) {
+  return nome
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .slice(0, 40)
+}
+
 function buildReciboHtml(
   recibo: FinReciboComLancamento,
   emitidoPorNome: string,
   emitidoPorEmail: string,
   emitidoPorRole: string,
+  tesoreiroNome: string,
 ): string {
   const l = recibo.lancamento
   const isEntrada = l.tipo === 'entrada'
@@ -69,17 +78,18 @@ function buildReciboHtml(
   const agora = new Date()
   const dataImpressao = `${String(agora.getDate()).padStart(2,'0')}/${String(agora.getMonth()+1).padStart(2,'0')}/${agora.getFullYear()} às ${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`
 
-  // Monta texto do motivo/descrição
   const descPartes: string[] = []
   if (l.categoria?.nome) descPartes.push(l.categoria.nome)
   if (l.referencia_culto) descPartes.push(l.referencia_culto)
   if (l.descricao) descPartes.push(l.descricao)
   const motivoTexto = descPartes.join(' — ') || (isEntrada ? 'contribuição voluntária' : 'pagamento')
 
-  // Localidade da filial para linha de assinatura
   const churchAddress = l.church?.address ?? ''
   const cidadeMatch = churchAddress.match(/([A-Za-zÀ-ÿ\s]+)\/([A-Z]{2})/i)
   const localidade = cidadeMatch ? `${cidadeMatch[1].trim()}, ${cidadeMatch[2].toUpperCase()}` : ''
+
+  // Nome para exibir na assinatura do tesoureiro: prioriza tesoureiro selecionado, fallback para usuário logado
+  const nomeTesoureiro = tesoreiroNome || l.tesoureiro?.nome || l.created_by_user?.name || emitidoPorNome
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -182,7 +192,7 @@ function buildReciboHtml(
   <div class="assinaturas">
     <div class="ass-bloco">
       <div class="ass-linha"></div>
-      <div class="ass-nome">${l.created_by_user?.name ?? ''}</div>
+      <div class="ass-nome">${nomeTesoureiro}</div>
       <div class="ass-cargo">Tesoureiro(a)</div>
     </div>
     <div class="ass-bloco">
@@ -193,7 +203,7 @@ function buildReciboHtml(
   </div>
 
   <div class="rodape">
-    Impresso em ${dataImpressao} por ${emitidoPorEmail} (${emitidoPorRole})
+    Impresso em ${dataImpressao} por ${emitidoPorEmail} (${emitidoPorRole})${nomeTesoureiro && nomeTesoureiro !== emitidoPorNome ? ` · Tesoureiro: ${nomeTesoureiro}` : ''}
   </div>
 </div>
 </body>
@@ -206,7 +216,6 @@ export default function ReciboModal({ recibo, onClose }: Props) {
   const isEntrada = l.tipo === 'entrada'
   const nomeContribuinte = l.member?.name ?? l.member_nome_manual ?? ''
 
-  // Telefone: primeiro tenta o do membro, depois da filial como fallback
   const memberPhone = getMemberPhone(recibo)
   const whatsPhone = memberPhone || l.church?.phone || ''
   const hasPhone = !!whatsPhone.replace(/\D/g, '')
@@ -214,9 +223,29 @@ export default function ReciboModal({ recibo, onClose }: Props) {
   const emitidoPorNome = user?.name ?? ''
   const emitidoPorEmail = user?.email ?? ''
   const emitidoPorRole = user?.role ? (ROLE_LABELS[user.role] ?? user.role) : ''
+  // Tesoureiro: vem do join do lançamento (tesoureiro_id)
+  const tesoreiroNome = l.tesoureiro?.nome ?? ''
+
+  function getHtml() {
+    return buildReciboHtml(recibo, emitidoPorNome, emitidoPorEmail, emitidoPorRole, tesoreiroNome)
+  }
+
+  function handleDownload() {
+    const html = getHtml()
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const nomeSlug = slugify(nomeContribuinte || 'contribuinte')
+    a.href = url
+    a.download = `Recibo_${nomeSlug}_${recibo.numero}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   function handleImprimir() {
-    const html = buildReciboHtml(recibo, emitidoPorNome, emitidoPorEmail, emitidoPorRole)
+    const html = getHtml()
     const win = window.open('', '_blank', 'width=560,height=650')
     if (!win) return
     win.document.write(html)
@@ -243,6 +272,7 @@ export default function ReciboModal({ recibo, onClose }: Props) {
       `Data: ${fmtDate(l.data_lancamento)}`,
       l.descricao ? `Descrição: ${l.descricao}` : '',
       l.referencia_culto ? `Ref.: ${l.referencia_culto}` : '',
+      tesoreiroNome ? `Tesoureiro: ${tesoreiroNome}` : '',
     ].filter(Boolean).join('\n')
 
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(lines)}`
@@ -285,22 +315,30 @@ export default function ReciboModal({ recibo, onClose }: Props) {
               {formaPagLabel(l.forma_pagamento, l.parcelas)}
             </div>
           )}
+          {tesoreiroNome && (
+            <div className="mt-1 text-xs text-gray-500">
+              Tesoureiro: <span className="font-medium">{tesoreiroNome}</span>
+            </div>
+          )}
         </div>
 
         {/* Ações */}
         <div className="px-5 py-4 space-y-2">
           <p className="text-xs text-gray-500 mb-3 text-center">O que deseja fazer com o recibo?</p>
 
+          {/* Download — destaque principal */}
           <button
-            onClick={handleImprimir}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-sm font-medium text-gray-700"
+            onClick={handleDownload}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-emerald-400 bg-emerald-50 hover:bg-emerald-100 transition-all text-sm font-medium text-emerald-800"
           >
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <Printer size={15} className="text-blue-600" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
+              <Download size={15} className="text-white" />
             </div>
             <div className="text-left">
-              <div className="font-semibold text-gray-800">Imprimir / Salvar PDF</div>
-              <div className="text-xs text-gray-400">Abre o recibo formatado (meia folha A4)</div>
+              <div className="font-bold text-emerald-900">Baixar recibo</div>
+              <div className="text-xs text-emerald-600">
+                Recibo_{slugify(nomeContribuinte || 'contribuinte')}_{recibo.numero}.html
+              </div>
             </div>
           </button>
 
@@ -323,10 +361,23 @@ export default function ReciboModal({ recibo, onClose }: Props) {
           </button>
 
           <button
+            onClick={handleImprimir}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-sm font-medium text-gray-700"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <Printer size={15} className="text-blue-600" />
+            </div>
+            <div className="text-left">
+              <div className="font-semibold text-gray-800">Imprimir / Salvar PDF</div>
+              <div className="text-xs text-gray-400">Abre o recibo formatado (A5)</div>
+            </div>
+          </button>
+
+          <button
             onClick={onClose}
             className="w-full px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
           >
-            Continuar sem recibo
+            Fechar
           </button>
         </div>
       </div>

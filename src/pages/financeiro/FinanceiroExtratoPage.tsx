@@ -157,7 +157,7 @@ export default function FinanceiroExtratoPage() {
       'Referência culto': l.referencia_culto ?? '',
       'Valor (R$)': Number(l.valor),
       Origem: l.origem,
-      'Lançado por': l.created_by_user?.name ?? '',
+      'Lançado por': l.tesoureiro?.nome ?? l.created_by_user?.name ?? '',
       Observação: l.observacao ?? '',
     }))
 
@@ -447,7 +447,9 @@ export default function FinanceiroExtratoPage() {
                     }`}>
                       {isEntrada ? '+' : '-'}{fmt(Number(l.valor))}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 text-xs">{l.created_by_user?.name ?? '—'}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 text-xs">
+                      {l.tesoureiro?.nome ?? l.created_by_user?.name ?? '—'}
+                    </td>
                     {isMaster && (
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         <div className="flex items-center gap-1">
