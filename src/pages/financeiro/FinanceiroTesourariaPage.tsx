@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   Wallet, TrendingDown, Plus, Edit2, Trash2,
-  CalendarDays, History, Loader2, ArrowUpRight, ArrowDownRight,
+  Loader2, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import {
-  listFinLancamentosHoje, listFinLancamentos,
+  listFinLancamentosHoje,
   deleteFinLancamento,
 } from '../../lib/api/fin_lancamentos'
 import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
@@ -24,8 +24,6 @@ function fmtData(iso: string) {
   try { return format(parseISO(iso), "dd/MM/yyyy", { locale: ptBR }) } catch { return iso }
 }
 
-type TabKey = 'hoje' | 'historico'
-
 interface ModalState {
   open: boolean
   tipo: FinTipo
@@ -38,43 +36,22 @@ export default function FinanceiroTesourariaPage() {
   const toast = useToast()
   const confirm = useConfirm()
 
-  const [tab, setTab] = useState<TabKey>('hoje')
   const [lancamentosHoje, setLancamentosHoje] = useState<FinLancamento[]>([])
-  const [historico, setHistorico] = useState<FinLancamento[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false, tipo: 'entrada', editing: null })
   const [categoriasRapidas, setCategoriasRapidas] = useState<FinCategoria[]>([])
 
-  // filtros de histórico
-  const [dataInicio, setDataInicio] = useState(() => {
-    const d = new Date(); d.setDate(1)
-    return d.toISOString().slice(0, 10)
-  })
-  const [dataFim, setDataFim] = useState(() => new Date().toISOString().slice(0, 10))
-
-  const loadHoje = useCallback(async () => {
+const loadHoje = useCallback(async () => {
     if (!user) return
     const lanc = await listFinLancamentosHoje(user.id, APP_GROUP_ID)
     setLancamentosHoje(lanc)
   }, [user])
 
-  const loadHistorico = useCallback(async () => {
-    if (!user) return
-    const data = await listFinLancamentos({
-      groupId: APP_GROUP_ID,
-      createdBy: user.role === 'master' ? undefined : user.id,
-      dataInicio,
-      dataFim,
-    })
-    setHistorico(data)
-  }, [user, dataInicio, dataFim])
-
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [, , cats] = await Promise.all([
+      const [, cats] = await Promise.all([
         loadHoje(),
-        loadHistorico(),
         listFinCategoriasByTipo(APP_GROUP_ID, 'entrada'),
       ])
       setCategoriasRapidas(cats.filter(c => c.acesso_rapido && c.ativo))
@@ -84,7 +61,7 @@ export default function FinanceiroTesourariaPage() {
     } finally {
       setLoading(false)
     }
-  }, [loadHoje, loadHistorico, toast])
+  }, [loadHoje, toast])
 
   useEffect(() => { loadAll() }, [loadAll])
 
@@ -193,7 +170,7 @@ export default function FinanceiroTesourariaPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-800">Tesouraria</h1>
-            <p className="text-sm text-gray-500">Seus lançamentos do dia e histórico</p>
+            <p className="text-sm text-gray-500">Lançamentos do dia</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -244,131 +221,43 @@ export default function FinanceiroTesourariaPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Lista do dia */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setTab('hoje')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'hoje'
-                ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <CalendarDays size={14} /> Hoje
-            {lancamentosHoje.length > 0 && (
-              <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                {lancamentosHoje.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setTab('historico')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'historico'
-                ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <History size={14} /> Histórico
-          </button>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-700">Lançamentos de hoje</span>
+          {lancamentosHoje.length > 0 && (
+            <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+              {lancamentosHoje.length}
+            </span>
+          )}
         </div>
-
         <div className="p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-gray-400">
               <Loader2 size={22} className="animate-spin mr-2" /> Carregando...
             </div>
+          ) : lancamentosHoje.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-gray-400 text-sm">Nenhum lançamento hoje.</p>
+              <div className="flex gap-2 justify-center mt-3">
+                <button
+                  onClick={() => handleNovoLancamento('entrada')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100"
+                >
+                  <Plus size={12} /> Registrar entrada
+                </button>
+                <button
+                  onClick={() => handleNovoLancamento('saida')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                >
+                  <Plus size={12} /> Registrar saída
+                </button>
+              </div>
+            </div>
           ) : (
-            <>
-              {/* Tab Hoje */}
-              {tab === 'hoje' && (
-                <div className="space-y-2">
-                  {lancamentosHoje.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className="text-gray-400 text-sm">Nenhum lançamento hoje.</p>
-                      <div className="flex gap-2 justify-center mt-3">
-                        <button
-                          onClick={() => handleNovoLancamento('entrada')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100"
-                        >
-                          <Plus size={12} /> Registrar entrada
-                        </button>
-                        <button
-                          onClick={() => handleNovoLancamento('saida')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-                        >
-                          <Plus size={12} /> Registrar saída
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    lancamentosHoje.map(l => <LancamentoRow key={l.id} l={l} compact />)
-                  )}
-                </div>
-              )}
-
-              {/* Tab Histórico */}
-              {tab === 'historico' && (
-                <div className="space-y-4">
-                  {/* Filtros de período */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs text-gray-500 whitespace-nowrap">De</label>
-                      <input
-                        type="date"
-                        className="form-input text-sm"
-                        value={dataInicio}
-                        onChange={e => setDataInicio(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs text-gray-500">até</label>
-                      <input
-                        type="date"
-                        className="form-input text-sm"
-                        value={dataFim}
-                        onChange={e => setDataFim(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      onClick={loadHistorico}
-                      className="px-3 py-1.5 text-xs font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-800"
-                    >
-                      Filtrar
-                    </button>
-                  </div>
-
-                  {/* Totalizador do período */}
-                  {historico.length > 0 && (
-                    <div className="flex gap-4 text-sm flex-wrap">
-                      <span className="text-emerald-600 font-medium">
-                        Entradas: {fmtMoeda(historico.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0))}
-                      </span>
-                      <span className="text-red-500 font-medium">
-                        Saídas: {fmtMoeda(historico.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0))}
-                      </span>
-                      <span className="text-gray-600 font-medium">
-                        Saldo: {fmtMoeda(
-                          historico.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0) -
-                          historico.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0)
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {historico.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400 text-sm">
-                      Nenhum lançamento no período.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {historico.map(l => <LancamentoRow key={l.id} l={l} />)}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
+            <div className="space-y-2">
+              {lancamentosHoje.map(l => <LancamentoRow key={l.id} l={l} compact />)}
+            </div>
           )}
         </div>
       </div>
