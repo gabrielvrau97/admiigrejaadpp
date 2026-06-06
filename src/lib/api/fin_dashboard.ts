@@ -314,6 +314,84 @@ export async function getStatsPorTitulo(
     .sort((a, b) => b.totalContribuido - a.totalContribuido)
 }
 
+// ── contribuintes não cadastrados ─────────────────────────────────────────
+
+export interface ContribNaoCadastrado {
+  nome: string
+  total: number
+}
+
+export async function getContribNaoCadastrados(
+  groupId: string,
+  dataInicio: string,
+  dataFim: string,
+  limit = 20,
+): Promise<ContribNaoCadastrado[]> {
+  const { data, error } = await supabase
+    .from('fin_lancamentos')
+    .select('member_nome_manual, valor')
+    .eq('church_group_id', groupId)
+    .eq('tipo', 'entrada')
+    .is('member_id', null)
+    .not('member_nome_manual', 'is', null)
+    .gte('data_lancamento', dataInicio)
+    .lte('data_lancamento', dataFim)
+  if (error) throw error
+
+  const map = new Map<string, number>()
+  for (const r of (data ?? [])) {
+    const nome = (r.member_nome_manual as string).trim()
+    if (!nome) continue
+    map.set(nome, (map.get(nome) ?? 0) + Number(r.valor))
+  }
+
+  return [...map.entries()]
+    .map(([nome, total]) => ({ nome, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limit)
+}
+
+// ── evolução mensal de contribuições cadastrados vs não cadastrados ────────
+
+export interface EvolucaoMes {
+  label: string
+  mes: string
+  cadastrados: number
+  naoCadastrados: number
+}
+
+export async function getEvolucaoContribuicao(groupId: string): Promise<EvolucaoMes[]> {
+  const now = new Date()
+  const months: { year: number; month: number }[] = []
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
+  }
+
+  const { first } = monthRange(months[0].year, months[0].month)
+  const { last } = monthRange(months[11].year, months[11].month)
+
+  const { data, error } = await supabase
+    .from('fin_lancamentos')
+    .select('tipo, valor, data_lancamento, member_id, member_nome_manual')
+    .eq('church_group_id', groupId)
+    .eq('tipo', 'entrada')
+    .gte('data_lancamento', first)
+    .lte('data_lancamento', last)
+  if (error) throw error
+
+  const rows = data ?? []
+  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+  return months.map(({ year, month }) => {
+    const mesStr = `${year}-${pad(month)}`
+    const mesRows = rows.filter(r => r.data_lancamento.startsWith(mesStr))
+    const cadastrados = mesRows.filter(r => r.member_id).reduce((s, r) => s + Number(r.valor), 0)
+    const naoCadastrados = mesRows.filter(r => !r.member_id && r.member_nome_manual).reduce((s, r) => s + Number(r.valor), 0)
+    return { label: `${MESES[month - 1]}/${String(year).slice(2)}`, mes: mesStr, cadastrados, naoCadastrados }
+  })
+}
+
 // ── KPIs do período ───────────────────────────────────────────────────────
 
 export interface DashKpis {
@@ -323,6 +401,10 @@ export interface DashKpis {
   ticketMedioEntrada: number
   qtdLancamentos: number
   qtdContribuintes: number
+  totalCadastrados: number
+  totalNaoCadastrados: number
+  qtdCadastrados: number
+  qtdNaoCadastrados: number
 }
 
 export async function getDashKpis(
@@ -345,11 +427,15 @@ export async function getDashKpis(
   const totalEntradas = entradas.reduce((s, r) => s + Number(r.valor), 0)
   const totalSaidas = saidas.reduce((s, r) => s + Number(r.valor), 0)
 
+  const entradasCadastradas = entradas.filter(r => r.member_id)
+  const entradasNaoCadastradas = entradas.filter(r => !r.member_id && r.member_nome_manual)
+
   const contribuintesIds = new Set(
-    entradas
-      .filter(r => r.member_id || r.member_nome_manual)
+    entradas.filter(r => r.member_id || r.member_nome_manual)
       .map(r => r.member_id ?? ('m::' + r.member_nome_manual))
   )
+  const cadastradosIds = new Set(entradasCadastradas.map(r => r.member_id))
+  const naoCadastradosNomes = new Set(entradasNaoCadastradas.map(r => r.member_nome_manual?.trim()).filter(Boolean))
 
   return {
     totalEntradas,
@@ -358,5 +444,9 @@ export async function getDashKpis(
     ticketMedioEntrada: entradas.length > 0 ? totalEntradas / entradas.length : 0,
     qtdLancamentos: rows.length,
     qtdContribuintes: contribuintesIds.size,
+    totalCadastrados: entradasCadastradas.reduce((s, r) => s + Number(r.valor), 0),
+    totalNaoCadastrados: entradasNaoCadastradas.reduce((s, r) => s + Number(r.valor), 0),
+    qtdCadastrados: cadastradosIds.size,
+    qtdNaoCadastrados: naoCadastradosNomes.size,
   }
 }

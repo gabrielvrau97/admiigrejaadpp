@@ -1,19 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AreaChart, Area, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Users, Receipt, RefreshCw,
-  ChevronDown, ChevronUp, X,
+  ChevronDown, ChevronUp, X, UserCheck, UserX,
 } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { useData } from '../../contexts/DataContext'
 import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
+  getContribNaoCadastrados, getEvolucaoContribuicao,
   type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis,
   type FormaPagamentoStat, type CatDetalhe, type TituloStat,
+  type ContribNaoCadastrado, type EvolucaoMes,
 } from '../../lib/api/fin_dashboard'
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -225,6 +227,8 @@ export default function FinanceiroDashboardPage() {
   const [formaEntrada, setFormaEntrada] = useState<FormaPagamentoStat[]>([])
   const [formaSaida, setFormaSaida] = useState<FormaPagamentoStat[]>([])
   const [tituloStats, setTituloStats] = useState<TituloStat[]>([])
+  const [naoCadastrados, setNaoCadastrados] = useState<ContribNaoCadastrado[]>([])
+  const [evolucao, setEvolucao] = useState<EvolucaoMes[]>([])
 
   const { inicio, fim } = useMemo(() => getPeriodo(periodo, customInicio, customFim), [periodo, customInicio, customFim])
 
@@ -240,10 +244,13 @@ export default function FinanceiroDashboardPage() {
       getDistribuicaoFormaPagamento(APP_GROUP_ID, 'entrada', inicio, fim),
       getDistribuicaoFormaPagamento(APP_GROUP_ID, 'saida', inicio, fim),
       getStatsPorTitulo(APP_GROUP_ID, inicio, fim),
-    ]).then(([k, f, de, ds, tc, fe, fs, ts]) => {
+      getContribNaoCadastrados(APP_GROUP_ID, inicio, fim),
+      getEvolucaoContribuicao(APP_GROUP_ID),
+    ]).then(([k, f, de, ds, tc, fe, fs, ts, nc, ev]) => {
       if (cancelled) return
       setKpis(k); setFluxo(f); setDistEntrada(de); setDistSaida(ds); setTopContrib(tc)
       setFormaEntrada(fe); setFormaSaida(fs); setTituloStats(ts)
+      setNaoCadastrados(nc); setEvolucao(ev)
     }).catch(console.error).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [inicio, fim, refreshKey])
@@ -262,8 +269,6 @@ export default function FinanceiroDashboardPage() {
   const grandTotalEntrada = distEntrada.reduce((s, c) => s + c.total, 0)
   const grandTotalSaida = distSaida.reduce((s, c) => s + c.total, 0)
 
-  // lançamentos de membros vs não-membros (calculado dos top contribuintes + kpis)
-  const lancMembros = topContrib.reduce((s, c) => s + c.contagem, 0)
   const lancTotal = kpis?.qtdLancamentos ?? 0
 
   // títulos filtrados
@@ -484,9 +489,11 @@ export default function FinanceiroDashboardPage() {
           )}
         </div>
 
-        {/* ── Pessoas & Contribuição (linha inteira) ───────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        {/* ── Pessoas & Contribuição ───────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
+
+          {/* cabeçalho */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center">
                 <Users size={15} className="text-teal-600" />
@@ -496,22 +503,7 @@ export default function FinanceiroDashboardPage() {
                 <p className="text-xs text-gray-400">{periodoLabel[periodo]}</p>
               </div>
             </div>
-            {/* filtro por título */}
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Filtrar por título..."
-                  value={pessoasFiltroTitulo}
-                  onChange={e => setPessoasFiltroTitulo(e.target.value)}
-                  className="form-input text-xs py-1.5 px-2 pr-6 w-36"
-                />
-                {pessoasFiltroTitulo && (
-                  <button onClick={() => setPessoasFiltroTitulo('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400">
-                    <X size={11} />
-                  </button>
-                )}
-              </div>
               <button
                 onClick={() => setPessoasShowTitulos(v => !v)}
                 className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${pessoasShowTitulos ? 'bg-teal-50 border-teal-300 text-teal-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
@@ -521,54 +513,134 @@ export default function FinanceiroDashboardPage() {
             </div>
           </div>
 
-          {/* Macros — linha com 4 cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          {/* 4 macro cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-gray-50 rounded-xl p-3 text-center">
               <div className="text-2xl font-black text-gray-900">{membrosAtivos.length}</div>
               <div className="text-[10px] text-gray-500 mt-0.5">Membros ativos</div>
             </div>
             <div className="bg-teal-50 rounded-xl p-3 text-center">
-              <div className="text-2xl font-black text-teal-700">{kpis?.qtdContribuintes ?? 0}</div>
-              <div className="text-[10px] text-teal-600 mt-0.5">Contribuíram</div>
+              <div className="text-2xl font-black text-teal-700">{kpis?.qtdCadastrados ?? 0}</div>
+              <div className="text-[10px] text-teal-600 mt-0.5">Cadastrados contrib.</div>
             </div>
             <div className="bg-blue-50 rounded-xl p-3 text-center">
               <div className="text-2xl font-black text-blue-700">{pctContrib}%</div>
               <div className="text-[10px] text-blue-600 mt-0.5">Engajamento</div>
             </div>
-            <div className="bg-purple-50 rounded-xl p-3 text-center">
-              <div className="text-2xl font-black text-purple-700">{lancMembros}</div>
-              <div className="text-[10px] text-purple-600 mt-0.5">Lanç. de membros</div>
+            <div className="bg-amber-50 rounded-xl p-3 text-center">
+              <div className="text-2xl font-black text-amber-700">{kpis?.qtdNaoCadastrados ?? 0}</div>
+              <div className="text-[10px] text-amber-600 mt-0.5">Não cadastrados</div>
             </div>
           </div>
 
-          {/* Barra de engajamento */}
-          <div className="mb-5">
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-gray-600 font-medium">Membros que contribuíram</span>
-              <span className="font-semibold text-gray-700">{kpis?.qtdContribuintes ?? 0} de {membrosAtivos.length}</span>
+          {/* barra cadastrados vs não cadastrados */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                <UserCheck size={12} className="text-teal-500" />
+                <span className="text-xs text-gray-600">Cadastrados</span>
+              </div>
+              <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-1000"
+                  style={{ width: `${(kpis?.totalEntradas ?? 0) > 0 ? ((kpis?.totalCadastrados ?? 0) / (kpis?.totalEntradas ?? 1)) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="text-xs font-bold text-teal-700 w-24 text-right flex-shrink-0">{fmt(kpis?.totalCadastrados ?? 0)}</span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-1000 ease-out" style={{ width: `${pctContrib}%` }} />
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-              <span>{membrosAtivos.length - (kpis?.qtdContribuintes ?? 0)} sem contribuição no período</span>
-              <span>{lancTotal - lancMembros > 0 ? `${lancTotal - lancMembros} lanç. sem vínculo` : ''}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                <UserX size={12} className="text-amber-500" />
+                <span className="text-xs text-gray-600">Não cadastrados</span>
+              </div>
+              <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all duration-1000"
+                  style={{ width: `${(kpis?.totalEntradas ?? 0) > 0 ? ((kpis?.totalNaoCadastrados ?? 0) / (kpis?.totalEntradas ?? 1)) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="text-xs font-bold text-amber-700 w-24 text-right flex-shrink-0">{fmt(kpis?.totalNaoCadastrados ?? 0)}</span>
             </div>
           </div>
 
-          {/* Por título — tabela */}
+          {/* lista de não cadastrados */}
+          {naoCadastrados.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <UserX size={13} className="text-amber-500" />
+                <span className="text-xs font-semibold text-gray-700">Contribuintes não cadastrados na secretaria</span>
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">{naoCadastrados.length}</span>
+              </div>
+              <div className="space-y-1 max-h-44 overflow-y-auto">
+                {naoCadastrados.map((nc, i) => {
+                  const maxNc = naoCadastrados[0]?.total ?? 1
+                  const pct = (nc.total / maxNc) * 100
+                  return (
+                    <div key={nc.nome + i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-50/60 hover:bg-amber-50 transition-colors">
+                      <span className="text-[10px] text-amber-400 font-bold w-5 flex-shrink-0">#{i + 1}</span>
+                      <span className="flex-1 text-xs font-medium text-gray-800 truncate">{nc.nome}</span>
+                      <div className="w-20 bg-amber-100 rounded-full h-1.5 overflow-hidden flex-shrink-0">
+                        <div className="h-full rounded-full bg-amber-400 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-amber-700 w-20 text-right flex-shrink-0">{fmt(nc.total)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* evolução de contribuição 12 meses */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-semibold text-gray-700">Evolução de contribuição — 12 meses</span>
+              <div className="flex items-center gap-3 ml-auto text-[10px] text-gray-500">
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-teal-500 inline-block" /> Cadastrados</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-amber-400 inline-block" /> Não cadastrados</span>
+              </div>
+            </div>
+            {loading ? (
+              <div className="h-36 bg-gray-50 rounded-xl animate-pulse" />
+            ) : (
+              <ResponsiveContainer width="100%" height={150}>
+                <LineChart data={evolucao} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={fmtK} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={48} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Line type="monotone" dataKey="cadastrados" name="Cadastrados" stroke="#14b8a6" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#14b8a6', strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="naoCadastrados" name="Não cadastrados" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* por título */}
           {pessoasShowTitulos && (
             <div>
-              <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-2">
-                Contribuição por Título
-                {pessoasFiltroTitulo && <span className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full text-[10px]">"{pessoasFiltroTitulo}"</span>}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold text-gray-700">Contribuição por Título</span>
+                <div className="relative ml-auto">
+                  <input
+                    type="text"
+                    placeholder="Filtrar título..."
+                    value={pessoasFiltroTitulo}
+                    onChange={e => setPessoasFiltroTitulo(e.target.value)}
+                    className="form-input text-xs py-1 px-2 pr-6 w-32"
+                  />
+                  {pessoasFiltroTitulo && (
+                    <button onClick={() => setPessoasFiltroTitulo('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400">
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
               </div>
               {loading ? (
-                <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />)}</div>
+                <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />)}</div>
               ) : titulosFiltrados.length === 0 ? (
-                <div className="text-center py-6 text-gray-400 text-xs">Nenhum título encontrado</div>
+                <div className="text-center py-4 text-gray-400 text-xs">Nenhum título encontrado</div>
               ) : (
-                <div className="space-y-2 max-h-72 overflow-y-auto">
+                <div className="space-y-2 max-h-56 overflow-y-auto">
                   {titulosFiltrados.map(t => {
                     const pct = t.totalMembros > 0 ? Math.round((t.contribuiram / t.totalMembros) * 100) : 0
                     return (
