@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Download, ChevronLeft, ChevronRight,
-  TrendingUp, TrendingDown, Wallet, Filter, X
+  TrendingUp, TrendingDown, Wallet, Filter, X, Pencil, Trash2
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { useAuth } from '../../contexts/AuthContext'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useData } from '../../contexts/DataContext'
+import { useConfirm, useToast } from '../../components/ui/UIProvider'
 import { APP_GROUP_ID } from '../../lib/supabase'
-import { listFinLancamentos, type FinLancamentoFilters } from '../../lib/api/fin_lancamentos'
+import { listFinLancamentos, deleteFinLancamento, type FinLancamentoFilters } from '../../lib/api/fin_lancamentos'
 import { listFinCategorias } from '../../lib/api/fin_categorias'
 import type { FinCategoria, FinLancamento } from '../../types'
+import LancamentoModal from './LancamentoModal'
 
 const PAGE_SIZE = 50
 
@@ -35,8 +38,13 @@ function today() {
 }
 
 export default function FinanceiroExtratoPage() {
+  const { user } = useAuth()
   const { churches } = useChurch()
   const { members, visitantes } = useData()
+  const confirm = useConfirm()
+  const toast = useToast()
+
+  const isMaster = user?.role === 'master'
 
   // ── filtros ──────────────────────────────────────────────────────────────
   const [dataInicio, setDataInicio] = useState(firstDayOfMonth())
@@ -54,6 +62,7 @@ export default function FinanceiroExtratoPage() {
   const [categorias, setCategorias] = useState<FinCategoria[]>([])
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
+  const [editingLancamento, setEditingLancamento] = useState<FinLancamento | null>(null)
 
   const membroResults = useMemo(() => {
     if (!membroQuery || membroId) return []
@@ -163,6 +172,19 @@ export default function FinanceiroExtratoPage() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Extrato')
     XLSX.writeFile(wb, `extrato_${dataInicio}_${dataFim}.xlsx`)
+  }
+
+  async function handleDeleteLancamento(l: FinLancamento) {
+    const ok = await confirm({ message: 'Excluir este lançamento permanentemente?', danger: true })
+    if (!ok) return
+    try {
+      await deleteFinLancamento(l.id)
+      toast.success('Lançamento excluído com sucesso.')
+      await fetchLancamentos()
+    } catch (e) {
+      console.error(e)
+      toast.error('Erro ao excluir lançamento.')
+    }
   }
 
   const categoriasFiltered = tipo
@@ -378,6 +400,9 @@ export default function FinanceiroExtratoPage() {
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Membro / Fornecedor</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200 text-right">Valor</th>
                 <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Lançado por</th>
+                {isMaster && (
+                  <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Ações</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -423,6 +448,26 @@ export default function FinanceiroExtratoPage() {
                       {isEntrada ? '+' : '-'}{fmt(Number(l.valor))}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 text-xs">{l.created_by_user?.name ?? '—'}</td>
+                    {isMaster && (
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditingLancamento(l)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                            title="Editar"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLancamento(l)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                            title="Excluir"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -430,6 +475,16 @@ export default function FinanceiroExtratoPage() {
           </table>
         )}
       </div>
+
+      {/* Modal de edição */}
+      {editingLancamento && (
+        <LancamentoModal
+          tipo={editingLancamento.tipo}
+          editing={editingLancamento}
+          onClose={() => setEditingLancamento(null)}
+          onSaved={() => { setEditingLancamento(null); fetchLancamentos() }}
+        />
+      )}
 
       {/* Rodapé: paginação + contador */}
       {!loading && filtered.length > 0 && (

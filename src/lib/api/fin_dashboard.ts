@@ -208,6 +208,112 @@ export async function getDistribuicaoFormaPagamento(
     .sort((a, b) => b.total - a.total)
 }
 
+// ── lançamentos detalhados de uma categoria ───────────────────────────────
+
+export interface CatDetalhe {
+  id: string
+  data_lancamento: string
+  valor: number
+  descricao?: string
+  referencia_culto?: string
+  member_nome: string
+  forma_pagamento?: string
+  parcelas?: number
+}
+
+export async function getLancamentosByCategoria(
+  groupId: string,
+  tipo: 'entrada' | 'saida',
+  categoriaId: string,
+  dataInicio: string,
+  dataFim: string,
+  limit = 50,
+): Promise<CatDetalhe[]> {
+  const { data, error } = await supabase
+    .from('fin_lancamentos')
+    .select('id, data_lancamento, valor, descricao, referencia_culto, forma_pagamento, parcelas, member_id, member_nome_manual, member:members!member_id(name)')
+    .eq('church_group_id', groupId)
+    .eq('tipo', tipo)
+    .eq('categoria_id', categoriaId)
+    .gte('data_lancamento', dataInicio)
+    .lte('data_lancamento', dataFim)
+    .order('data_lancamento', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return ((data ?? []) as any[]).map(r => ({
+    id: r.id,
+    data_lancamento: r.data_lancamento,
+    valor: Number(r.valor),
+    descricao: r.descricao,
+    referencia_culto: r.referencia_culto,
+    member_nome: r.member?.name ?? r.member_nome_manual ?? '—',
+    forma_pagamento: r.forma_pagamento,
+    parcelas: r.parcelas,
+  }))
+}
+
+// ── stats por título de membro (Pessoas & Contribuição) ───────────────────
+
+export interface TituloStat {
+  titulo: string
+  totalMembros: number
+  contribuiram: number
+  totalContribuido: number
+}
+
+export async function getStatsPorTitulo(
+  groupId: string,
+  dataInicio: string,
+  dataFim: string,
+): Promise<TituloStat[]> {
+  // busca lançamentos de entrada com member_id no período
+  const { data: lancs, error: e1 } = await supabase
+    .from('fin_lancamentos')
+    .select('member_id, valor')
+    .eq('church_group_id', groupId)
+    .eq('tipo', 'entrada')
+    .not('member_id', 'is', null)
+    .gte('data_lancamento', dataInicio)
+    .lte('data_lancamento', dataFim)
+  if (e1) throw e1
+
+  // busca membros com títulos
+  const { data: ministerios, error: e2 } = await supabase
+    .from('member_ministry')
+    .select('member_id, titles')
+  if (e2) throw e2
+
+  // IDs que contribuíram + total
+  const contribMap = new Map<string, number>()
+  for (const l of (lancs ?? [])) {
+    if (!l.member_id) continue
+    contribMap.set(l.member_id, (contribMap.get(l.member_id) ?? 0) + Number(l.valor))
+  }
+
+  // agrupa por título
+  const map = new Map<string, { totalMembros: number; contribuiram: number; totalContribuido: number }>()
+
+  for (const m of (ministerios ?? []) as any[]) {
+    const titles: string[] = m.titles ?? []
+    for (const t of titles) {
+      if (!t) continue
+      const prev = map.get(t) ?? { totalMembros: 0, contribuiram: 0, totalContribuido: 0 }
+      const contrib = contribMap.get(m.member_id) ?? 0
+      map.set(t, {
+        totalMembros: prev.totalMembros + 1,
+        contribuiram: prev.contribuiram + (contrib > 0 ? 1 : 0),
+        totalContribuido: prev.totalContribuido + contrib,
+      })
+    }
+  }
+
+  return [...map.entries()]
+    .map(([titulo, v]) => ({ titulo, ...v }))
+    .filter(v => v.totalMembros > 0)
+    .sort((a, b) => b.totalContribuido - a.totalContribuido)
+}
+
 // ── KPIs do período ───────────────────────────────────────────────────────
 
 export interface DashKpis {
