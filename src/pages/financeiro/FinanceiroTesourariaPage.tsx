@@ -36,6 +36,85 @@ interface ModalState {
 
 // ── Modal obrigatório de seleção de tesoureiro ────────────────────────────────
 
+// ── Linha de lançamento ───────────────────────────────────────────────────
+
+interface LancamentoRowProps {
+  l: FinLancamento
+  compact?: boolean
+  onEdit: (l: FinLancamento) => void
+  onDelete: (l: FinLancamento) => void
+}
+
+function LancamentoRow({ l, compact = false, onEdit, onDelete }: LancamentoRowProps) {
+  const isEntrada = l.tipo === 'entrada'
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors hover:bg-gray-50 ${compact ? 'border-gray-100' : 'border-gray-200'}`}>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isEntrada ? 'bg-emerald-50' : 'bg-red-50'}`}>
+        {isEntrada
+          ? <ArrowUpRight size={15} className="text-emerald-600" />
+          : <ArrowDownRight size={15} className="text-red-500" />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {l.categoria && (
+            <span
+              className="text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: l.categoria.cor + '22', color: l.categoria.cor }}
+            >
+              {l.categoria.nome}
+            </span>
+          )}
+          {(l.member?.name || l.member_nome_manual) && (
+            <span className="text-xs text-gray-500 truncate max-w-[120px]">
+              {l.member?.name ?? l.member_nome_manual}
+            </span>
+          )}
+          {l.fornecedor && (
+            <span className="text-xs text-gray-500 truncate max-w-[120px]">{l.fornecedor.nome}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {l.descricao && <p className="text-xs text-gray-400 truncate">{l.descricao}</p>}
+          {l.referencia_culto && <p className="text-xs text-gray-400 truncate">{l.referencia_culto}</p>}
+          {l.forma_pagamento && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500">
+              {l.forma_pagamento === 'dinheiro' ? 'Dinheiro'
+                : l.forma_pagamento === 'pix' ? 'Pix'
+                : l.forma_pagamento === 'cartao_debito' ? 'Débito'
+                : `Crédito${l.parcelas && l.parcelas > 1 ? ` ${l.parcelas}x` : ''}`}
+            </span>
+          )}
+          {!compact && (
+            <span className="text-xs text-gray-400 ml-auto flex-shrink-0">{fmtData(l.data_lancamento)}</span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className={`text-sm font-bold ${isEntrada ? 'text-emerald-600' : 'text-red-500'}`}>
+          {isEntrada ? '+' : '-'}{fmtMoeda(l.valor)}
+        </span>
+        <button
+          onClick={() => onEdit(l)}
+          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+          title="Editar"
+        >
+          <Edit2 size={13} />
+        </button>
+        <button
+          onClick={() => onDelete(l)}
+          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+          title="Excluir"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal obrigatório de seleção de tesoureiro ────────────────────────────
+
 function SelecionarTesureiroModal({
   tesoureiros,
   onSelect,
@@ -181,75 +260,6 @@ const loadHoje = useCallback(async () => {
   const saidasHoje = lancamentosHoje.filter(l => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0)
   const saldo = entradasHoje - saidasHoje
 
-  // ── Linha de lançamento ──
-  function LancamentoRow({ l, compact = false }: { l: FinLancamento; compact?: boolean }) {
-    const isEntrada = l.tipo === 'entrada'
-    return (
-      <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors hover:bg-gray-50 ${compact ? 'border-gray-100' : 'border-gray-200'}`}>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isEntrada ? 'bg-emerald-50' : 'bg-red-50'}`}>
-          {isEntrada
-            ? <ArrowUpRight size={15} className="text-emerald-600" />
-            : <ArrowDownRight size={15} className="text-red-500" />
-          }
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {l.categoria && (
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: l.categoria.cor + '22', color: l.categoria.cor }}
-              >
-                {l.categoria.nome}
-              </span>
-            )}
-            {(l.member?.name || l.member_nome_manual) && (
-              <span className="text-xs text-gray-500 truncate max-w-[120px]">
-                {l.member?.name ?? l.member_nome_manual}
-              </span>
-            )}
-            {l.fornecedor && (
-              <span className="text-xs text-gray-500 truncate max-w-[120px]">{l.fornecedor.nome}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            {l.descricao && <p className="text-xs text-gray-400 truncate">{l.descricao}</p>}
-            {l.referencia_culto && <p className="text-xs text-gray-400 truncate">{l.referencia_culto}</p>}
-            {l.forma_pagamento && (
-              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500">
-                {l.forma_pagamento === 'dinheiro' ? 'Dinheiro'
-                  : l.forma_pagamento === 'pix' ? 'Pix'
-                  : l.forma_pagamento === 'cartao_debito' ? 'Débito'
-                  : `Crédito${l.parcelas && l.parcelas > 1 ? ` ${l.parcelas}x` : ''}`}
-              </span>
-            )}
-            {!compact && (
-              <span className="text-xs text-gray-400 ml-auto flex-shrink-0">{fmtData(l.data_lancamento)}</span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-sm font-bold ${isEntrada ? 'text-emerald-600' : 'text-red-500'}`}>
-            {isEntrada ? '+' : '-'}{fmtMoeda(l.valor)}
-          </span>
-          <button
-            onClick={() => handleEdit(l)}
-            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-            title="Editar"
-          >
-            <Edit2 size={13} />
-          </button>
-          <button
-            onClick={() => handleDelete(l)}
-            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-            title="Excluir"
-          >
-            <Trash2 size={13} />
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   // Enquanto carrega a lista de tesoureiros, mostra loader simples
   if (loadingTes) {
     return (
@@ -387,7 +397,9 @@ const loadHoje = useCallback(async () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {lancamentosHoje.map(l => <LancamentoRow key={l.id} l={l} compact />)}
+              {lancamentosHoje.map(l => (
+                <LancamentoRow key={l.id} l={l} compact onEdit={handleEdit} onDelete={handleDelete} />
+              ))}
             </div>
           )}
         </div>

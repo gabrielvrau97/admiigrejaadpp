@@ -12,6 +12,18 @@ function monthRange(year: number, month: number) {
   return { first, last }
 }
 
+const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+function getLast12Months(): { year: number; month: number }[] {
+  const now = new Date()
+  const months: { year: number; month: number }[] = []
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
+  }
+  return months
+}
+
 const COLS = `
   id, tipo, valor, data_lancamento, categoria_id, church_id, member_id, member_nome_manual,
   categoria:fin_categorias!categoria_id ( id, nome, cor ),
@@ -29,16 +41,7 @@ export interface MesFluxo {
 }
 
 export async function getFluxo12Meses(groupId: string): Promise<MesFluxo[]> {
-  const now = new Date()
-  const results: MesFluxo[] = []
-
-  // 12 meses: do mês atual - 11 até o mês atual
-  const months: { year: number; month: number }[] = []
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
-  }
-
+  const months = getLast12Months()
   const { first } = monthRange(months[0].year, months[0].month)
   const { last } = monthRange(months[11].year, months[11].month)
 
@@ -52,22 +55,19 @@ export async function getFluxo12Meses(groupId: string): Promise<MesFluxo[]> {
   if (error) throw error
   const rows = data ?? []
 
-  for (const { year, month } of months) {
+  return months.map(({ year, month }) => {
     const mesStr = `${year}-${pad(month)}`
     const mesRows = rows.filter(r => r.data_lancamento.startsWith(mesStr))
     const entradas = mesRows.filter(r => r.tipo === 'entrada').reduce((s, r) => s + Number(r.valor), 0)
     const saidas = mesRows.filter(r => r.tipo === 'saida').reduce((s, r) => s + Number(r.valor), 0)
-    const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-    results.push({
-      label: `${MESES[month - 1]}/${String(year).slice(2)}`,
+    return {
+      label: `${MESES_CURTOS[month - 1]}/${String(year).slice(2)}`,
       mes: mesStr,
       entradas,
       saidas,
       saldo: entradas - saidas,
-    })
-  }
-
-  return results
+    }
+  })
 }
 
 // ── distribuição por categoria ────────────────────────────────────────────
@@ -278,10 +278,10 @@ export async function getStatsPorTitulo(
     .lte('data_lancamento', dataFim)
   if (e1) throw e1
 
-  // busca membros com títulos — só ativos
+  // busca membros com títulos — apenas do grupo, apenas ativos
   const { data: ministerios, error: e2 } = await supabase
     .from('member_ministry')
-    .select('member_id, titles, member:members!member_id(status)')
+    .select('member_id, titles, member:members!member_id(status, church_group_id)')
   if (e2) throw e2
 
   // IDs que contribuíram + total
@@ -297,6 +297,7 @@ export async function getStatsPorTitulo(
   for (const m of (ministerios ?? []) as any[]) {
     const member = Array.isArray(m.member) ? m.member[0] : m.member
     if (member?.status !== 'ativo') continue
+    if (member?.church_group_id && member.church_group_id !== groupId) continue
     const titles: string[] = m.titles ?? []
     for (const t of titles) {
       if (!t) continue
@@ -363,19 +364,13 @@ export interface EvolucaoMes {
 }
 
 export async function getEvolucaoContribuicao(groupId: string): Promise<EvolucaoMes[]> {
-  const now = new Date()
-  const months: { year: number; month: number }[] = []
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
-  }
-
+  const months = getLast12Months()
   const { first } = monthRange(months[0].year, months[0].month)
   const { last } = monthRange(months[11].year, months[11].month)
 
   const { data, error } = await supabase
     .from('fin_lancamentos')
-    .select('tipo, valor, data_lancamento, member_id, member_nome_manual')
+    .select('valor, data_lancamento, member_id, member_nome_manual')
     .eq('church_group_id', groupId)
     .eq('tipo', 'entrada')
     .gte('data_lancamento', first)
@@ -383,14 +378,13 @@ export async function getEvolucaoContribuicao(groupId: string): Promise<Evolucao
   if (error) throw error
 
   const rows = data ?? []
-  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
   return months.map(({ year, month }) => {
     const mesStr = `${year}-${pad(month)}`
     const mesRows = rows.filter(r => r.data_lancamento.startsWith(mesStr))
     const cadastrados = mesRows.filter(r => r.member_id).reduce((s, r) => s + Number(r.valor), 0)
     const naoCadastrados = mesRows.filter(r => !r.member_id && r.member_nome_manual).reduce((s, r) => s + Number(r.valor), 0)
-    return { label: `${MESES[month - 1]}/${String(year).slice(2)}`, mes: mesStr, cadastrados, naoCadastrados }
+    return { label: `${MESES_CURTOS[month - 1]}/${String(year).slice(2)}`, mes: mesStr, cadastrados, naoCadastrados }
   })
 }
 
@@ -422,7 +416,7 @@ export async function getMembrosDoTitulo(
       .lte('data_lancamento', dataFim),
     supabase
       .from('member_ministry')
-      .select('member_id, titles, member:members!member_id(id, name, status)'),
+      .select('member_id, titles, member:members!member_id(id, name, status, church_group_id)'),
   ])
   if (e1) throw e1
   if (e2) throw e2
@@ -435,7 +429,7 @@ export async function getMembrosDoTitulo(
     contribMap.set(l.member_id, { total: prev.total + Number(l.valor), qtd: prev.qtd + 1 })
   }
 
-  // filtra membros com esse título — apenas ativos
+  // filtra membros com esse título — apenas ativos do grupo
   const tituloNorm = titulo.trim()
   const result: MembroDoTitulo[] = []
 
@@ -445,6 +439,7 @@ export async function getMembrosDoTitulo(
     const member = Array.isArray(m.member) ? m.member[0] : m.member
     if (!member?.name) continue
     if (member.status !== 'ativo') continue
+    if (member?.church_group_id && member.church_group_id !== groupId) continue
     const c = contribMap.get(m.member_id)
     result.push({
       memberId: m.member_id,
@@ -471,13 +466,7 @@ export async function getEvolucaoMembro(
   groupId: string,
   memberId: string,
 ): Promise<EvolucaoMembroMes[]> {
-  const now = new Date()
-  const months: { year: number; month: number }[] = []
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
-  }
-
+  const months = getLast12Months()
   const { first } = monthRange(months[0].year, months[0].month)
   const { last } = monthRange(months[11].year, months[11].month)
 
@@ -492,13 +481,12 @@ export async function getEvolucaoMembro(
   if (error) throw error
 
   const rows = data ?? []
-  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
   return months.map(({ year, month }) => {
     const mesStr = `${year}-${pad(month)}`
     const mesRows = rows.filter(r => r.data_lancamento.startsWith(mesStr))
     return {
-      label: `${MESES[month - 1]}/${String(year).slice(2)}`,
+      label: `${MESES_CURTOS[month - 1]}/${String(year).slice(2)}`,
       mes: mesStr,
       total: mesRows.reduce((s, r) => s + Number(r.valor), 0),
       qtd: mesRows.length,

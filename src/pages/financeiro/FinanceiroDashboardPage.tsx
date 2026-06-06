@@ -105,6 +105,38 @@ function ChartTooltip({ active, payload, label }: any) {
   )
 }
 
+// ── formas de pagamento (reutilizável para entrada e saída) ───────────────
+
+function FormasPagamentoList({ formas }: { formas: FormaPagamentoStat[] }) {
+  const filtradas = formas.filter(f => f.forma !== 'sem_info')
+  const totalGeral = filtradas.reduce((s, f) => s + f.total, 0)
+  return (
+    <div className="space-y-2">
+      {filtradas.map(f => {
+        const pct = totalGeral > 0 ? (f.total / totalGeral) * 100 : 0
+        const abbr = f.forma === 'dinheiro' ? 'R$' : f.forma === 'pix' ? 'PIX' : f.forma === 'cartao_debito' ? 'DÉB' : 'CRÉ'
+        return (
+          <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
+              <span className="text-[10px] font-bold" style={{ color: f.cor }}>{abbr}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-gray-700">{f.label}</span>
+                <span className="text-sm font-black text-gray-900">{fmt(f.total)}</span>
+              </div>
+              <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: f.cor }} />
+              </div>
+              <span className="text-[10px] text-gray-400">{f.contagem} lançamento{f.contagem !== 1 ? 's' : ''} · {pct.toFixed(1)}%</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── categoria clicável com dropdown ──────────────────────────────────────
 
 function CatBarExpandable({
@@ -184,6 +216,28 @@ function CatBarExpandable({
   )
 }
 
+// ── chart helpers para o drawer de membro ────────────────────────────────
+
+function MembroDot(props: any) {
+  const { cx, cy, payload } = props
+  if (!payload?.total) return null
+  return <circle cx={cx} cy={cy} r={4} fill="#14b8a6" stroke="#fff" strokeWidth={2} />
+}
+
+function MembroTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  const v = payload[0]?.value ?? 0
+  return (
+    <div className="bg-gray-900 text-white rounded-xl shadow-xl px-3 py-2 text-xs">
+      <div className="font-semibold text-gray-300 mb-1">{label}</div>
+      {v > 0
+        ? <span className="text-teal-300 font-bold">{fmt(v)}</span>
+        : <span className="text-gray-500">Não contribuiu</span>
+      }
+    </div>
+  )
+}
+
 // ── Drawer de evolução de um membro ──────────────────────────────────────
 
 function MembroEvolucaoDrawer({
@@ -207,26 +261,6 @@ function MembroEvolucaoDrawer({
 
   const maxMes = Math.max(...evolucao.map(e => e.total), 1)
   const mesesComContrib = evolucao.filter(e => e.total > 0).length
-
-  function CustomDot(props: any) {
-    const { cx, cy, payload } = props
-    if (!payload?.total) return null
-    return <circle cx={cx} cy={cy} r={4} fill="#14b8a6" stroke="#fff" strokeWidth={2} />
-  }
-
-  function CustomTooltipMembro({ active, payload, label }: any) {
-    if (!active || !payload?.length) return null
-    const v = payload[0]?.value ?? 0
-    return (
-      <div className="bg-gray-900 text-white rounded-xl shadow-xl px-3 py-2 text-xs">
-        <div className="font-semibold text-gray-300 mb-1">{label}</div>
-        {v > 0
-          ? <span className="text-teal-300 font-bold">{fmt(v)}</span>
-          : <span className="text-gray-500">Não contribuiu</span>
-        }
-      </div>
-    )
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -274,13 +308,13 @@ function MembroEvolucaoDrawer({
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={44} />
-                  <Tooltip content={<CustomTooltipMembro />} />
+                  <Tooltip content={<MembroTooltip />} />
                   <Line
                     type="monotone"
                     dataKey="total"
                     stroke="#14b8a6"
                     strokeWidth={2.5}
-                    dot={<CustomDot />}
+                    dot={<MembroDot />}
                     activeDot={{ r: 5, fill: '#14b8a6', strokeWidth: 0 }}
                     connectNulls={false}
                   />
@@ -650,29 +684,7 @@ export default function FinanceiroDashboardPage() {
             ) : formaEntrada.filter(f => f.forma !== 'sem_info').length === 0 ? (
               <div className="text-center py-6 text-gray-400 text-xs">Sem dados no período</div>
             ) : (
-              <div className="space-y-2">
-                {formaEntrada.filter(f => f.forma !== 'sem_info').map(f => {
-                  const totalGeral = formaEntrada.filter(x => x.forma !== 'sem_info').reduce((s, x) => s + x.total, 0)
-                  const pct = totalGeral > 0 ? (f.total / totalGeral) * 100 : 0
-                  return (
-                    <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
-                        <span className="text-[10px] font-bold" style={{ color: f.cor }}>{f.forma === 'dinheiro' ? 'R$' : f.forma === 'pix' ? 'PIX' : f.forma === 'cartao_debito' ? 'DÉB' : 'CRÉ'}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-gray-700">{f.label}</span>
-                          <span className="text-sm font-black text-gray-900">{fmt(f.total)}</span>
-                        </div>
-                        <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: f.cor }} />
-                        </div>
-                        <span className="text-[10px] text-gray-400">{f.contagem} lançamento{f.contagem !== 1 ? 's' : ''} · {pct.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <FormasPagamentoList formas={formaEntrada} />
             )}
           </div>
 
@@ -689,29 +701,7 @@ export default function FinanceiroDashboardPage() {
             ) : formaSaida.filter(f => f.forma !== 'sem_info').length === 0 ? (
               <div className="text-center py-6 text-gray-400 text-xs">Sem dados no período</div>
             ) : (
-              <div className="space-y-2">
-                {formaSaida.filter(f => f.forma !== 'sem_info').map(f => {
-                  const totalGeral = formaSaida.filter(x => x.forma !== 'sem_info').reduce((s, x) => s + x.total, 0)
-                  const pct = totalGeral > 0 ? (f.total / totalGeral) * 100 : 0
-                  return (
-                    <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
-                        <span className="text-[10px] font-bold" style={{ color: f.cor }}>{f.forma === 'dinheiro' ? 'R$' : f.forma === 'pix' ? 'PIX' : f.forma === 'cartao_debito' ? 'DÉB' : 'CRÉ'}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-gray-700">{f.label}</span>
-                          <span className="text-sm font-black text-gray-900">{fmt(f.total)}</span>
-                        </div>
-                        <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: f.cor }} />
-                        </div>
-                        <span className="text-[10px] text-gray-400">{f.contagem} lançamento{f.contagem !== 1 ? 's' : ''} · {pct.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <FormasPagamentoList formas={formaSaida} />
             )}
           </div>
         </div>

@@ -78,12 +78,13 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
     if (tesoureiroProp) setTesoreiroId(tesoureiroProp.id)
   }, [tesoureiroProp])
 
-  // busca de membro
+  // busca de membro (sem acento)
   useEffect(() => {
     if (!memberQuery || memberId) { setMemberResults([]); return }
     const pool = [...members, ...visitantes]
-    const q = memberQuery.toLowerCase()
-    setMemberResults(pool.filter(m => m.name.toLowerCase().includes(q)).slice(0, 8))
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const q = norm(memberQuery)
+    setMemberResults(pool.filter(m => norm(m.name).includes(q)).slice(0, 8))
   }, [memberQuery, memberId, members, visitantes])
 
   // busca de fornecedor
@@ -122,11 +123,13 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
   }
 
   const contribuintePreenchido = !!(memberId || memberQuery.trim())
-  const podeSalvar = !!(valor && churchId && categoriaId && formaPagamento && contribuintePreenchido)
+  // saída não exige contribuinte; entrada sim
+  const podeSalvar = !!(valor && churchId && categoriaId && formaPagamento && (tipo === 'saida' || contribuintePreenchido))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!valor || !churchId || !user || !categoriaId || !formaPagamento || !contribuintePreenchido) return
+    if (!valor || !churchId || !user || !categoriaId || !formaPagamento) return
+    if (tipo === 'entrada' && !contribuintePreenchido) return
     const valorNum = parseFloat(valor.replace(',', '.'))
     if (isNaN(valorNum) || valorNum <= 0) return
 
