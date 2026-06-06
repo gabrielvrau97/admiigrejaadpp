@@ -408,23 +408,27 @@ export async function getMembrosDoTitulo(
   dataInicio: string,
   dataFim: string,
 ): Promise<MembroDoTitulo[]> {
-  // 1. todos os member_ids com esse título (sem filtro de grupo aqui)
+  // 1. mesma query que getStatsPorTitulo — sem filtro no banco, filtra em JS
   const { data: ministerios, error: e1 } = await supabase
     .from('member_ministry')
     .select('member_id, titles')
-    .contains('titles', [titulo])
   if (e1) throw e1
 
-  const candidatos = ((ministerios ?? []) as any[]).map((m: any) => m.member_id as string)
+  // filtra em JS: título exato (trim para evitar espaços)
+  const tituloNorm = titulo.trim()
+  const candidatos = ((ministerios ?? []) as any[])
+    .filter(m => (m.titles ?? []).some((t: string) => t.trim() === tituloNorm))
+    .map(m => m.member_id as string)
+
   if (candidatos.length === 0) return []
 
-  // 2. filtra apenas membros ativos do group correto
+  // 2. membros ativos do grupo
   const { data: membrosData, error: e2 } = await supabase
     .from('members')
     .select('id, name')
     .eq('church_group_id', groupId)
-    .eq('status', 'ativo')
     .in('id', candidatos)
+    .neq('status', 'deleted')
   if (e2) throw e2
 
   const membros = (membrosData ?? []) as { id: string; name: string }[]
