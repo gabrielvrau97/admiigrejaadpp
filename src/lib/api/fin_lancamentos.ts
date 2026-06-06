@@ -45,14 +45,13 @@ export async function listFinLancamentos(filters: FinLancamentoFilters): Promise
   return (data ?? []) as FinLancamento[]
 }
 
-export async function listFinLancamentosHoje(userId: string, groupId: string): Promise<FinLancamento[]> {
+export async function listFinLancamentosHoje(groupId: string): Promise<FinLancamento[]> {
   const now = new Date()
   const hoje = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const { data, error } = await supabase
     .from('fin_lancamentos')
     .select(LANCAMENTO_COLUMNS)
     .eq('church_group_id', groupId)
-    .eq('created_by', userId)
     .eq('data_lancamento', hoje)
     .order('created_at', { ascending: false })
   if (error) throw error

@@ -3,7 +3,6 @@ import {
   Wallet, TrendingDown, Plus, Edit2, Trash2,
   Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown,
 } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
 import { useTesoureiro } from '../../contexts/TesureiroContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import {
@@ -180,7 +179,6 @@ function SelecionarTesureiroModal({
 }
 
 export default function FinanceiroTesourariaPage() {
-  const { user } = useAuth()
   const { tesoureiro, setTesoureiro } = useTesoureiro()
   const toast = useToast()
   const confirm = useConfirm()
@@ -203,10 +201,9 @@ export default function FinanceiroTesourariaPage() {
   }, [])
 
 const loadHoje = useCallback(async () => {
-    if (!user) return
-    const lanc = await listFinLancamentosHoje(user.id, APP_GROUP_ID)
+    const lanc = await listFinLancamentosHoje(APP_GROUP_ID)
     setLancamentosHoje(lanc)
-  }, [user])
+  }, [])
 
   const loadAll = useCallback(async () => {
     setLoading(true)
