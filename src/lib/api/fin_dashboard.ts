@@ -282,7 +282,7 @@ export async function getStatsPorTitulo(
   const { data: churches, error: e2 } = await supabase
     .from('churches')
     .select('id')
-    .eq('church_group_id', groupId)
+    .eq('group_id', groupId)
   if (e2) throw e2
 
   const churchIds = (churches ?? []).map(c => c.id)
@@ -441,7 +441,7 @@ export async function getMembrosDoTitulo(
     supabase
       .from('churches')
       .select('id')
-      .eq('church_group_id', groupId),
+      .eq('group_id', groupId),
   ])
   if (e1) throw e1
   if (e2) throw e2
