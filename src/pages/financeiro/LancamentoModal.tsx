@@ -105,9 +105,12 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
     setFornQuery('')
   }
 
+  const contribuintePreenchido = !!(memberId || memberQuery.trim())
+  const podeSalvar = !!(valor && churchId && categoriaId && formaPagamento && contribuintePreenchido)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!valor || !churchId || !user) return
+    if (!valor || !churchId || !user || !categoriaId || !formaPagamento || !contribuintePreenchido) return
     const valorNum = parseFloat(valor.replace(',', '.'))
     if (isNaN(valorNum) || valorNum <= 0) return
 
@@ -196,7 +199,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
           {/* Categoria + Filial */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Categoria <span className="text-red-400">*</span></label>
               <select
                 className="form-input w-full"
                 value={categoriaId}
@@ -253,8 +256,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
           {/* Membro (entrada: contribuinte | saída: beneficiado) */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              {isEntrada ? 'Contribuinte' : 'Membro beneficiado'}
-              <span className="text-gray-400 font-normal ml-1">(opcional)</span>
+              {isEntrada ? 'Contribuinte' : 'Membro beneficiado'} <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -354,7 +356,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
 
           {/* Forma de pagamento */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento <span className="text-red-400">*</span></label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {([
                 { value: 'dinheiro', label: 'Dinheiro', icon: '💵' },
@@ -430,7 +432,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
             </button>
             <button
               type="submit"
-              disabled={saving || !valor || !churchId}
+              disabled={saving || !podeSalvar}
               className={`flex-1 px-5 py-2.5 text-sm font-semibold text-white rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 ${
                 isEntrada ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'
               }`}
