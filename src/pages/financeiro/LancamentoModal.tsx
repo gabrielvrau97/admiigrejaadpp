@@ -7,7 +7,10 @@ import { APP_GROUP_ID } from '../../lib/supabase'
 import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
 import { searchFinFornecedores } from '../../lib/api/fin_fornecedores'
 import { createFinLancamento, updateFinLancamento } from '../../lib/api/fin_lancamentos'
+import { createFinRecibo, getFinReciboByLancamento } from '../../lib/api/fin_recibos'
+import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import type { FinCategoria, FinFornecedor, FinFormaPagamento, FinLancamento, FinTipo } from '../../types'
+import ReciboModal from './ReciboModal'
 
 interface Props {
   tipo: FinTipo
@@ -52,6 +55,8 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
   // dados
   const [categorias, setCategorias] = useState<FinCategoria[]>([])
   const [saving, setSaving] = useState(false)
+  const [recibo, setRecibo] = useState<FinReciboComLancamento | null>(null)
+  const [savedLancamento, setSavedLancamento] = useState<FinLancamento | null>(null)
 
   useEffect(() => {
     listFinCategoriasByTipo(APP_GROUP_ID, tipo).then(setCategorias).catch(console.error)
@@ -131,6 +136,21 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
         ? await updateFinLancamento(editing.id, payload)
         : await createFinLancamento(payload)
 
+      // gera recibo apenas em novos lançamentos
+      if (!editing) {
+        try {
+          await createFinRecibo(saved.id, user.id)
+          const r = await getFinReciboByLancamento(saved.id)
+          if (r) {
+            setSavedLancamento(saved)
+            setRecibo(r)
+            return // mantém modal aberto mostrando ReciboModal
+          }
+        } catch (e) {
+          console.error('Recibo não gerado:', e)
+        }
+      }
+
       onSaved(saved)
     } finally {
       setSaving(false)
@@ -139,6 +159,19 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
 
   const isEntrada = tipo === 'entrada'
   const accentColor = isEntrada ? 'emerald' : 'red'
+
+  // Quando recibo estiver pronto, mostra ReciboModal no lugar
+  if (recibo && savedLancamento) {
+    return (
+      <ReciboModal
+        recibo={recibo}
+        onClose={() => {
+          setRecibo(null)
+          onSaved(savedLancamento)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
