@@ -10,7 +10,8 @@ import { APP_GROUP_ID } from '../../lib/supabase'
 import { useData } from '../../contexts/DataContext'
 import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
-  type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis,
+  getDistribuicaoFormaPagamento,
+  type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis, type FormaPagamentoStat,
 } from '../../lib/api/fin_dashboard'
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -184,6 +185,8 @@ export default function FinanceiroDashboardPage() {
   const [distEntrada, setDistEntrada] = useState<CatFatia[]>([])
   const [distSaida, setDistSaida] = useState<CatFatia[]>([])
   const [topContrib, setTopContrib] = useState<TopContribuinte[]>([])
+  const [formaEntrada, setFormaEntrada] = useState<FormaPagamentoStat[]>([])
+  const [formaSaida, setFormaSaida] = useState<FormaPagamentoStat[]>([])
 
   const { inicio, fim } = useMemo(
     () => getPeriodo(periodo, customInicio, customFim),
@@ -199,9 +202,12 @@ export default function FinanceiroDashboardPage() {
       getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim),
       getDistribuicaoCategoria(APP_GROUP_ID, 'saida', inicio, fim),
       getTopContribuintes(APP_GROUP_ID, inicio, fim),
-    ]).then(([k, f, de, ds, tc]) => {
+      getDistribuicaoFormaPagamento(APP_GROUP_ID, 'entrada', inicio, fim),
+      getDistribuicaoFormaPagamento(APP_GROUP_ID, 'saida', inicio, fim),
+    ]).then(([k, f, de, ds, tc, fe, fs]) => {
       if (cancelled) return
       setKpis(k); setFluxo(f); setDistEntrada(de); setDistSaida(ds); setTopContrib(tc)
+      setFormaEntrada(fe); setFormaSaida(fs)
     }).catch(console.error).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [inicio, fim, refreshKey])
@@ -300,6 +306,89 @@ export default function FinanceiroDashboardPage() {
             textColor="text-white"
             delay={240}
           />
+        </div>
+
+        {/* ── Forma de pagamento ──────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Entradas */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-gray-800">Entradas por Forma de Pagamento</h2>
+                <p className="text-xs text-gray-400">{periodoLabel[periodo]}</p>
+              </div>
+              <span className="text-lg">💵</span>
+            </div>
+            {loading ? (
+              <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+            ) : formaEntrada.filter(f => f.forma !== 'sem_info').length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-xs">Sem dados no período</div>
+            ) : (
+              <div className="space-y-2">
+                {formaEntrada.filter(f => f.forma !== 'sem_info').map(f => {
+                  const totalGeral = formaEntrada.filter(x => x.forma !== 'sem_info').reduce((s, x) => s + x.total, 0)
+                  const pct = totalGeral > 0 ? (f.total / totalGeral) * 100 : 0
+                  return (
+                    <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
+                        <span className="text-base">{f.forma === 'dinheiro' ? '💵' : f.forma === 'pix' ? '⚡' : '💳'}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-gray-700">{f.label}</span>
+                          <span className="text-sm font-black text-gray-900">{fmt(f.total)}</span>
+                        </div>
+                        <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: f.cor }} />
+                        </div>
+                        <span className="text-[10px] text-gray-400">{f.contagem} lançamento{f.contagem !== 1 ? 's' : ''} · {pct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Saídas */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-gray-800">Saídas por Forma de Pagamento</h2>
+                <p className="text-xs text-gray-400">{periodoLabel[periodo]}</p>
+              </div>
+              <span className="text-lg">💳</span>
+            </div>
+            {loading ? (
+              <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+            ) : formaSaida.filter(f => f.forma !== 'sem_info').length === 0 ? (
+              <div className="text-center py-6 text-gray-400 text-xs">Sem dados no período</div>
+            ) : (
+              <div className="space-y-2">
+                {formaSaida.filter(f => f.forma !== 'sem_info').map(f => {
+                  const totalGeral = formaSaida.filter(x => x.forma !== 'sem_info').reduce((s, x) => s + x.total, 0)
+                  const pct = totalGeral > 0 ? (f.total / totalGeral) * 100 : 0
+                  return (
+                    <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
+                        <span className="text-base">{f.forma === 'dinheiro' ? '💵' : f.forma === 'pix' ? '⚡' : '💳'}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-gray-700">{f.label}</span>
+                          <span className="text-sm font-black text-gray-900">{fmt(f.total)}</span>
+                        </div>
+                        <div className="w-full bg-white/60 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%`, background: f.cor }} />
+                        </div>
+                        <span className="text-[10px] text-gray-400">{f.contagem} lançamento{f.contagem !== 1 ? 's' : ''} · {pct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Fluxo de caixa 12 meses ─────────────────────────────────── */}

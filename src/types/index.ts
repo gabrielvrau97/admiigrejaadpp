@@ -230,6 +230,7 @@ export interface Carteirinha {
 
 export type FinTipo = 'entrada' | 'saida'
 export type FinOrigem = 'manual' | 'importado'
+export type FinFormaPagamento = 'dinheiro' | 'pix' | 'cartao_debito' | 'cartao_credito'
 
 export interface FinCategoria {
   id: string
@@ -265,6 +266,8 @@ export interface FinLancamento {
   member_id?: string
   member_nome_manual?: string
   valor: number
+  forma_pagamento?: FinFormaPagamento
+  parcelas?: number
   descricao?: string
   referencia_culto?: string
   data_lancamento: string

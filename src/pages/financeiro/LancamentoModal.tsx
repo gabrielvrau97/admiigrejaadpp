@@ -7,7 +7,7 @@ import { APP_GROUP_ID } from '../../lib/supabase'
 import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
 import { searchFinFornecedores } from '../../lib/api/fin_fornecedores'
 import { createFinLancamento, updateFinLancamento } from '../../lib/api/fin_lancamentos'
-import type { FinCategoria, FinFornecedor, FinLancamento, FinTipo } from '../../types'
+import type { FinCategoria, FinFornecedor, FinFormaPagamento, FinLancamento, FinTipo } from '../../types'
 
 interface Props {
   tipo: FinTipo
@@ -32,6 +32,8 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
     editing?.data_lancamento ?? new Date().toISOString().slice(0, 10)
   )
   const [observacao, setObservacao] = useState(editing?.observacao ?? '')
+  const [formaPagamento, setFormaPagamento] = useState<FinFormaPagamento | ''>(editing?.forma_pagamento ?? '')
+  const [parcelas, setParcelas] = useState(editing?.parcelas ? String(editing.parcelas) : '1')
 
   // membro
   const [memberQuery, setMemberQuery] = useState(
@@ -118,6 +120,8 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
         descricao: descricao.trim() || undefined,
         referencia_culto: tipo === 'entrada' ? (referenciaCulto.trim() || undefined) : undefined,
         data_lancamento: dataLancamento,
+        forma_pagamento: formaPagamento || undefined,
+        parcelas: formaPagamento === 'cartao_credito' ? (parseInt(parcelas) || 1) : undefined,
         origem: 'manual' as const,
         created_by: user.id,
         observacao: observacao.trim() || undefined,
@@ -314,6 +318,46 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
               />
             </div>
           )}
+
+          {/* Forma de pagamento */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {([
+                { value: 'dinheiro', label: 'Dinheiro', icon: '💵' },
+                { value: 'pix', label: 'Pix', icon: '⚡' },
+                { value: 'cartao_debito', label: 'Débito', icon: '💳' },
+                { value: 'cartao_credito', label: 'Crédito', icon: '💳' },
+              ] as { value: FinFormaPagamento; label: string; icon: string }[]).map(op => (
+                <button
+                  key={op.value}
+                  type="button"
+                  onClick={() => setFormaPagamento(f => f === op.value ? '' : op.value)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+                    formaPagamento === op.value
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <span>{op.icon}</span> {op.label}
+                </button>
+              ))}
+            </div>
+            {formaPagamento === 'cartao_credito' && (
+              <div className="mt-2 flex items-center gap-2">
+                <label className="text-xs text-gray-500 whitespace-nowrap">Parcelas</label>
+                <select
+                  className="form-input text-sm py-1.5 px-2"
+                  value={parcelas}
+                  onChange={e => setParcelas(e.target.value)}
+                >
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                    <option key={n} value={n}>{n}x{n === 1 ? ' (à vista)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           {/* Descrição */}
           <div>

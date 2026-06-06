@@ -155,6 +155,59 @@ export async function getTopContribuintes(
     .slice(0, limit)
 }
 
+// ── distribuição por forma de pagamento ──────────────────────────────────
+
+export interface FormaPagamentoStat {
+  forma: string
+  label: string
+  total: number
+  contagem: number
+  cor: string
+}
+
+export async function getDistribuicaoFormaPagamento(
+  groupId: string,
+  tipo: 'entrada' | 'saida',
+  dataInicio: string,
+  dataFim: string,
+): Promise<FormaPagamentoStat[]> {
+  const { data, error } = await supabase
+    .from('fin_lancamentos')
+    .select('forma_pagamento, valor')
+    .eq('church_group_id', groupId)
+    .eq('tipo', tipo)
+    .gte('data_lancamento', dataInicio)
+    .lte('data_lancamento', dataFim)
+
+  if (error) throw error
+  const rows = data ?? []
+
+  const FORMAS: Record<string, { label: string; cor: string }> = {
+    dinheiro:       { label: 'Dinheiro',   cor: '#22c55e' },
+    pix:            { label: 'Pix',        cor: '#6366f1' },
+    cartao_debito:  { label: 'Débito',     cor: '#f59e0b' },
+    cartao_credito: { label: 'Crédito',    cor: '#ef4444' },
+    sem_info:       { label: 'Não inf.',   cor: '#d1d5db' },
+  }
+
+  const map = new Map<string, { total: number; contagem: number }>()
+
+  for (const r of rows) {
+    const key = r.forma_pagamento ?? 'sem_info'
+    const prev = map.get(key) ?? { total: 0, contagem: 0 }
+    map.set(key, { total: prev.total + Number(r.valor), contagem: prev.contagem + 1 })
+  }
+
+  return [...map.entries()]
+    .map(([forma, v]) => ({
+      forma,
+      label: FORMAS[forma]?.label ?? forma,
+      cor: FORMAS[forma]?.cor ?? '#9ca3af',
+      ...v,
+    }))
+    .sort((a, b) => b.total - a.total)
+}
+
 // ── KPIs do período ───────────────────────────────────────────────────────
 
 export interface DashKpis {

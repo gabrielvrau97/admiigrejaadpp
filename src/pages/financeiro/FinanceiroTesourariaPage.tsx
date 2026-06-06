@@ -129,9 +129,17 @@ const loadHoje = useCallback(async () => {
               <span className="text-xs text-gray-500 truncate max-w-[120px]">{l.fornecedor.nome}</span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {l.descricao && <p className="text-xs text-gray-400 truncate">{l.descricao}</p>}
             {l.referencia_culto && <p className="text-xs text-gray-400 truncate">{l.referencia_culto}</p>}
+            {l.forma_pagamento && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500">
+                {l.forma_pagamento === 'dinheiro' ? '💵 Dinheiro'
+                  : l.forma_pagamento === 'pix' ? '⚡ Pix'
+                  : l.forma_pagamento === 'cartao_debito' ? '💳 Débito'
+                  : `💳 Crédito${l.parcelas && l.parcelas > 1 ? ` ${l.parcelas}x` : ''}`}
+              </span>
+            )}
             {!compact && (
               <span className="text-xs text-gray-400 ml-auto flex-shrink-0">{fmtData(l.data_lancamento)}</span>
             )}
