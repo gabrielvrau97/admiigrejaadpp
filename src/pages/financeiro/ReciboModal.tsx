@@ -88,11 +88,11 @@ function buildReciboHtml(
   <title>Recibo ${recibo.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
     body { font-family: Arial, sans-serif; font-size: 12px; color: #111; background: #fff; }
     .page {
-      width: 148mm;
-      min-height: 100mm;
-      margin: 0 auto;
+      width: 100%;
+      min-height: 148mm;
       padding: 12mm 14mm 10mm;
     }
     .org-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
@@ -154,9 +154,9 @@ function buildReciboHtml(
       border-radius: 4px;
     }
     @media print {
-      html, body { width: 148mm; }
+      html, body { width: 100%; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      @page { size: A5; margin: 0; }
+      @page { size: A5 portrait; margin: 0; }
     }
   </style>
 </head>
@@ -217,7 +217,7 @@ export default function ReciboModal({ recibo, onClose }: Props) {
 
   function handleImprimir() {
     const html = buildReciboHtml(recibo, emitidoPorNome, emitidoPorEmail, emitidoPorRole)
-    const win = window.open('', '_blank', 'width=640,height=520')
+    const win = window.open('', '_blank', 'width=560,height=650')
     if (!win) return
     win.document.write(html)
     win.document.close()
