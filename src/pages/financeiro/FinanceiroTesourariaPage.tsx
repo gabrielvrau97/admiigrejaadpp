@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import {
   listFinLancamentosHoje, listFinLancamentos,
-  deleteFinLancamento, getFinCaixaDia,
+  deleteFinLancamento,
 } from '../../lib/api/fin_lancamentos'
 import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
@@ -41,7 +41,6 @@ export default function FinanceiroTesourariaPage() {
   const [tab, setTab] = useState<TabKey>('hoje')
   const [lancamentosHoje, setLancamentosHoje] = useState<FinLancamento[]>([])
   const [historico, setHistorico] = useState<FinLancamento[]>([])
-  const [caixa, setCaixa] = useState({ entradas: 0, saidas: 0 })
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false, tipo: 'entrada', editing: null })
   const [categoriasRapidas, setCategoriasRapidas] = useState<FinCategoria[]>([])
@@ -55,12 +54,8 @@ export default function FinanceiroTesourariaPage() {
 
   const loadHoje = useCallback(async () => {
     if (!user) return
-    const [lanc, cx] = await Promise.all([
-      listFinLancamentosHoje(user.id, APP_GROUP_ID),
-      getFinCaixaDia(user.id, APP_GROUP_ID),
-    ])
+    const lanc = await listFinLancamentosHoje(user.id, APP_GROUP_ID)
     setLancamentosHoje(lanc)
-    setCaixa(cx)
   }, [user])
 
   const loadHistorico = useCallback(async () => {
@@ -123,7 +118,9 @@ export default function FinanceiroTesourariaPage() {
     await loadAll()
   }
 
-  const saldo = caixa.entradas - caixa.saidas
+  const entradasHoje = lancamentosHoje.filter(l => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0)
+  const saidasHoje = lancamentosHoje.filter(l => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0)
+  const saldo = entradasHoje - saidasHoje
 
   // ── Linha de lançamento ──
   function LancamentoRow({ l, compact = false }: { l: FinLancamento; compact?: boolean }) {
@@ -233,11 +230,11 @@ export default function FinanceiroTesourariaPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-emerald-100 p-4">
           <p className="text-xs text-gray-500 mb-1">Entradas hoje</p>
-          <p className="text-2xl font-bold text-emerald-600">{fmtMoeda(caixa.entradas)}</p>
+          <p className="text-2xl font-bold text-emerald-600">{fmtMoeda(entradasHoje)}</p>
         </div>
         <div className="bg-white rounded-xl border border-red-100 p-4">
           <p className="text-xs text-gray-500 mb-1">Saídas hoje</p>
-          <p className="text-2xl font-bold text-red-500">{fmtMoeda(caixa.saidas)}</p>
+          <p className="text-2xl font-bold text-red-500">{fmtMoeda(saidasHoje)}</p>
         </div>
         <div className={`bg-white rounded-xl border p-4 ${saldo >= 0 ? 'border-blue-100' : 'border-orange-100'}`}>
           <p className="text-xs text-gray-500 mb-1">Saldo do dia</p>
