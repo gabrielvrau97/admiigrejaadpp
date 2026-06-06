@@ -281,7 +281,7 @@ export async function getStatsPorTitulo(
   // busca membros com títulos — apenas do grupo, apenas ativos
   const { data: ministerios, error: e2 } = await supabase
     .from('member_ministry')
-    .select('member_id, titles, member:members!member_id(status, church_group_id)')
+    .select('member_id, titles, member:members!member_ministry_member_id_fkey(status, church_group_id)')
   if (e2) throw e2
 
   // IDs que contribuíram + total
@@ -416,7 +416,7 @@ export async function getMembrosDoTitulo(
       .lte('data_lancamento', dataFim),
     supabase
       .from('member_ministry')
-      .select('member_id, titles, member:members!member_id(id, name, status, church_group_id)'),
+      .select('member_id, titles, member:members!member_ministry_member_id_fkey(id, name, status, church_group_id)'),
   ])
   if (e1) throw e1
   if (e2) throw e2
