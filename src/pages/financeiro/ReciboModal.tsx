@@ -45,7 +45,10 @@ function fmtCpf(cpf?: string) {
 }
 
 function getMemberPhone(recibo: FinReciboComLancamento): string {
-  const contacts = recibo.lancamento.member?.contacts
+  const raw = recibo.lancamento.member?.contacts
+  if (!raw) return ''
+  // Supabase pode retornar objeto único ou array em joins 1-para-1
+  const contacts = Array.isArray(raw) ? raw[0] : raw
   if (!contacts) return ''
   if (contacts.cellphone1) return contacts.cellphone1
   if (contacts.phones && contacts.phones.length > 0) return contacts.phones[0]

@@ -18,7 +18,7 @@ const COLS = `
     id, tipo, valor, forma_pagamento, parcelas, descricao, referencia_culto,
     data_lancamento, observacao, member_nome_manual,
     categoria:fin_categorias!categoria_id ( id, nome, cor ),
-    member:members!member_id ( id, name, apelido, cpf, contacts:member_contacts(cellphone1, phones) ),
+    member:members!member_id ( id, name, apelido, cpf, contacts:member_contacts!member_contacts_member_id_fkey(cellphone1, phones) ),
     church:churches!church_id ( id, name, address, phone ),
     created_by_user:app_users!created_by ( id, name )
   )
@@ -42,7 +42,7 @@ export interface FinReciboComLancamento extends FinRecibo {
       name: string
       apelido?: string
       cpf?: string
-      contacts?: { cellphone1?: string; phones?: string[] } | null
+      contacts?: { cellphone1?: string; phones?: string[] } | { cellphone1?: string; phones?: string[] }[] | null
     } | null
     church?: { id: string; name: string; address?: string; phone?: string } | null
     created_by_user?: { id: string; name: string } | null
