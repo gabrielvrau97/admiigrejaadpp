@@ -67,8 +67,9 @@ export default function FinanceiroExtratoPage() {
   const membroResults = useMemo(() => {
     if (!membroQuery || membroId) return []
     const pool = [...members, ...visitantes]
-    const q = membroQuery.toLowerCase()
-    return pool.filter(m => m.name.toLowerCase().includes(q)).slice(0, 8)
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const q = norm(membroQuery)
+    return pool.filter(m => norm(m.name).includes(q)).slice(0, 8)
   }, [membroQuery, membroId, members, visitantes])
 
   // carrega categorias uma vez
@@ -98,19 +99,20 @@ export default function FinanceiroExtratoPage() {
 
   useEffect(() => { fetchLancamentos() }, [fetchLancamentos])
 
-  // ── filtro local por texto ────────────────────────────────────────────────
+  // ── filtro local por texto (sem acento) ──────────────────────────────────
   const filtered = useMemo(() => {
     if (!textoBusca.trim()) return lancamentos
-    const q = textoBusca.toLowerCase()
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const q = norm(textoBusca)
     return lancamentos.filter(l =>
-      l.descricao?.toLowerCase().includes(q) ||
-      l.categoria?.nome.toLowerCase().includes(q) ||
-      l.member?.name.toLowerCase().includes(q) ||
-      l.member_nome_manual?.toLowerCase().includes(q) ||
-      l.fornecedor?.nome.toLowerCase().includes(q) ||
-      l.church?.name.toLowerCase().includes(q) ||
-      l.created_by_user?.name.toLowerCase().includes(q) ||
-      l.referencia_culto?.toLowerCase().includes(q)
+      norm(l.descricao ?? '').includes(q) ||
+      norm(l.categoria?.nome ?? '').includes(q) ||
+      norm(l.member?.name ?? '').includes(q) ||
+      norm(l.member_nome_manual ?? '').includes(q) ||
+      norm(l.fornecedor?.nome ?? '').includes(q) ||
+      norm(l.church?.name ?? '').includes(q) ||
+      norm(l.created_by_user?.name ?? '').includes(q) ||
+      norm(l.referencia_culto ?? '').includes(q)
     )
   }, [lancamentos, textoBusca])
 

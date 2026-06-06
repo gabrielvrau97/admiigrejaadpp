@@ -352,8 +352,9 @@ export default function FinanceiroConfigPage() {
 
   // ── Fornecedores ──
 
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   const fornsFiltrados = fornecedores.filter(f =>
-    !search || f.nome.toLowerCase().includes(search.toLowerCase())
+    !search || norm(f.nome).includes(norm(search))
   )
 
   async function handleSaveFornecedor(data: Partial<FinFornecedor>) {
