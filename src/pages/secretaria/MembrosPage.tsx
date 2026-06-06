@@ -156,8 +156,9 @@ export default function MembrosPage({ type = 'membros' }: { type?: string }) {
     let data = [...baseData]
 
     if (search.trim()) {
-      const q = search.toLowerCase()
-      data = data.filter(m => m.name.toLowerCase().includes(q) || (m.cpf ?? '').includes(q))
+      const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      const q = norm(search)
+      data = data.filter(m => norm(m.name).includes(q) || (m.cpf ?? '').includes(q))
     }
 
     if (advActive) {
