@@ -18,10 +18,10 @@ function fmtDate(s: string) {
 
 function formaPagLabel(f?: string, p?: number) {
   if (!f) return '—'
-  if (f === 'dinheiro') return '💵 Dinheiro'
-  if (f === 'pix') return '⚡ Pix'
-  if (f === 'cartao_debito') return '💳 Débito'
-  if (f === 'cartao_credito') return `💳 Crédito${p && p > 1 ? ` ${p}x` : ''}`
+  if (f === 'dinheiro') return 'Dinheiro'
+  if (f === 'pix') return 'Pix'
+  if (f === 'cartao_debito') return 'Débito'
+  if (f === 'cartao_credito') return `Crédito${p && p > 1 ? ` ${p}x` : ''}`
   return f
 }
 

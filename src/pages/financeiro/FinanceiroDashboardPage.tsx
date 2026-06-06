@@ -317,7 +317,6 @@ export default function FinanceiroDashboardPage() {
                 <h2 className="text-sm font-bold text-gray-800">Entradas por Forma de Pagamento</h2>
                 <p className="text-xs text-gray-400">{periodoLabel[periodo]}</p>
               </div>
-              <span className="text-lg">💵</span>
             </div>
             {loading ? (
               <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}</div>
@@ -331,7 +330,7 @@ export default function FinanceiroDashboardPage() {
                   return (
                     <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
-                        <span className="text-base">{f.forma === 'dinheiro' ? '💵' : f.forma === 'pix' ? '⚡' : '💳'}</span>
+                        <span className="text-base font-bold text-gray-500" style={{ fontSize: 10 }}>{f.forma === 'dinheiro' ? 'R$' : f.forma === 'pix' ? 'PIX' : f.forma === 'cartao_debito' ? 'DÉB' : 'CRÉ'}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
@@ -357,7 +356,6 @@ export default function FinanceiroDashboardPage() {
                 <h2 className="text-sm font-bold text-gray-800">Saídas por Forma de Pagamento</h2>
                 <p className="text-xs text-gray-400">{periodoLabel[periodo]}</p>
               </div>
-              <span className="text-lg">💳</span>
             </div>
             {loading ? (
               <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}</div>
@@ -371,7 +369,7 @@ export default function FinanceiroDashboardPage() {
                   return (
                     <div key={f.forma} className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ background: f.cor + '12' }}>
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: f.cor + '25' }}>
-                        <span className="text-base">{f.forma === 'dinheiro' ? '💵' : f.forma === 'pix' ? '⚡' : '💳'}</span>
+                        <span className="text-base font-bold text-gray-500" style={{ fontSize: 10 }}>{f.forma === 'dinheiro' ? 'R$' : f.forma === 'pix' ? 'PIX' : f.forma === 'cartao_debito' ? 'DÉB' : 'CRÉ'}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">

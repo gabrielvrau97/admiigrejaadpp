@@ -358,23 +358,18 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento <span className="text-red-400">*</span></label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {([
-                { value: 'dinheiro', label: 'Dinheiro', icon: '💵' },
-                { value: 'pix', label: 'Pix', icon: '⚡' },
-                { value: 'cartao_debito', label: 'Débito', icon: '💳' },
-                { value: 'cartao_credito', label: 'Crédito', icon: '💳' },
-              ] as { value: FinFormaPagamento; label: string; icon: string }[]).map(op => (
+              {(['dinheiro', 'pix', 'cartao_debito', 'cartao_credito'] as FinFormaPagamento[]).map(v => (
                 <button
-                  key={op.value}
+                  key={v}
                   type="button"
-                  onClick={() => setFormaPagamento(f => f === op.value ? '' : op.value)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
-                    formaPagamento === op.value
+                  onClick={() => setFormaPagamento(f => f === v ? '' : v)}
+                  className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+                    formaPagamento === v
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                   }`}
                 >
-                  <span>{op.icon}</span> {op.label}
+                  {v === 'dinheiro' ? 'Dinheiro' : v === 'pix' ? 'Pix' : v === 'cartao_debito' ? 'Débito' : 'Crédito'}
                 </button>
               ))}
             </div>
