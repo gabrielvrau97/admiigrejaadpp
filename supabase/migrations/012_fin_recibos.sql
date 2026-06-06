@@ -59,7 +59,7 @@ create policy "fin_recibos_insert" on fin_recibos
       select 1 from app_users
       where id = auth.uid()
         and church_group_id = fin_recibos.church_group_id
-        and role in ('master','admin_financeiro')
+        and role in ('master','admin_financeiro','admin_secretaria','admin','secretaria')
     )
   );
 
@@ -69,7 +69,7 @@ create policy "fin_recibos_update" on fin_recibos
       select 1 from app_users
       where id = auth.uid()
         and church_group_id = fin_recibos.church_group_id
-        and role in ('master','admin_financeiro')
+        and role in ('master','admin_financeiro','admin_secretaria','admin','secretaria')
     )
   );
 

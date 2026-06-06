@@ -1,6 +1,8 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { X, Printer, MessageCircle, CheckCircle } from 'lucide-react'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
+import { useAuth } from '../../contexts/AuthContext'
+import { ROLE_LABELS } from '../../lib/permissions'
 
 interface Props {
   recibo: FinReciboComLancamento
@@ -16,6 +18,16 @@ function fmtDate(s: string) {
   return `${d}/${m}/${y}`
 }
 
+const MESES = [
+  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+]
+
+function fmtDateExtenso(s: string) {
+  const [y, m, d] = s.slice(0, 10).split('-')
+  return `${parseInt(d)} de ${MESES[parseInt(m) - 1]} de ${y}`
+}
+
 function formaPagLabel(f?: string, parcelas?: number) {
   if (!f) return ''
   if (f === 'dinheiro') return 'Dinheiro'
@@ -25,11 +37,46 @@ function formaPagLabel(f?: string, parcelas?: number) {
   return f
 }
 
-function buildReciboHtml(recibo: FinReciboComLancamento): string {
+function fmtCpf(cpf?: string) {
+  if (!cpf) return ''
+  const d = cpf.replace(/\D/g, '')
+  if (d.length === 11) return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`
+  return cpf
+}
+
+function getMemberPhone(recibo: FinReciboComLancamento): string {
+  const contacts = recibo.lancamento.member?.contacts
+  if (!contacts) return ''
+  if (contacts.cellphone1) return contacts.cellphone1
+  if (contacts.phones && contacts.phones.length > 0) return contacts.phones[0]
+  return ''
+}
+
+function buildReciboHtml(
+  recibo: FinReciboComLancamento,
+  emitidoPorNome: string,
+  emitidoPorEmail: string,
+  emitidoPorRole: string,
+): string {
   const l = recibo.lancamento
   const isEntrada = l.tipo === 'entrada'
   const nomeContribuinte = l.member?.name ?? l.member_nome_manual ?? '—'
+  const cpfContribuinte = fmtCpf(l.member?.cpf)
   const forma = formaPagLabel(l.forma_pagamento, l.parcelas)
+  const agora = new Date()
+  const dataImpressao = `${String(agora.getDate()).padStart(2,'0')}/${String(agora.getMonth()+1).padStart(2,'0')}/${agora.getFullYear()} às ${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`
+
+  // Monta texto do motivo/descrição
+  const descPartes: string[] = []
+  if (l.categoria?.nome) descPartes.push(l.categoria.nome)
+  if (l.referencia_culto) descPartes.push(l.referencia_culto)
+  if (l.descricao) descPartes.push(l.descricao)
+  const motivoTexto = descPartes.join(' — ') || (isEntrada ? 'contribuição voluntária' : 'pagamento')
+
+  // Localidade da filial para linha de assinatura
+  const churchAddress = l.church?.address ?? ''
+  const cidadeMatch = churchAddress.match(/([A-Za-zÀ-ÿ\s]+)\/([A-Z]{2})/i)
+  const localidade = cidadeMatch ? `${cidadeMatch[1].trim()}, ${cidadeMatch[2].toUpperCase()}` : ''
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -38,95 +85,136 @@ function buildReciboHtml(recibo: FinReciboComLancamento): string {
   <title>Recibo ${recibo.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; background: #fff; }
-    .page { width: 100%; max-width: 600px; margin: 0 auto; padding: 32px 28px; }
-    .header { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 18px; }
-    .church-name { font-size: 16px; font-weight: 700; }
-    .church-sub { font-size: 11px; color: #555; margin-top: 3px; }
-    .recibo-title { text-align: right; }
-    .recibo-title h1 { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: ${isEntrada ? '#15803d' : '#dc2626'}; }
-    .recibo-title .numero { font-size: 12px; color: #555; margin-top: 2px; }
-    .valor-box { border: 2px solid ${isEntrada ? '#16a34a' : '#dc2626'}; border-radius: 8px; padding: 14px 20px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; background: ${isEntrada ? '#f0fdf4' : '#fff1f2'}; }
-    .valor-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #555; }
-    .valor-num { font-size: 26px; font-weight: 800; color: ${isEntrada ? '#15803d' : '#dc2626'}; }
-    .tipo-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 99px; background: ${isEntrada ? '#dcfce7' : '#fee2e2'}; color: ${isEntrada ? '#15803d' : '#dc2626'}; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
-    td { padding: 7px 0; vertical-align: top; }
-    td:first-child { width: 38%; color: #555; font-size: 12px; }
-    td:last-child { font-weight: 600; font-size: 13px; }
-    tr { border-bottom: 1px solid #f0f0f0; }
-    .footer { border-top: 1px dashed #aaa; padding-top: 14px; display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; }
-    .assinatura { text-align: center; }
-    .assinatura-linha { border-top: 1px solid #555; width: 180px; margin: 0 auto 5px; }
-    .assinatura-label { font-size: 11px; color: #555; }
-    .nota { font-size: 10px; color: #999; text-align: right; max-width: 200px; line-height: 1.4; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; background: #fff; }
+    .page {
+      width: 148mm;
+      min-height: 100mm;
+      margin: 0 auto;
+      padding: 12mm 14mm 10mm;
+    }
+    .org-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .org-info { font-size: 10px; color: #444; margin-top: 2px; line-height: 1.5; }
+    .titulo {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin: 10px 0 8px;
+      padding: 5px 0;
+      border-top: 1.5px solid #111;
+      border-bottom: 1.5px solid #111;
+    }
+    .corpo {
+      font-size: 12px;
+      line-height: 1.8;
+      margin-bottom: 12px;
+      text-align: justify;
+    }
+    .destaque { font-weight: 700; }
+    .localidade {
+      font-size: 11px;
+      margin-bottom: 18px;
+      color: #333;
+    }
+    .assinaturas {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 8px;
+    }
+    .ass-bloco {
+      flex: 1;
+      text-align: center;
+    }
+    .ass-linha {
+      border-top: 1px solid #555;
+      margin-bottom: 4px;
+    }
+    .ass-nome { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .ass-cargo { font-size: 10px; color: #555; }
+    .rodape {
+      margin-top: 14px;
+      padding-top: 6px;
+      border-top: 1px dashed #aaa;
+      font-size: 9px;
+      color: #888;
+      line-height: 1.4;
+    }
+    .numero-badge {
+      float: right;
+      font-size: 10px;
+      font-weight: 700;
+      color: #444;
+      border: 1px solid #ccc;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
     @media print {
+      html, body { width: 148mm; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      @page { size: A5 landscape; margin: 10mm; }
+      @page { size: A5; margin: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <div class="header">
-      <div>
-        <div class="church-name">${l.church?.name ?? 'Igreja'}</div>
-        ${l.church?.address ? `<div class="church-sub">${l.church.address}</div>` : ''}
-        ${l.church?.phone ? `<div class="church-sub">Tel: ${l.church.phone}</div>` : ''}
-      </div>
-      <div class="recibo-title">
-        <h1>RECIBO</h1>
-        <div class="numero">${recibo.numero}</div>
-        <div class="numero">${fmtDate(recibo.emitido_em.slice(0, 10))}</div>
-      </div>
+<div class="page">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="org-name">${l.church?.name ?? 'Igreja'}</div>
+      ${l.church?.address ? `<div class="org-info">${l.church.address}</div>` : ''}
+      ${l.church?.phone ? `<div class="org-info">Tel: ${l.church.phone}</div>` : ''}
     </div>
+    <span class="numero-badge">${recibo.numero}</span>
+  </div>
 
-    <div class="valor-box">
-      <div>
-        <div class="valor-label">${isEntrada ? 'Recebemos de' : 'Pagamos a'}</div>
-        <div style="font-size:15px;font-weight:700;margin-top:4px">${nomeContribuinte}</div>
-      </div>
-      <div style="text-align:right">
-        <span class="tipo-badge">${isEntrada ? 'Entrada' : 'Saída'}</span>
-        <div class="valor-num" style="margin-top:6px">${fmt(l.valor)}</div>
-      </div>
+  <div class="titulo">RECIBO DE ${isEntrada ? 'CONTRIBUIÇÃO' : 'PAGAMENTO'}</div>
+
+  <div class="corpo">
+    ${isEntrada ? 'Recebemos de' : 'Pagamos a'} <span class="destaque">${nomeContribuinte}</span>${cpfContribuinte ? `, CPF nº <span class="destaque">${cpfContribuinte}</span>,` : ','} o valor de <span class="destaque">${fmt(l.valor)}</span>, referente a${isEntrada ? ' contribuição voluntária' : ''}${motivoTexto ? `: <span class="destaque">${motivoTexto}</span>` : ''}, realizada em <span class="destaque">${fmtDate(l.data_lancamento)}</span>.${forma ? ` Forma de pagamento: ${forma}.` : ''}${l.observacao ? ` ${l.observacao}.` : ''}
+  </div>
+
+  ${localidade ? `<div class="localidade">${localidade}, ${fmtDateExtenso(l.data_lancamento)}.</div>` : `<div class="localidade">${fmtDateExtenso(l.data_lancamento)}.</div>`}
+
+  <div class="assinaturas">
+    <div class="ass-bloco">
+      <div class="ass-linha"></div>
+      <div class="ass-nome">${l.created_by_user?.name ?? ''}</div>
+      <div class="ass-cargo">Tesoureiro(a)</div>
     </div>
-
-    <table>
-      ${l.categoria ? `<tr><td>Categoria</td><td>${l.categoria.nome}</td></tr>` : ''}
-      ${l.descricao ? `<tr><td>Descrição</td><td>${l.descricao}</td></tr>` : ''}
-      ${l.referencia_culto ? `<tr><td>Referência / Culto</td><td>${l.referencia_culto}</td></tr>` : ''}
-      ${forma ? `<tr><td>Forma de pagamento</td><td>${forma}</td></tr>` : ''}
-      <tr><td>Data</td><td>${fmtDate(l.data_lancamento)}</td></tr>
-      ${l.observacao ? `<tr><td>Observação</td><td>${l.observacao}</td></tr>` : ''}
-      ${l.created_by_user ? `<tr><td>Lançado por</td><td>${l.created_by_user.name}</td></tr>` : ''}
-    </table>
-
-    <div class="footer">
-      <div class="assinatura">
-        <div class="assinatura-linha"></div>
-        <div class="assinatura-label">Assinatura do Tesoureiro</div>
-      </div>
-      <div class="nota">
-        Documento emitido eletronicamente pelo sistema de gestão da igreja.
-        ${recibo.numero}
-      </div>
+    <div class="ass-bloco">
+      <div class="ass-linha"></div>
+      <div class="ass-nome">${nomeContribuinte}</div>
+      <div class="ass-cargo">&nbsp;</div>
     </div>
   </div>
+
+  <div class="rodape">
+    Impresso em ${dataImpressao} por ${emitidoPorEmail} (${emitidoPorRole})
+  </div>
+</div>
 </body>
 </html>`
 }
 
 export default function ReciboModal({ recibo, onClose }: Props) {
+  const { user } = useAuth()
   const l = recibo.lancamento
   const isEntrada = l.tipo === 'entrada'
   const nomeContribuinte = l.member?.name ?? l.member_nome_manual ?? ''
-  const phone = l.member // phone do membro (via contatos — aqui não temos, usamos phone da church como fallback)
-  const churchPhone = l.church?.phone ?? ''
+
+  // Telefone: primeiro tenta o do membro, depois da filial como fallback
+  const memberPhone = getMemberPhone(recibo)
+  const whatsPhone = memberPhone || l.church?.phone || ''
+  const hasPhone = !!whatsPhone.replace(/\D/g, '')
+
+  const emitidoPorNome = user?.name ?? ''
+  const emitidoPorEmail = user?.email ?? ''
+  const emitidoPorRole = user?.role ? (ROLE_LABELS[user.role] ?? user.role) : ''
 
   function handleImprimir() {
-    const html = buildReciboHtml(recibo)
-    const win = window.open('', '_blank', 'width=700,height=520')
+    const html = buildReciboHtml(recibo, emitidoPorNome, emitidoPorEmail, emitidoPorRole)
+    const win = window.open('', '_blank', 'width=640,height=520')
     if (!win) return
     win.document.write(html)
     win.document.close()
@@ -135,16 +223,18 @@ export default function ReciboModal({ recibo, onClose }: Props) {
   }
 
   function handleWhatsApp() {
-    const raw = churchPhone.replace(/\D/g, '')
+    const raw = whatsPhone.replace(/\D/g, '')
     const phone = raw.startsWith('55') ? raw : '55' + raw
 
     const forma = formaPagLabel(l.forma_pagamento, l.parcelas)
+    const cpf = fmtCpf(l.member?.cpf)
     const lines = [
       `*Recibo ${recibo.numero}*`,
-      `Igreja: ${l.church?.name ?? ''}`,
+      `${l.church?.name ?? ''}`,
       ``,
       `${isEntrada ? 'Contribuição' : 'Pagamento'}: *${fmt(l.valor)}*`,
       nomeContribuinte ? `Contribuinte: ${nomeContribuinte}` : '',
+      cpf ? `CPF: ${cpf}` : '',
       l.categoria ? `Categoria: ${l.categoria.nome}` : '',
       forma ? `Forma: ${forma}` : '',
       `Data: ${fmtDate(l.data_lancamento)}`,
@@ -155,8 +245,6 @@ export default function ReciboModal({ recibo, onClose }: Props) {
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(lines)}`
     window.open(url, '_blank')
   }
-
-  const hasPhone = !!churchPhone.replace(/\D/g, '')
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
@@ -209,7 +297,7 @@ export default function ReciboModal({ recibo, onClose }: Props) {
             </div>
             <div className="text-left">
               <div className="font-semibold text-gray-800">Imprimir / Salvar PDF</div>
-              <div className="text-xs text-gray-400">Abre o recibo formatado para impressão</div>
+              <div className="text-xs text-gray-400">Abre o recibo formatado (meia folha A4)</div>
             </div>
           </button>
 
@@ -224,7 +312,9 @@ export default function ReciboModal({ recibo, onClose }: Props) {
             <div className="text-left">
               <div className="font-semibold text-gray-800">Enviar pelo WhatsApp</div>
               <div className="text-xs text-gray-400">
-                {hasPhone ? `Encaminhar para ${churchPhone}` : 'Telefone da filial não cadastrado'}
+                {hasPhone
+                  ? `Encaminhar para ${memberPhone ? `${nomeContribuinte} (${whatsPhone})` : whatsPhone}`
+                  : 'Telefone do contribuinte não cadastrado'}
               </div>
             </div>
           </button>
