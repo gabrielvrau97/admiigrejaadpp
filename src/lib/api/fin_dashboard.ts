@@ -392,6 +392,115 @@ export async function getEvolucaoContribuicao(groupId: string): Promise<Evolucao
   })
 }
 
+// ── membros de um título com ranking de contribuição ─────────────────────
+
+export interface MembroDoTitulo {
+  memberId: string
+  nome: string
+  totalContribuido: number
+  qtdLancamentos: number
+  contribuiu: boolean
+}
+
+export async function getMembrosDoTitulo(
+  groupId: string,
+  titulo: string,
+  dataInicio: string,
+  dataFim: string,
+): Promise<MembroDoTitulo[]> {
+  // 1. membros com esse título
+  const { data: ministerios, error: e1 } = await supabase
+    .from('member_ministry')
+    .select('member_id, titles, member:members!member_id(id, name, church_group_id, status)')
+  if (e1) throw e1
+
+  const membrosDoTitulo = ((ministerios ?? []) as any[])
+    .filter(m => (m.titles ?? []).includes(titulo) && m.member?.church_group_id === groupId && m.member?.status === 'ativo')
+
+  if (membrosDoTitulo.length === 0) return []
+
+  const memberIds = membrosDoTitulo.map((m: any) => m.member_id)
+
+  // 2. lançamentos de entrada desses membros no período
+  const { data: lancs, error: e2 } = await supabase
+    .from('fin_lancamentos')
+    .select('member_id, valor')
+    .eq('church_group_id', groupId)
+    .eq('tipo', 'entrada')
+    .in('member_id', memberIds)
+    .gte('data_lancamento', dataInicio)
+    .lte('data_lancamento', dataFim)
+  if (e2) throw e2
+
+  const contribMap = new Map<string, { total: number; qtd: number }>()
+  for (const l of (lancs ?? [])) {
+    if (!l.member_id) continue
+    const prev = contribMap.get(l.member_id) ?? { total: 0, qtd: 0 }
+    contribMap.set(l.member_id, { total: prev.total + Number(l.valor), qtd: prev.qtd + 1 })
+  }
+
+  return membrosDoTitulo
+    .map((m: any) => {
+      const c = contribMap.get(m.member_id)
+      return {
+        memberId: m.member_id,
+        nome: m.member?.name ?? '—',
+        totalContribuido: c?.total ?? 0,
+        qtdLancamentos: c?.qtd ?? 0,
+        contribuiu: !!c && c.total > 0,
+      }
+    })
+    .sort((a, b) => b.totalContribuido - a.totalContribuido)
+}
+
+// ── evolução de contribuição de um membro nos últimos 12 meses ────────────
+
+export interface EvolucaoMembroMes {
+  label: string
+  mes: string
+  total: number
+  qtd: number
+}
+
+export async function getEvolucaoMembro(
+  groupId: string,
+  memberId: string,
+): Promise<EvolucaoMembroMes[]> {
+  const now = new Date()
+  const months: { year: number; month: number }[] = []
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
+  }
+
+  const { first } = monthRange(months[0].year, months[0].month)
+  const { last } = monthRange(months[11].year, months[11].month)
+
+  const { data, error } = await supabase
+    .from('fin_lancamentos')
+    .select('valor, data_lancamento')
+    .eq('church_group_id', groupId)
+    .eq('member_id', memberId)
+    .eq('tipo', 'entrada')
+    .gte('data_lancamento', first)
+    .lte('data_lancamento', last)
+  if (error) throw error
+
+  const rows = data ?? []
+  const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+  return months.map(({ year, month }) => {
+    const mesStr = `${year}-${pad(month)}`
+    const mesRows = rows.filter(r => r.data_lancamento.startsWith(mesStr))
+    return {
+      label: `${MESES[month - 1]}/${String(year).slice(2)}`,
+      mes: mesStr,
+      total: mesRows.reduce((s, r) => s + Number(r.valor), 0),
+      qtd: mesRows.length,
+    }
+  })
+}
+
 // ── KPIs do período ───────────────────────────────────────────────────────
 
 export interface DashKpis {

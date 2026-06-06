@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Users, Receipt, RefreshCw,
@@ -13,9 +13,11 @@ import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
   getContribNaoCadastrados, getEvolucaoContribuicao,
+  getMembrosDoTitulo, getEvolucaoMembro,
   type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis,
   type FormaPagamentoStat, type CatDetalhe, type TituloStat,
   type ContribNaoCadastrado, type EvolucaoMes,
+  type MembroDoTitulo, type EvolucaoMembroMes,
 } from '../../lib/api/fin_dashboard'
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -179,6 +181,251 @@ function CatBarExpandable({
         </div>
       )}
     </div>
+  )
+}
+
+// ── Drawer de evolução de um membro ──────────────────────────────────────
+
+function MembroEvolucaoDrawer({
+  membro,
+  groupId,
+  onClose,
+}: {
+  membro: MembroDoTitulo
+  groupId: string
+  onClose: () => void
+}) {
+  const [evolucao, setEvolucao] = useState<EvolucaoMembroMes[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getEvolucaoMembro(groupId, membro.memberId)
+      .then(setEvolucao)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [groupId, membro.memberId])
+
+  const maxMes = Math.max(...evolucao.map(e => e.total), 1)
+  const mesesComContrib = evolucao.filter(e => e.total > 0).length
+
+  function CustomDot(props: any) {
+    const { cx, cy, payload } = props
+    if (!payload?.total) return null
+    return <circle cx={cx} cy={cy} r={4} fill="#14b8a6" stroke="#fff" strokeWidth={2} />
+  }
+
+  function CustomTooltipMembro({ active, payload, label }: any) {
+    if (!active || !payload?.length) return null
+    const v = payload[0]?.value ?? 0
+    return (
+      <div className="bg-gray-900 text-white rounded-xl shadow-xl px-3 py-2 text-xs">
+        <div className="font-semibold text-gray-300 mb-1">{label}</div>
+        {v > 0
+          ? <span className="text-teal-300 font-bold">{fmt(v)}</span>
+          : <span className="text-gray-500">Não contribuiu</span>
+        }
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      {/* overlay */}
+      <div className="flex-1 bg-black/40" onClick={onClose} />
+      {/* painel */}
+      <div className="w-full max-w-sm bg-white shadow-2xl flex flex-col overflow-hidden">
+        {/* header */}
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 truncate">{membro.nome}</h3>
+            <p className="text-xs text-gray-400">Evolução de contribuição — 12 meses</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 flex-shrink-0">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* resumo */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-teal-50 rounded-xl p-3 text-center">
+              <div className="text-lg font-black text-teal-700">{fmt(membro.totalContribuido)}</div>
+              <div className="text-[10px] text-teal-500 mt-0.5">Total período</div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 text-center">
+              <div className="text-lg font-black text-gray-700">{mesesComContrib}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">Meses ativos</div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 text-center">
+              <div className="text-lg font-black text-gray-700">
+                {mesesComContrib > 0 ? fmt(membro.totalContribuido / mesesComContrib) : '—'}
+              </div>
+              <div className="text-[10px] text-gray-400 mt-0.5">Média/mês</div>
+            </div>
+          </div>
+
+          {/* gráfico */}
+          {loading ? (
+            <div className="h-44 bg-gray-50 rounded-xl animate-pulse" />
+          ) : (
+            <div>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={evolucao} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={fmtK} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={44} />
+                  <Tooltip content={<CustomTooltipMembro />} />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#14b8a6"
+                    strokeWidth={2.5}
+                    dot={<CustomDot />}
+                    activeDot={{ r: 5, fill: '#14b8a6', strokeWidth: 0 }}
+                    connectNulls={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* calendário mensal */}
+          <div>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Mês a mês</p>
+            <div className="space-y-1">
+              {evolucao.map(e => (
+                <div key={e.mes} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${e.total > 0 ? 'bg-teal-50' : 'bg-gray-50'}`}>
+                  <span className="text-xs font-semibold text-gray-600 w-14 flex-shrink-0">{e.label}</span>
+                  <div className="flex-1 bg-white rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-teal-400 transition-all duration-500"
+                      style={{ width: `${e.total > 0 ? (e.total / maxMes) * 100 : 0}%` }}
+                    />
+                  </div>
+                  {e.total > 0
+                    ? <span className="text-xs font-bold text-teal-700 w-20 text-right flex-shrink-0">{fmt(e.total)}</span>
+                    : <span className="text-[10px] text-gray-400 w-20 text-right flex-shrink-0">— não contrib.</span>
+                  }
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Título clicável com ranking de membros ────────────────────────────────
+
+function TituloExpandable({
+  titulo, totalMembros, contribuiram, totalContribuido, periodo,
+}: TituloStat & { periodo: { inicio: string; fim: string } }) {
+  const [open, setOpen] = useState(false)
+  const [membros, setMembros] = useState<MembroDoTitulo[]>([])
+  const [loading, setLoading] = useState(false)
+  const [membroSelecionado, setMembroSelecionado] = useState<MembroDoTitulo | null>(null)
+
+  const pct = totalMembros > 0 ? Math.round((contribuiram / totalMembros) * 100) : 0
+  const maxMembro = membros[0]?.totalContribuido ?? 1
+
+  async function handleToggle() {
+    if (open) { setOpen(false); return }
+    setOpen(true)
+    if (membros.length > 0) return
+    setLoading(true)
+    try {
+      const data = await getMembrosDoTitulo(APP_GROUP_ID, titulo, periodo.inicio, periodo.fim)
+      setMembros(data)
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <>
+      {membroSelecionado && (
+        <MembroEvolucaoDrawer
+          membro={membroSelecionado}
+          groupId={APP_GROUP_ID}
+          onClose={() => setMembroSelecionado(null)}
+        />
+      )}
+
+      <div className="rounded-xl border border-gray-100 overflow-hidden">
+        <button
+          onClick={handleToggle}
+          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors group"
+        >
+          <div className="flex-1 min-w-0 text-left">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-gray-800 truncate">{titulo}</span>
+              <span className="text-xs font-bold text-gray-900 ml-2 flex-shrink-0">{fmt(totalContribuido)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full rounded-full bg-teal-400 transition-all duration-700" style={{ width: `${pct}%` }} />
+              </div>
+              <span className="text-[10px] text-gray-500 flex-shrink-0 w-28 text-right">
+                {contribuiram}/{totalMembros} membros · {pct}%
+              </span>
+            </div>
+          </div>
+          <span className="text-gray-400 group-hover:text-gray-600 ml-2 flex-shrink-0">
+            {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </span>
+        </button>
+
+        {open && (
+          <div className="border-t border-gray-100 bg-gray-50 px-3 py-2">
+            {loading ? (
+              <div className="py-4 text-center text-xs text-gray-400">Carregando membros...</div>
+            ) : membros.length === 0 ? (
+              <div className="py-3 text-center text-xs text-gray-400">Nenhum membro ativo encontrado</div>
+            ) : (
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold px-1 pb-1 uppercase">
+                  <span className="w-5">#</span>
+                  <span className="flex-1">Nome</span>
+                  <span className="w-28 text-right">Contribuição</span>
+                </div>
+                {membros.map((m, i) => {
+                  const pctM = m.totalContribuido > 0 ? (m.totalContribuido / maxMembro) * 100 : 0
+                  return (
+                    <button
+                      key={m.memberId}
+                      onClick={() => setMembroSelecionado(m)}
+                      className={`w-full flex items-center gap-2 px-1 py-1.5 rounded-lg transition-colors text-left ${
+                        m.contribuiu ? 'hover:bg-teal-50' : 'hover:bg-gray-100 opacity-60'
+                      }`}
+                      title="Clique para ver evolução"
+                    >
+                      <span className="text-[10px] text-gray-400 font-bold w-5 flex-shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`text-xs font-medium truncate ${m.contribuiu ? 'text-gray-800' : 'text-gray-400'}`}>
+                            {m.nome}
+                          </span>
+                          {m.contribuiu
+                            ? <span className="text-xs font-bold text-teal-700 ml-2 flex-shrink-0">{fmt(m.totalContribuido)}</span>
+                            : <span className="text-[10px] text-gray-400 ml-2 flex-shrink-0">Não contribuiu</span>
+                          }
+                        </div>
+                        {m.contribuiu && (
+                          <div className="w-full bg-white rounded-full h-1 overflow-hidden">
+                            <div className="h-full rounded-full bg-teal-400 transition-all duration-700" style={{ width: `${pctM}%` }} />
+                          </div>
+                        )}
+                      </div>
+                      <ChevronDown size={11} className="text-gray-300 flex-shrink-0 -rotate-90" />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -620,6 +867,7 @@ export default function FinanceiroDashboardPage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-semibold text-gray-700">Contribuição por Título</span>
+                <span className="text-[10px] text-gray-400 ml-1">· clique no título para ver membros</span>
                 <div className="relative ml-auto">
                   <input
                     type="text"
@@ -636,32 +884,14 @@ export default function FinanceiroDashboardPage() {
                 </div>
               </div>
               {loading ? (
-                <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />)}</div>
+                <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}</div>
               ) : titulosFiltrados.length === 0 ? (
                 <div className="text-center py-4 text-gray-400 text-xs">Nenhum título encontrado</div>
               ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {titulosFiltrados.map(t => {
-                    const pct = t.totalMembros > 0 ? Math.round((t.contribuiram / t.totalMembros) * 100) : 0
-                    return (
-                      <div key={t.titulo} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold text-gray-800 truncate">{t.titulo}</span>
-                            <span className="text-xs font-bold text-gray-900 ml-2 flex-shrink-0">{fmt(t.totalContribuido)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-white rounded-full h-1.5 overflow-hidden">
-                              <div className="h-full rounded-full bg-teal-400 transition-all duration-700" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-[10px] text-gray-500 flex-shrink-0 w-28 text-right">
-                              {t.contribuiram}/{t.totalMembros} · {pct}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="space-y-2">
+                  {titulosFiltrados.map(t => (
+                    <TituloExpandable key={t.titulo} {...t} periodo={periodoObj} />
+                  ))}
                 </div>
               )}
             </div>
