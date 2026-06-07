@@ -13,7 +13,8 @@ interface NavItem {
   path?: string
   icon?: React.ReactNode
   children?: NavItem[]
-  area?: Area  // se definido, item só aparece pra papéis que acessam essa área
+  area?: Area   // item aparece se o papel tiver ESSA área
+  areas?: Area[] // item aparece se o papel tiver QUALQUER UMA dessas áreas
 }
 
 const secretariaItems: NavItem[] = [
@@ -44,7 +45,7 @@ const documentosItems: NavItem[] = [
 
 const financeiroItems: NavItem[] = [
   { label: 'Dashboard', path: '/financeiro/dashboard', icon: <PieChart size={14} />, area: 'financeiro' },
-  { label: 'Tesouraria', path: '/financeiro/tesouraria', icon: <DollarSign size={14} />, area: 'financeiro-tesouraria' },
+  { label: 'Tesouraria', path: '/financeiro/tesouraria', icon: <DollarSign size={14} />, areas: ['financeiro', 'financeiro-tesouraria'] },
   { label: 'Extrato', path: '/financeiro/extrato', icon: <ScrollText size={14} />, area: 'financeiro' },
   { label: 'Recibos', path: '/financeiro/recibos', icon: <FileText size={14} />, area: 'financeiro' },
   { label: 'Config. Financeiras', path: '/financeiro/configuracoes', icon: <Settings size={14} />, area: 'financeiro-config' },
@@ -63,10 +64,10 @@ function NavGroup({ items, title, onNavigate }: { items: NavItem[]; title: strin
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ 'Pessoas': true })
 
   const role = user?.role
-  // Filtra itens conforme papel — se item tem `area`, checa permissão
   const visibleItems = items.filter(item => {
-    if (!item.area) return true  // sem área = sempre visível
-    return canAccessArea(role, item.area)
+    if (!item.area && !item.areas) return true
+    if (item.areas) return item.areas.some(a => canAccessArea(role, a))
+    return canAccessArea(role, item.area!)
   })
 
   // Se nenhum item visível, esconde o grupo inteiro
