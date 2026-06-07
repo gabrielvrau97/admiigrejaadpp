@@ -1,13 +1,15 @@
 import { supabase } from '../supabase'
 import type { Matricula } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 export async function listMatriculas(): Promise<Matricula[]> {
-  const { data, error } = await supabase
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const data = await fetchAllPaged<Matricula>((from, to) => supabase
     .from('matriculas')
     .select('*')
     .order('data_matricula', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Matricula[]
+    .range(from, to))
+  return data
 }
 
 export async function createMatricula(m: Omit<Matricula, 'id' | 'created_at' | 'updated_at'>): Promise<Matricula> {

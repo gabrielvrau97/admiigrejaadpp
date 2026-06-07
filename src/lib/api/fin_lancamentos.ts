@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 import type { FinLancamento } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 const LANCAMENTO_COLUMNS = `
   *,
@@ -24,25 +25,27 @@ export interface FinLancamentoFilters {
 }
 
 export async function listFinLancamentos(filters: FinLancamentoFilters): Promise<FinLancamento[]> {
-  let q = supabase
-    .from('fin_lancamentos')
-    .select(LANCAMENTO_COLUMNS)
-    .eq('church_group_id', filters.groupId)
-    .order('data_lancamento', { ascending: false })
-    .order('created_at', { ascending: false })
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const rows = await fetchAllPaged<FinLancamento>((from, to) => {
+    let q = supabase
+      .from('fin_lancamentos')
+      .select(LANCAMENTO_COLUMNS)
+      .eq('church_group_id', filters.groupId)
+      .order('data_lancamento', { ascending: false })
+      .order('created_at', { ascending: false })
 
-  if (filters.churchId) q = q.eq('church_id', filters.churchId)
-  if (filters.tipo) q = q.eq('tipo', filters.tipo)
-  if (filters.categoriaId) q = q.eq('categoria_id', filters.categoriaId)
-  if (filters.memberId) q = q.eq('member_id', filters.memberId)
-  if (filters.createdBy) q = q.eq('created_by', filters.createdBy)
-  if (filters.dataInicio) q = q.gte('data_lancamento', filters.dataInicio)
-  if (filters.dataFim) q = q.lte('data_lancamento', filters.dataFim)
-  if (filters.origem) q = q.eq('origem', filters.origem)
+    if (filters.churchId) q = q.eq('church_id', filters.churchId)
+    if (filters.tipo) q = q.eq('tipo', filters.tipo)
+    if (filters.categoriaId) q = q.eq('categoria_id', filters.categoriaId)
+    if (filters.memberId) q = q.eq('member_id', filters.memberId)
+    if (filters.createdBy) q = q.eq('created_by', filters.createdBy)
+    if (filters.dataInicio) q = q.gte('data_lancamento', filters.dataInicio)
+    if (filters.dataFim) q = q.lte('data_lancamento', filters.dataFim)
+    if (filters.origem) q = q.eq('origem', filters.origem)
 
-  const { data, error } = await q
-  if (error) throw error
-  return (data ?? []) as FinLancamento[]
+    return q.range(from, to) as unknown as PromiseLike<{ data: FinLancamento[] | null; error: any }>
+  })
+  return rows
 }
 
 export async function listFinLancamentosHoje(groupId: string): Promise<FinLancamento[]> {

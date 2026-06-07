@@ -1,13 +1,15 @@
 import { supabase } from '../supabase'
 import type { Carteirinha } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 export async function listCarteirinhas(): Promise<Carteirinha[]> {
-  const { data, error } = await supabase
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const data = await fetchAllPaged<Carteirinha>((from, to) => supabase
     .from('carteirinhas')
     .select('*')
     .order('emitida_em', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Carteirinha[]
+    .range(from, to))
+  return data
 }
 
 export async function createCarteirinha(c: Omit<Carteirinha, 'id' | 'created_at'>): Promise<Carteirinha> {

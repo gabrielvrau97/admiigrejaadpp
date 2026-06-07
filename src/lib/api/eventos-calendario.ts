@@ -1,15 +1,17 @@
 import { supabase } from '../supabase'
 import type { EventoCalendario } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 const COLS = 'id, church_group_id, church_id, titulo, descricao, data, hora, cor, created_by, created_at, updated_at'
 
 export async function listEventosCalendario(): Promise<EventoCalendario[]> {
-  const { data, error } = await supabase
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const data = await fetchAllPaged<EventoCalendario>((from, to) => supabase
     .from('eventos_calendario')
     .select(COLS)
     .order('data', { ascending: true })
-  if (error) throw error
-  return (data ?? []) as EventoCalendario[]
+    .range(from, to))
+  return data
 }
 
 function clean(e: Partial<EventoCalendario>) {

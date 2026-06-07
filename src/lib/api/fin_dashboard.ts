@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 import type { FinLancamento } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -30,25 +31,6 @@ const COLS = `
   member:members!member_id ( id, name )
 `
 
-// O Supabase/PostgREST corta cada request em "Max Rows" (1.000 por padrão).
-// .limit(10000) NÃO ignora esse teto — ele só vale dentro do limite do servidor.
-// Para somar períodos com mais de 1.000 lançamentos é preciso paginar com .range().
-async function fetchAllPaged(
-  build: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>,
-): Promise<any[]> {
-  const PAGE = 1000
-  let all: any[] = []
-  let from = 0
-  for (;;) {
-    const { data, error } = await build(from, from + PAGE - 1)
-    if (error) throw error
-    const rows = data ?? []
-    all = all.concat(rows)
-    if (rows.length < PAGE) break
-    from += PAGE
-  }
-  return all
-}
 
 // ── fluxo de caixa 12 meses ───────────────────────────────────────────────
 
@@ -299,27 +281,27 @@ export async function getStatsPorTitulo(
 
   const churchIds = (churches ?? []).map(c => c.id)
 
-  // busca membros ativos das igrejas do grupo
-  const { data: membersData, error: e3 } = churchIds.length > 0
-    ? await supabase
+  // busca membros ativos das igrejas do grupo (paginado — pode passar de 1.000)
+  const membersData = churchIds.length > 0
+    ? await fetchAllPaged((f, t) => supabase
         .from('members')
         .select('id')
         .in('church_id', churchIds)
         .eq('status', 'ativo')
-    : { data: [], error: null }
-  if (e3) throw e3
+        .range(f, t))
+    : []
 
-  const activeMemberIds = new Set((membersData ?? []).map(m => m.id))
+  const activeMemberIds = new Set(membersData.map(m => m.id))
   const activeIdsList = [...activeMemberIds]
 
-  // busca member_ministry filtrado pelos membros ativos do grupo
-  const { data: ministerios, error: e4 } = activeIdsList.length > 0
-    ? await supabase
+  // busca member_ministry filtrado pelos membros ativos do grupo (paginado)
+  const ministerios = activeIdsList.length > 0
+    ? await fetchAllPaged((f, t) => supabase
         .from('member_ministry')
         .select('member_id, titles')
         .in('member_id', activeIdsList)
-    : { data: [], error: null }
-  if (e4) throw e4
+        .range(f, t))
+    : []
 
   // IDs que contribuíram + total
   const contribMap = new Map<string, number>()
@@ -458,28 +440,28 @@ export async function getMembrosDoTitulo(
 
   const churchIds = (churches ?? []).map(c => c.id)
 
-  // busca membros ativos das igrejas do grupo
-  const { data: membrosAtivos, error: e3 } = churchIds.length > 0
-    ? await supabase
+  // busca membros ativos das igrejas do grupo (paginado — pode passar de 1.000)
+  const membrosAtivos = churchIds.length > 0
+    ? await fetchAllPaged<{ id: string; name: string }>((f, t) => supabase
         .from('members')
         .select('id, name')
         .in('church_id', churchIds)
         .eq('status', 'ativo')
-    : { data: [], error: null }
-  if (e3) throw e3
+        .range(f, t))
+    : []
 
-  const activoIds = (membrosAtivos ?? []).map(m => m.id)
+  const activoIds = membrosAtivos.map(m => m.id)
 
-  // busca member_ministry filtrado pelos ativos do grupo
-  const { data: ministerios, error: e4 } = activoIds.length > 0
-    ? await supabase
+  // busca member_ministry filtrado pelos ativos do grupo (paginado)
+  const ministerios = activoIds.length > 0
+    ? await fetchAllPaged((f, t) => supabase
         .from('member_ministry')
         .select('member_id, titles')
         .in('member_id', activoIds)
-    : { data: [], error: null }
-  if (e4) throw e4
+        .range(f, t))
+    : []
 
-  const memberMap = new Map((membrosAtivos ?? []).map(m => [m.id, m]))
+  const memberMap = new Map(membrosAtivos.map(m => [m.id, m]))
 
   // filtra quem tem o título
   const tituloNorm = titulo.trim()

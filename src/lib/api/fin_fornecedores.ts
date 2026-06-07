@@ -1,14 +1,16 @@
 import { supabase } from '../supabase'
 import type { FinFornecedor } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 export async function listFinFornecedores(groupId: string): Promise<FinFornecedor[]> {
-  const { data, error } = await supabase
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const data = await fetchAllPaged<FinFornecedor>((from, to) => supabase
     .from('fin_fornecedores')
     .select('*')
     .eq('church_group_id', groupId)
     .order('nome')
-  if (error) throw error
-  return (data ?? []) as FinFornecedor[]
+    .range(from, to))
+  return data
 }
 
 export async function searchFinFornecedores(groupId: string, q: string): Promise<FinFornecedor[]> {

@@ -1,13 +1,15 @@
 import { supabase } from '../supabase'
 import type { Certificado } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 export async function listCertificados(): Promise<Certificado[]> {
-  const { data, error } = await supabase
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const data = await fetchAllPaged<Certificado>((from, to) => supabase
     .from('certificados')
     .select('*')
     .order('emitido_em', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as Certificado[]
+    .range(from, to))
+  return data
 }
 
 export async function createCertificado(c: Omit<Certificado, 'id' | 'created_at'>): Promise<Certificado> {

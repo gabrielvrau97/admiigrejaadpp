@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 import type { Member, MemberContact, MemberFamily, MemberMinistry, FamilyChild } from '../../types'
+import { fetchAllPaged } from './_paginate'
 
 const MEMBER_COLUMNS = `
   id, church_id, member_type, status, name, apelido, sex, birth_date, civil_status,
@@ -43,13 +44,14 @@ function normalize(raw: RawMember): Member {
 }
 
 export async function listMembers(): Promise<Member[]> {
-  const { data, error } = await supabase
+  // Pagina via .range() — o Supabase corta cada request em 1.000 linhas (Max Rows).
+  const data = await fetchAllPaged((from, to) => supabase
     .from('members')
     .select(MEMBER_COLUMNS)
     .neq('status', 'deleted')
     .order('name', { ascending: true })
-  if (error) throw error
-  return (data ?? []).map(r => normalize(r as unknown as RawMember))
+    .range(from, to))
+  return data.map(r => normalize(r as unknown as RawMember))
 }
 
 export async function getMember(id: string): Promise<Member | null> {
