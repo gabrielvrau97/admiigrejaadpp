@@ -72,6 +72,17 @@ function norm(s) {
     .toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
+const MAPA_FORMA = {
+  'dinheiro':          'dinheiro',
+  'pix':               'pix',
+  'cartao de debito':  'cartao_debito',
+  'cartao de credito': 'cartao_credito',
+}
+function resolveForma(s) {
+  if (!s) return null
+  return MAPA_FORMA[norm(s)] ?? null
+}
+
 /** "1.234,56" → 1234.56 */
 function parseBRL(s) {
   if (!s) return 0
@@ -452,7 +463,8 @@ async function main() {
       origem:             'importado',
       periodo_referencia: r[5] || null,
       created_by:         masterId,
-      observacao:         r[3] || null,   // Forma: Dinheiro, PIX, etc.
+      forma_pagamento:    resolveForma(r[3]),
+      observacao:         null,
     })
   }
 
