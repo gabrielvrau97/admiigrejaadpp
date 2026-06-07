@@ -51,6 +51,7 @@ export async function getFluxo12Meses(groupId: string): Promise<MesFluxo[]> {
     .eq('church_group_id', groupId)
     .gte('data_lancamento', first)
     .lte('data_lancamento', last)
+    .limit(10000)
 
   if (error) throw error
   const rows = data ?? []
@@ -93,6 +94,7 @@ export async function getDistribuicaoCategoria(
     .eq('tipo', tipo)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
+    .limit(10000)
 
   if (error) throw error
   const rows = (data ?? []) as unknown as FinLancamento[]
@@ -135,6 +137,7 @@ export async function getTopContribuintes(
     .eq('tipo', 'entrada')
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
+    .limit(10000)
 
   if (error) throw error
   const rows = (data ?? []) as unknown as FinLancamento[]
@@ -178,6 +181,7 @@ export async function getDistribuicaoFormaPagamento(
     .eq('tipo', tipo)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
+    .limit(10000)
 
   if (error) throw error
   const rows = data ?? []
@@ -276,6 +280,7 @@ export async function getStatsPorTitulo(
     .not('member_id', 'is', null)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
+    .limit(10000)
   if (e1) throw e1
 
   // busca igrejas do grupo para filtrar members (members não tem church_group_id)
@@ -362,6 +367,7 @@ export async function getContribNaoCadastrados(
     .not('member_nome_manual', 'is', null)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
+    .limit(10000)
   if (error) throw error
 
   const map = new Map<string, number>()
@@ -398,6 +404,7 @@ export async function getEvolucaoContribuicao(groupId: string): Promise<Evolucao
     .eq('tipo', 'entrada')
     .gte('data_lancamento', first)
     .lte('data_lancamento', last)
+    .limit(10000)
   if (error) throw error
 
   const rows = data ?? []
@@ -437,7 +444,8 @@ export async function getMembrosDoTitulo(
       .eq('tipo', 'entrada')
       .not('member_id', 'is', null)
       .gte('data_lancamento', dataInicio)
-      .lte('data_lancamento', dataFim),
+      .lte('data_lancamento', dataFim)
+      .limit(10000),
     supabase
       .from('churches')
       .select('id')
@@ -569,6 +577,7 @@ export async function getDashKpis(
     .eq('church_group_id', groupId)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
+    .limit(10000)
 
   if (error) throw error
   const rows = data ?? []
