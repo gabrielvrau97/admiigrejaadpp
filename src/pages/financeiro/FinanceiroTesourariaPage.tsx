@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   Wallet, TrendingDown, Plus, Edit2, Trash2,
-  Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown,
+  Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown, FileText,
 } from 'lucide-react'
 import { useTesoureiro } from '../../contexts/TesureiroContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
@@ -17,6 +17,7 @@ import LancamentoModal from './LancamentoModal'
 import type { FinCategoria, FinLancamento, FinTipo } from '../../types'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { printRelatorioTesouraria } from '../../lib/print/financeiro/printRelatorioTesouraria'
 
 function fmtMoeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -310,6 +311,17 @@ const loadHoje = useCallback(async () => {
               <Users size={14} />
               {tesoureiro.nome}
               <ChevronDown size={13} className="text-blue-400" />
+            </button>
+          )}
+
+          {/* Botão de relatório diário */}
+          {tesoureiro && lancamentosHoje.length > 0 && (
+            <button
+              onClick={() => printRelatorioTesouraria(lancamentosHoje, tesoureiro)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              title="Gerar relatório diário"
+            >
+              <FileText size={14} /> Relatório
             </button>
           )}
 

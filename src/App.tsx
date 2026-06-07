@@ -1,11 +1,11 @@
-import React, { lazy, Suspense } from 'react'
+import React, { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ChurchProvider } from './contexts/ChurchContext'
 import { ConfigProvider } from './contexts/ConfigContext'
 import { DataProvider } from './contexts/DataContext'
 import { MemberQuickViewProvider } from './contexts/MemberQuickViewContext'
-import { TesureiroProvider } from './contexts/TesureiroContext'
+import { TesureiroProvider, useTesoureiro } from './contexts/TesureiroContext'
 import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
 import PageLoader from './components/ui/PageLoader'
@@ -34,6 +34,22 @@ const FinanceiroTesourariaPage = lazy(() => import('./pages/financeiro/Financeir
 const FinanceiroExtratoPage = lazy(() => import('./pages/financeiro/FinanceiroExtratoPage'))
 const FinanceiroDashboardPage = lazy(() => import('./pages/financeiro/FinanceiroDashboardPage'))
 const FinanceiroRecibosPage = lazy(() => import('./pages/financeiro/FinanceiroRecibosPage'))
+
+/**
+ * Sincroniza o TesureiroContext com o usuário logado.
+ * Quando o user muda (login/logout), inicializa ou limpa o tesoureiro da sessão.
+ */
+function AuthTesureiroSync() {
+  const { user } = useAuth()
+  const { initForUser, clearTesoureiro } = useTesoureiro()
+
+  useEffect(() => {
+    if (user?.id) initForUser(user.id)
+    else clearTesoureiro()
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -134,6 +150,7 @@ export default function App() {
             <ConfigProvider>
               <DataProvider>
                 <TesureiroProvider>
+                  <AuthTesureiroSync />
                   <MemberQuickViewProvider>
                     <AppRoutes />
                   </MemberQuickViewProvider>
