@@ -30,6 +30,26 @@ const COLS = `
   member:members!member_id ( id, name )
 `
 
+// O Supabase/PostgREST corta cada request em "Max Rows" (1.000 por padrão).
+// .limit(10000) NÃO ignora esse teto — ele só vale dentro do limite do servidor.
+// Para somar períodos com mais de 1.000 lançamentos é preciso paginar com .range().
+async function fetchAllPaged(
+  build: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>,
+): Promise<any[]> {
+  const PAGE = 1000
+  let all: any[] = []
+  let from = 0
+  for (;;) {
+    const { data, error } = await build(from, from + PAGE - 1)
+    if (error) throw error
+    const rows = data ?? []
+    all = all.concat(rows)
+    if (rows.length < PAGE) break
+    from += PAGE
+  }
+  return all
+}
+
 // ── fluxo de caixa 12 meses ───────────────────────────────────────────────
 
 export interface MesFluxo {
@@ -45,16 +65,13 @@ export async function getFluxo12Meses(groupId: string): Promise<MesFluxo[]> {
   const { first } = monthRange(months[0].year, months[0].month)
   const { last } = monthRange(months[11].year, months[11].month)
 
-  const { data, error } = await supabase
+  const rows = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select('tipo, valor, data_lancamento')
     .eq('church_group_id', groupId)
     .gte('data_lancamento', first)
     .lte('data_lancamento', last)
-    .limit(10000)
-
-  if (error) throw error
-  const rows = data ?? []
+    .range(f, t))
 
   return months.map(({ year, month }) => {
     const mesStr = `${year}-${pad(month)}`
@@ -87,17 +104,14 @@ export async function getDistribuicaoCategoria(
   dataInicio: string,
   dataFim: string,
 ): Promise<CatFatia[]> {
-  const { data, error } = await supabase
+  const rows = (await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select(COLS)
     .eq('church_group_id', groupId)
     .eq('tipo', tipo)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-    .limit(10000)
-
-  if (error) throw error
-  const rows = (data ?? []) as unknown as FinLancamento[]
+    .range(f, t))) as unknown as FinLancamento[]
 
   const map = new Map<string, { nome: string; cor: string; total: number }>()
 
@@ -130,17 +144,14 @@ export async function getTopContribuintes(
   dataFim: string,
   limit = 10,
 ): Promise<TopContribuinte[]> {
-  const { data, error } = await supabase
+  const rows = (await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select(COLS)
     .eq('church_group_id', groupId)
     .eq('tipo', 'entrada')
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-    .limit(10000)
-
-  if (error) throw error
-  const rows = (data ?? []) as unknown as FinLancamento[]
+    .range(f, t))) as unknown as FinLancamento[]
 
   const map = new Map<string, TopContribuinte>()
 
@@ -174,17 +185,14 @@ export async function getDistribuicaoFormaPagamento(
   dataInicio: string,
   dataFim: string,
 ): Promise<FormaPagamentoStat[]> {
-  const { data, error } = await supabase
+  const rows = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select('forma_pagamento, valor')
     .eq('church_group_id', groupId)
     .eq('tipo', tipo)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-    .limit(10000)
-
-  if (error) throw error
-  const rows = data ?? []
+    .range(f, t))
 
   const FORMAS: Record<string, { label: string; cor: string }> = {
     dinheiro:       { label: 'Dinheiro',   cor: '#22c55e' },
@@ -272,7 +280,7 @@ export async function getStatsPorTitulo(
   dataFim: string,
 ): Promise<TituloStat[]> {
   // busca lançamentos de entrada com member_id no período
-  const { data: lancs, error: e1 } = await supabase
+  const lancs = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select('member_id, valor')
     .eq('church_group_id', groupId)
@@ -280,8 +288,7 @@ export async function getStatsPorTitulo(
     .not('member_id', 'is', null)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-    .limit(10000)
-  if (e1) throw e1
+    .range(f, t))
 
   // busca igrejas do grupo para filtrar members (members não tem church_group_id)
   const { data: churches, error: e2 } = await supabase
@@ -358,7 +365,7 @@ export async function getContribNaoCadastrados(
   dataFim: string,
   limit = 20,
 ): Promise<ContribNaoCadastrado[]> {
-  const { data, error } = await supabase
+  const data = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select('member_nome_manual, valor')
     .eq('church_group_id', groupId)
@@ -367,8 +374,7 @@ export async function getContribNaoCadastrados(
     .not('member_nome_manual', 'is', null)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-    .limit(10000)
-  if (error) throw error
+    .range(f, t))
 
   const map = new Map<string, number>()
   for (const r of (data ?? [])) {
@@ -397,17 +403,14 @@ export async function getEvolucaoContribuicao(groupId: string): Promise<Evolucao
   const { first } = monthRange(months[0].year, months[0].month)
   const { last } = monthRange(months[11].year, months[11].month)
 
-  const { data, error } = await supabase
+  const rows = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select('valor, data_lancamento, member_id, member_nome_manual')
     .eq('church_group_id', groupId)
     .eq('tipo', 'entrada')
     .gte('data_lancamento', first)
     .lte('data_lancamento', last)
-    .limit(10000)
-  if (error) throw error
-
-  const rows = data ?? []
+    .range(f, t))
 
   return months.map(({ year, month }) => {
     const mesStr = `${year}-${pad(month)}`
@@ -436,8 +439,8 @@ export async function getMembrosDoTitulo(
 ): Promise<MembroDoTitulo[]> {
   // Mesmas duas queries que getStatsPorTitulo usa (sem filtros extras que quebram)
   // busca igrejas do grupo + lançamentos em paralelo
-  const [{ data: lancs, error: e1 }, { data: churches, error: e2 }] = await Promise.all([
-    supabase
+  const [lancs, { data: churches, error: e2 }] = await Promise.all([
+    fetchAllPaged((f, t) => supabase
       .from('fin_lancamentos')
       .select('member_id, valor')
       .eq('church_group_id', groupId)
@@ -445,13 +448,12 @@ export async function getMembrosDoTitulo(
       .not('member_id', 'is', null)
       .gte('data_lancamento', dataInicio)
       .lte('data_lancamento', dataFim)
-      .limit(10000),
+      .range(f, t)),
     supabase
       .from('churches')
       .select('id')
       .eq('group_id', groupId),
   ])
-  if (e1) throw e1
   if (e2) throw e2
 
   const churchIds = (churches ?? []).map(c => c.id)
@@ -571,16 +573,13 @@ export async function getDashKpis(
   dataInicio: string,
   dataFim: string,
 ): Promise<DashKpis> {
-  const { data, error } = await supabase
+  const rows = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
     .select('tipo, valor, member_id, member_nome_manual')
     .eq('church_group_id', groupId)
     .gte('data_lancamento', dataInicio)
     .lte('data_lancamento', dataFim)
-    .limit(10000)
-
-  if (error) throw error
-  const rows = data ?? []
+    .range(f, t))
 
   const entradas = rows.filter(r => r.tipo === 'entrada')
   const saidas = rows.filter(r => r.tipo === 'saida')
