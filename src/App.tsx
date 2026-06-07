@@ -9,7 +9,7 @@ import { TesureiroProvider } from './contexts/TesureiroContext'
 import { UIProvider } from './components/ui/UIProvider'
 import AppLayout from './components/layout/AppLayout'
 import PageLoader from './components/ui/PageLoader'
-import { canAccessRoute } from './lib/permissions'
+import { canAccessRoute, homeRouteForRole } from './lib/permissions'
 
 // Eager (primeiro acesso): tela de login + dashboard + lista de membros
 import Login from './pages/Login'
@@ -50,14 +50,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 /**
  * Guarda de papel: se o usuário não pode acessar a rota atual, redireciona
- * pro dashboard. Roda em todas as rotas protegidas.
+ * pra home do papel. Roda em todas as rotas protegidas.
+ *
+ * IMPORTANTE: redireciona pra homeRouteForRole (rota que o papel PODE acessar),
+ * nunca pra um '/dashboard' fixo — senão papéis sem dashboard (tesoureiro)
+ * entram em loop infinito de redirect e a tela fica branca.
  */
 function RoleGuard({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const location = useLocation()
   if (!user) return <>{children}</>
   if (!canAccessRoute(user.role, location.pathname)) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={homeRouteForRole(user.role)} replace />
   }
   return <>{children}</>
 }
@@ -66,7 +70,7 @@ function AppRoutes() {
   const { user } = useAuth()
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/login" element={user ? <Navigate to={homeRouteForRole(user.role)} replace /> : <Login />} />
       <Route
         element={
           <ProtectedRoute>
@@ -113,8 +117,8 @@ function AppRoutes() {
         <Route path="/financeiro/recibos" element={<Suspense fallback={<PageLoader />}><FinanceiroRecibosPage /></Suspense>} />
         <Route path="/financeiro/configuracoes" element={<Suspense fallback={<PageLoader />}><FinanceiroConfigPage /></Suspense>} />
 
-        {/* Default */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Default — home do papel (tesoureiro não tem dashboard) */}
+        <Route path="/" element={<Navigate to={homeRouteForRole(user?.role)} replace />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

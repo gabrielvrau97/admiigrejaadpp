@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Church, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { homeRouteForRole } from '../lib/permissions'
 
 export default function Login() {
   const { login } = useAuth()
@@ -19,7 +20,7 @@ export default function Login() {
     const result = await login(email, password)
     setLoading(false)
     if (result.ok) {
-      navigate('/dashboard')
+      navigate(homeRouteForRole(result.role))
     } else {
       setError(result.error ?? 'E-mail ou senha inválidos.')
     }

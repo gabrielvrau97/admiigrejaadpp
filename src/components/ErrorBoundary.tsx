@@ -27,7 +27,8 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleGoHome = () => {
-    window.location.href = '/dashboard'
+    // '/' resolve pra home do papel via roteamento (tesoureiro não tem /dashboard)
+    window.location.href = '/'
   }
 
   handleTryAgain = () => {

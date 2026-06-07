@@ -6,7 +6,7 @@ const SESSION_TIMEOUT = 30 * 60 // 30 minutos em segundos
 
 interface AuthContextType {
   user: AppUser | null
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; role?: AppUser['role'] }>
   logout: () => Promise<void>
   sessionRemaining: number
   loading: boolean
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const login = async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+  const login = async (email: string, password: string): Promise<{ ok: boolean; error?: string; role?: AppUser['role'] }> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error || !data.user) {
       return { ok: false, error: traduzErro(error?.message) }
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(appUser)
     startSessionTimer()
-    return { ok: true }
+    return { ok: true, role: appUser.role }
   }
 
   return (

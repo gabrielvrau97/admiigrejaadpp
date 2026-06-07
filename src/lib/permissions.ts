@@ -110,3 +110,15 @@ export function canAccessRoute(role: UserRole | undefined, pathname: string): bo
 export function canManageUsers(role: UserRole | undefined): boolean {
   return role === 'master'
 }
+
+/**
+ * Rota inicial (home) de cada papel: pra onde mandar depois do login e quando
+ * cair numa rota sem permissão. DEVE ser sempre uma rota que o papel PODE
+ * acessar — senão o RoleGuard entra em loop de redirect (tela branca).
+ *
+ * O tesoureiro não tem área 'dashboard', então a home dele é a tesouraria.
+ */
+export function homeRouteForRole(role: UserRole | undefined): string {
+  if (role === 'tesoureiro') return '/financeiro/tesouraria'
+  return '/dashboard'
+}
