@@ -641,7 +641,7 @@ export default function FinanceiroDashboardPage() {
             const positivo = saldoPeriodo >= 0
             const gradient = positivo ? 'bg-gradient-to-br from-blue-500 to-indigo-700' : 'bg-gradient-to-br from-orange-500 to-amber-700'
             return (
-              <div className={`rounded-2xl p-5 flex flex-col gap-2 transition-all duration-600 opacity-100 ${gradient}`} style={{ transitionDelay: '160ms' }}>
+              <div className={`rounded-2xl p-5 flex flex-col gap-3 transition-all duration-600 opacity-100 ${gradient}`} style={{ transitionDelay: '160ms' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-white opacity-75">Saldo</span>
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/20">
@@ -649,14 +649,14 @@ export default function FinanceiroDashboardPage() {
                   </div>
                 </div>
                 <div className="text-2xl font-black tabular-nums leading-none text-white">{fmt(saldoPeriodo)}</div>
-                <div className="border-t border-white/20 pt-2 space-y-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] text-white/60 leading-tight">Saldo anterior</span>
-                    <span className="text-[11px] font-semibold text-white/80 tabular-nums">{fmt(anterior)}</span>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-white/60">Anterior</span>
+                    <span className="text-[10px] text-white/80 tabular-nums">{fmt(anterior)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] text-white font-semibold leading-tight">Acumulado</span>
-                    <span className="text-[12px] font-black text-white tabular-nums">{fmt(acumulado)}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-white/90 font-semibold">Acumulado</span>
+                    <span className="text-[10px] text-white font-bold tabular-nums">{fmt(acumulado)}</span>
                   </div>
                 </div>
               </div>

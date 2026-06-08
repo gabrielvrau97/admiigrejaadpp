@@ -429,7 +429,7 @@ export default function FinanceiroExtratoPage() {
               <TrendingUp size={14} className="text-emerald-600" />
             </div>
             <div>
-              <div className="text-[10px] text-gray-500">Entradas no período</div>
+              <div className="text-[10px] text-gray-500">Entradas</div>
               <div className="text-sm font-bold text-emerald-600">{fmt(totais.entradas)}</div>
             </div>
           </div>
@@ -438,56 +438,35 @@ export default function FinanceiroExtratoPage() {
               <TrendingDown size={14} className="text-red-500" />
             </div>
             <div>
-              <div className="text-[10px] text-gray-500">Saídas no período</div>
+              <div className="text-[10px] text-gray-500">Saídas</div>
               <div className="text-sm font-bold text-red-500">{fmt(totais.saidas)}</div>
             </div>
           </div>
           {/* Card de saldo: mostra período + anterior + acumulado quando disponível */}
-          <div className={`bg-white rounded-xl border px-3 py-2.5 flex items-start gap-2.5 ${
+          <div className={`bg-white rounded-xl border px-3 py-2.5 flex items-center gap-2.5 ${
             totais.saldo >= 0 ? 'border-blue-100' : 'border-orange-100'
           }`}>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
               totais.saldo >= 0 ? 'bg-blue-50' : 'bg-orange-50'
             }`}>
               <Wallet size={14} className={totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'} />
             </div>
             <div className="flex-1 min-w-0">
-              {saldoAnterior !== null ? (
-                <>
-                  <div className="text-[10px] text-gray-500 mb-1">Saldo do período</div>
-                  <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
-                    {fmt(totais.saldo)}
+              <div className="text-[10px] text-gray-500">{saldoAnterior !== null ? 'Saldo do período' : 'Saldo'}</div>
+              <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                {fmt(totais.saldo)}
+              </div>
+              {saldoAnterior !== null && (() => {
+                const acumulado = saldoAnterior + totais.saldo
+                return (
+                  <div className="flex gap-3 mt-0.5">
+                    <span className="text-[10px] text-gray-400">Ant. <span className="text-gray-500 font-medium">{fmt(saldoAnterior)}</span></span>
+                    <span className={`text-[10px] font-semibold ${acumulado >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                      Acum. {fmt(acumulado)}
+                    </span>
                   </div>
-                  <div className="mt-1.5 pt-1.5 border-t border-gray-100 space-y-0.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-gray-400">Saldo anterior</span>
-                      <span className={`text-[11px] font-semibold ${saldoAnterior >= 0 ? 'text-gray-600' : 'text-orange-500'}`}>
-                        {fmt(saldoAnterior)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      {(() => {
-                        const acumulado = saldoAnterior + totais.saldo
-                        return (
-                          <>
-                            <span className="text-[10px] font-semibold text-gray-600">Saldo acumulado</span>
-                            <span className={`text-[12px] font-bold ${acumulado >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                              {fmt(acumulado)}
-                            </span>
-                          </>
-                        )
-                      })()}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-[10px] text-gray-500">Saldo do período</div>
-                  <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
-                    {fmt(totais.saldo)}
-                  </div>
-                </>
-              )}
+                )
+              })()}
             </div>
           </div>
         </div>
