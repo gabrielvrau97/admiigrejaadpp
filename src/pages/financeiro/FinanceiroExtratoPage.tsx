@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Download, ChevronLeft, ChevronRight,
-  TrendingUp, TrendingDown, Wallet, Filter, X, Pencil, Trash2
+  TrendingUp, TrendingDown, Wallet, Filter, X, Pencil, Trash2,
+  ChevronsUpDown, ChevronUp, ChevronDown as ChevronDownIcon,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../../contexts/AuthContext'
@@ -15,6 +16,9 @@ import type { FinCategoria, FinLancamento } from '../../types'
 import LancamentoModal from './LancamentoModal'
 
 const PAGE_SIZE = 50
+
+type SortCol = 'data' | 'tipo' | 'categoria' | 'descricao' | 'filial' | 'membro' | 'valor' | 'lancadoPor'
+type SortDir = 'asc' | 'desc'
 
 function fmt(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -63,6 +67,8 @@ export default function FinanceiroExtratoPage() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [editingLancamento, setEditingLancamento] = useState<FinLancamento | null>(null)
+  const [sortCol, setSortCol] = useState<SortCol>('data')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const membroResults = useMemo(() => {
     if (!membroQuery || membroId) return []
@@ -99,22 +105,54 @@ export default function FinanceiroExtratoPage() {
 
   useEffect(() => { fetchLancamentos() }, [fetchLancamentos])
 
-  // ── filtro local por texto (sem acento) ──────────────────────────────────
+  // ── filtro local por texto (sem acento) + ordenação ─────────────────────
   const filtered = useMemo(() => {
-    if (!textoBusca.trim()) return lancamentos
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    const q = norm(textoBusca)
-    return lancamentos.filter(l =>
-      norm(l.descricao ?? '').includes(q) ||
-      norm(l.categoria?.nome ?? '').includes(q) ||
-      norm(l.member?.name ?? '').includes(q) ||
-      norm(l.member_nome_manual ?? '').includes(q) ||
-      norm(l.fornecedor?.nome ?? '').includes(q) ||
-      norm(l.church?.name ?? '').includes(q) ||
-      norm(l.created_by_user?.name ?? '').includes(q) ||
-      norm(l.referencia_culto ?? '').includes(q)
-    )
-  }, [lancamentos, textoBusca])
+
+    let list = lancamentos
+    if (textoBusca.trim()) {
+      const q = norm(textoBusca)
+      list = list.filter(l =>
+        norm(l.descricao ?? '').includes(q) ||
+        norm(l.categoria?.nome ?? '').includes(q) ||
+        norm(l.member?.name ?? '').includes(q) ||
+        norm(l.member_nome_manual ?? '').includes(q) ||
+        norm(l.fornecedor?.nome ?? '').includes(q) ||
+        norm(l.church?.name ?? '').includes(q) ||
+        norm(l.created_by_user?.name ?? '').includes(q) ||
+        norm(l.referencia_culto ?? '').includes(q)
+      )
+    }
+
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...list].sort((a, b) => {
+      switch (sortCol) {
+        case 'data':
+          return dir * a.data_lancamento.localeCompare(b.data_lancamento)
+        case 'tipo':
+          return dir * a.tipo.localeCompare(b.tipo)
+        case 'categoria':
+          return dir * (a.categoria?.nome ?? '').localeCompare(b.categoria?.nome ?? '')
+        case 'descricao':
+          return dir * (a.descricao ?? a.referencia_culto ?? '').localeCompare(b.descricao ?? b.referencia_culto ?? '')
+        case 'filial':
+          return dir * (a.church?.name ?? '').localeCompare(b.church?.name ?? '')
+        case 'membro': {
+          const ma = a.member?.name ?? a.member_nome_manual ?? a.fornecedor?.nome ?? ''
+          const mb = b.member?.name ?? b.member_nome_manual ?? b.fornecedor?.nome ?? ''
+          return dir * ma.localeCompare(mb)
+        }
+        case 'valor':
+          return dir * (Number(a.valor) - Number(b.valor))
+        case 'lancadoPor':
+          return dir * (a.tesoureiro?.nome ?? a.created_by_user?.name ?? '').localeCompare(
+            b.tesoureiro?.nome ?? b.created_by_user?.name ?? ''
+          )
+        default:
+          return 0
+      }
+    })
+  }, [lancamentos, textoBusca, sortCol, sortDir])
 
   // ── totais ────────────────────────────────────────────────────────────────
   const totais = useMemo(() => {
@@ -192,6 +230,38 @@ export default function FinanceiroExtratoPage() {
   const categoriasFiltered = tipo
     ? categorias.filter(c => c.tipo === tipo)
     : categorias
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir(col === 'data' ? 'desc' : 'asc')
+    }
+    setPage(1)
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <ChevronsUpDown size={11} className="ml-1 opacity-30" />
+    return sortDir === 'asc'
+      ? <ChevronUp size={11} className="ml-1 text-blue-600" />
+      : <ChevronDownIcon size={11} className="ml-1 text-blue-600" />
+  }
+
+  function SortTh({ col, children, className = '' }: { col: SortCol; children: React.ReactNode; className?: string }) {
+    const active = sortCol === col
+    return (
+      <th
+        className={`px-3 py-2.5 text-xs font-semibold whitespace-nowrap border-b border-gray-200 cursor-pointer select-none hover:bg-gray-100 transition-colors ${active ? 'text-blue-600' : 'text-gray-500'} ${className}`}
+        onClick={() => handleSort(col)}
+      >
+        <span className="inline-flex items-center">
+          {children}
+          <SortIcon col={col} />
+        </span>
+      </th>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -394,14 +464,14 @@ export default function FinanceiroExtratoPage() {
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 bg-gray-50 z-10">
               <tr className="text-left">
-                <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Data</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Tipo</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Categoria</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 border-b border-gray-200">Descrição / Referência</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Filial</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Membro / Fornecedor</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200 text-right">Valor</th>
-                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Lançado por</th>
+                <SortTh col="data" className="px-4">Data</SortTh>
+                <SortTh col="tipo">Tipo</SortTh>
+                <SortTh col="categoria">Categoria</SortTh>
+                <SortTh col="descricao">Descrição / Referência</SortTh>
+                <SortTh col="filial">Filial</SortTh>
+                <SortTh col="membro">Membro / Fornecedor</SortTh>
+                <SortTh col="valor" className="text-right">Valor</SortTh>
+                <SortTh col="lancadoPor">Lançado por</SortTh>
                 {isMaster && (
                   <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Ações</th>
                 )}
