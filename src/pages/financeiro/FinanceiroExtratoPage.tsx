@@ -453,12 +453,17 @@ export default function FinanceiroExtratoPage() {
             </div>
             <div
               className="flex-1 min-w-0"
-              title={saldoAnterior !== null ? `Período: ${fmt(totais.saldo)}\nAnterior: ${fmt(saldoAnterior)}` : undefined}
+              title={saldoAnterior !== null ? `Saldo anterior: ${fmt(saldoAnterior)}` : undefined}
             >
-              <div className="text-[10px] text-gray-500">{saldoAnterior !== null ? 'Saldo acumulado' : 'Saldo'}</div>
-              <div className={`text-sm font-bold ${(saldoAnterior !== null ? saldoAnterior + totais.saldo : totais.saldo) >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
-                {fmt(saldoAnterior !== null ? saldoAnterior + totais.saldo : totais.saldo)}
+              <div className="text-[10px] text-gray-500">Saldo</div>
+              <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                {fmt(totais.saldo)}
               </div>
+              {saldoAnterior !== null && (
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  Acumulado: <span className="text-gray-600 font-semibold">{fmt(saldoAnterior + totais.saldo)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

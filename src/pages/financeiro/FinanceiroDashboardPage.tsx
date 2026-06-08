@@ -633,19 +633,18 @@ export default function FinanceiroDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <HeroKpi label="Entradas" value={kpis?.totalEntradas ?? 0} icon={<TrendingUp size={16} className="text-emerald-100" />} gradient="bg-gradient-to-br from-emerald-500 to-emerald-700" textColor="text-white" delay={0} />
           <HeroKpi label="Saídas" value={kpis?.totalSaidas ?? 0} icon={<TrendingDown size={16} className="text-red-100" />} gradient="bg-gradient-to-br from-red-500 to-rose-700" textColor="text-white" delay={80} />
-          {/* Card de Saldo — exibe acumulado; tooltip revela saldo anterior e do período */}
+          {/* Card de Saldo: principal=período, secundário=acumulado, tooltip=anterior */}
           {(() => {
             const saldoPeriodo = kpis?.saldo ?? 0
             const anterior = saldoAnterior ?? 0
             const acumulado = anterior + saldoPeriodo
-            const positivo = acumulado >= 0
+            const positivo = saldoPeriodo >= 0
             const gradient = positivo ? 'bg-gradient-to-br from-blue-500 to-indigo-700' : 'bg-gradient-to-br from-orange-500 to-amber-700'
-            const tooltipTxt = `Período: ${fmt(saldoPeriodo)}\nAnterior: ${fmt(anterior)}`
             return (
               <div
                 className={`rounded-2xl p-5 flex flex-col gap-3 transition-all duration-600 opacity-100 ${gradient} cursor-default`}
                 style={{ transitionDelay: '160ms' }}
-                title={tooltipTxt}
+                title={`Saldo anterior: ${fmt(anterior)}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-white opacity-75">Saldo</span>
@@ -653,8 +652,10 @@ export default function FinanceiroDashboardPage() {
                     <Wallet size={16} className={positivo ? 'text-blue-100' : 'text-orange-100'} />
                   </div>
                 </div>
-                <div className="text-2xl font-black tabular-nums leading-none text-white">{fmt(acumulado)}</div>
-                <div className="text-[10px] text-white/60">Acumulado até o período</div>
+                <div className="text-2xl font-black tabular-nums leading-none text-white">{fmt(saldoPeriodo)}</div>
+                <div className="text-[10px] text-white/60">
+                  Acumulado: <span className="text-white/90 font-semibold">{fmt(acumulado)}</span>
+                </div>
               </div>
             )
           })()}
