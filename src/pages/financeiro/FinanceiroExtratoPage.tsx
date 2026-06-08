@@ -10,7 +10,7 @@ import { useChurch } from '../../contexts/ChurchContext'
 import { useData } from '../../contexts/DataContext'
 import { useConfirm, useToast } from '../../components/ui/UIProvider'
 import { APP_GROUP_ID } from '../../lib/supabase'
-import { listFinLancamentos, deleteFinLancamento, type FinLancamentoFilters } from '../../lib/api/fin_lancamentos'
+import { listFinLancamentos, deleteFinLancamento, getSaldoAcumuladoAte, type FinLancamentoFilters } from '../../lib/api/fin_lancamentos'
 import { listFinCategorias } from '../../lib/api/fin_categorias'
 import type { FinCategoria, FinLancamento } from '../../types'
 import LancamentoModal from './LancamentoModal'
@@ -69,6 +69,7 @@ export default function FinanceiroExtratoPage() {
   const [editingLancamento, setEditingLancamento] = useState<FinLancamento | null>(null)
   const [sortCol, setSortCol] = useState<SortCol>('data')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
 
   const membroResults = useMemo(() => {
     if (!membroQuery || membroId) return []
@@ -95,8 +96,17 @@ export default function FinanceiroExtratoPage() {
         categoriaId: categoriaId || undefined,
         memberId: membroId || undefined,
       }
-      const data = await listFinLancamentos(filters)
+      // Busca lançamentos e saldo anterior em paralelo.
+      // Saldo anterior só faz sentido quando há data início e não há filtro de tipo
+      // (filtrar só entradas ou só saídas distorce o acumulado).
+      const [data, anterior] = await Promise.all([
+        listFinLancamentos(filters),
+        dataInicio && !tipo && !categoriaId && !membroId && !churchId
+          ? getSaldoAcumuladoAte(APP_GROUP_ID, dataInicio)
+          : Promise.resolve(null),
+      ])
       setLancamentos(data)
+      setSaldoAnterior(anterior)
       setPage(1)
     } finally {
       setLoading(false)
@@ -413,38 +423,71 @@ export default function FinanceiroExtratoPage() {
 
       {/* Cards totalizadores */}
       <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-100">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-white rounded-xl border border-emerald-100 px-3 py-2.5 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
               <TrendingUp size={14} className="text-emerald-600" />
             </div>
             <div>
-              <div className="text-[10px] text-gray-500">Entradas</div>
+              <div className="text-[10px] text-gray-500">Entradas no período</div>
               <div className="text-sm font-bold text-emerald-600">{fmt(totais.entradas)}</div>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-red-100 px-3 py-2.5 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
               <TrendingDown size={14} className="text-red-500" />
             </div>
             <div>
-              <div className="text-[10px] text-gray-500">Saídas</div>
+              <div className="text-[10px] text-gray-500">Saídas no período</div>
               <div className="text-sm font-bold text-red-500">{fmt(totais.saidas)}</div>
             </div>
           </div>
-          <div className={`bg-white rounded-xl border px-3 py-2.5 flex items-center gap-2.5 ${
+          {/* Card de saldo: mostra período + anterior + acumulado quando disponível */}
+          <div className={`bg-white rounded-xl border px-3 py-2.5 flex items-start gap-2.5 ${
             totais.saldo >= 0 ? 'border-blue-100' : 'border-orange-100'
           }`}>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
               totais.saldo >= 0 ? 'bg-blue-50' : 'bg-orange-50'
             }`}>
               <Wallet size={14} className={totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'} />
             </div>
-            <div>
-              <div className="text-[10px] text-gray-500">Saldo</div>
-              <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
-                {fmt(totais.saldo)}
-              </div>
+            <div className="flex-1 min-w-0">
+              {saldoAnterior !== null ? (
+                <>
+                  <div className="text-[10px] text-gray-500 mb-1">Saldo do período</div>
+                  <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                    {fmt(totais.saldo)}
+                  </div>
+                  <div className="mt-1.5 pt-1.5 border-t border-gray-100 space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-gray-400">Saldo anterior</span>
+                      <span className={`text-[11px] font-semibold ${saldoAnterior >= 0 ? 'text-gray-600' : 'text-orange-500'}`}>
+                        {fmt(saldoAnterior)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      {(() => {
+                        const acumulado = saldoAnterior + totais.saldo
+                        return (
+                          <>
+                            <span className="text-[10px] font-semibold text-gray-600">Saldo acumulado</span>
+                            <span className={`text-[12px] font-bold ${acumulado >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                              {fmt(acumulado)}
+                            </span>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-[10px] text-gray-500">Saldo do período</div>
+                  <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                    {fmt(totais.saldo)}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

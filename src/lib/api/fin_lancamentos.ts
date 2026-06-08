@@ -91,6 +91,23 @@ export async function deleteFinLancamento(id: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Soma todas as entradas e saídas ANTERIORES a `dataCorte` (exclusive).
+ * Usado para calcular o saldo acumulado que antecede o período filtrado.
+ */
+export async function getSaldoAcumuladoAte(groupId: string, dataCorte: string): Promise<number> {
+  const rows = await fetchAllPaged((f, t) => supabase
+    .from('fin_lancamentos')
+    .select('tipo, valor')
+    .eq('church_group_id', groupId)
+    .lt('data_lancamento', dataCorte)
+    .range(f, t))
+
+  const entradas = rows.filter(r => r.tipo === 'entrada').reduce((s, r) => s + Number(r.valor), 0)
+  const saidas = rows.filter(r => r.tipo === 'saida').reduce((s, r) => s + Number(r.valor), 0)
+  return entradas - saidas
+}
+
 // Resumo do dia (caixa) para um usuário
 export async function getFinCaixaDia(userId: string, groupId: string): Promise<{ entradas: number; saidas: number }> {
   const now = new Date()
