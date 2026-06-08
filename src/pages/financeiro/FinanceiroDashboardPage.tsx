@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { useData } from '../../contexts/DataContext'
+import { getSaldoAcumuladoAte } from '../../lib/api/fin_lancamentos'
 import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
@@ -514,6 +515,7 @@ export default function FinanceiroDashboardPage() {
   const [pessoasShowTitulos, setPessoasShowTitulos] = useState(false)
 
   const [kpis, setKpis] = useState<DashKpis | null>(null)
+  const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
   const [fluxo, setFluxo] = useState<MesFluxo[]>([])
   const [distEntrada, setDistEntrada] = useState<CatFatia[]>([])
   const [distSaida, setDistSaida] = useState<CatFatia[]>([])
@@ -535,7 +537,7 @@ export default function FinanceiroDashboardPage() {
         return p.catch(e => { console.error(`[dashboard] ${label}:`, e); return fallback })
       }
 
-      const [k, f, de, ds, tc, fe, fs, ts, nc, ev] = await Promise.all([
+      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa] = await Promise.all([
         safe(getDashKpis(APP_GROUP_ID, inicio, fim), null, 'kpis'),
         safe(getFluxo12Meses(APP_GROUP_ID), [], 'fluxo'),
         safe(getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim), [], 'distEntrada'),
@@ -546,10 +548,12 @@ export default function FinanceiroDashboardPage() {
         safe(getStatsPorTitulo(APP_GROUP_ID, inicio, fim), [], 'titulos'),
         safe(getContribNaoCadastrados(APP_GROUP_ID, inicio, fim), [], 'naoCadastrados'),
         safe(getEvolucaoContribuicao(APP_GROUP_ID), [], 'evolucao'),
+        safe(getSaldoAcumuladoAte(APP_GROUP_ID, inicio), 0, 'saldoAnterior'),
       ])
 
       if (cancelled) return
       if (k) setKpis(k)
+      setSaldoAnterior(sa as number)
       setFluxo(f as MesFluxo[])
       setDistEntrada(de as CatFatia[])
       setDistSaida(ds as CatFatia[])
@@ -629,7 +633,35 @@ export default function FinanceiroDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <HeroKpi label="Entradas" value={kpis?.totalEntradas ?? 0} icon={<TrendingUp size={16} className="text-emerald-100" />} gradient="bg-gradient-to-br from-emerald-500 to-emerald-700" textColor="text-white" delay={0} />
           <HeroKpi label="Saídas" value={kpis?.totalSaidas ?? 0} icon={<TrendingDown size={16} className="text-red-100" />} gradient="bg-gradient-to-br from-red-500 to-rose-700" textColor="text-white" delay={80} />
-          <HeroKpi label="Saldo" value={kpis?.saldo ?? 0} icon={<Wallet size={16} className={(kpis?.saldo ?? 0) >= 0 ? 'text-blue-100' : 'text-orange-100'} />} gradient={(kpis?.saldo ?? 0) >= 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-700' : 'bg-gradient-to-br from-orange-500 to-amber-700'} textColor="text-white" delay={160} />
+          {/* Card de Saldo expandido com saldo anterior e acumulado */}
+          {(() => {
+            const saldoPeriodo = kpis?.saldo ?? 0
+            const anterior = saldoAnterior ?? 0
+            const acumulado = anterior + saldoPeriodo
+            const positivo = saldoPeriodo >= 0
+            const gradient = positivo ? 'bg-gradient-to-br from-blue-500 to-indigo-700' : 'bg-gradient-to-br from-orange-500 to-amber-700'
+            return (
+              <div className={`rounded-2xl p-5 flex flex-col gap-2 transition-all duration-600 opacity-100 ${gradient}`} style={{ transitionDelay: '160ms' }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-white opacity-75">Saldo</span>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/20">
+                    <Wallet size={16} className={positivo ? 'text-blue-100' : 'text-orange-100'} />
+                  </div>
+                </div>
+                <div className="text-2xl font-black tabular-nums leading-none text-white">{fmt(saldoPeriodo)}</div>
+                <div className="border-t border-white/20 pt-2 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] text-white/60 leading-tight">Saldo anterior</span>
+                    <span className="text-[11px] font-semibold text-white/80 tabular-nums">{fmt(anterior)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] text-white font-semibold leading-tight">Acumulado</span>
+                    <span className="text-[12px] font-black text-white tabular-nums">{fmt(acumulado)}</span>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
           <HeroKpi label="Lançamentos" value={kpis?.qtdLancamentos ?? 0} isCurrency={false} icon={<Receipt size={16} className="text-purple-100" />} gradient="bg-gradient-to-br from-purple-500 to-violet-700" textColor="text-white" delay={240} />
         </div>
 
