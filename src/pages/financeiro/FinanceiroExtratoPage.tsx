@@ -451,22 +451,14 @@ export default function FinanceiroExtratoPage() {
             }`}>
               <Wallet size={14} className={totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'} />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] text-gray-500">{saldoAnterior !== null ? 'Saldo do período' : 'Saldo'}</div>
-              <div className={`text-sm font-bold ${totais.saldo >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
-                {fmt(totais.saldo)}
+            <div
+              className="flex-1 min-w-0"
+              title={saldoAnterior !== null ? `Período: ${fmt(totais.saldo)}\nAnterior: ${fmt(saldoAnterior)}` : undefined}
+            >
+              <div className="text-[10px] text-gray-500">{saldoAnterior !== null ? 'Saldo acumulado' : 'Saldo'}</div>
+              <div className={`text-sm font-bold ${(saldoAnterior !== null ? saldoAnterior + totais.saldo : totais.saldo) >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+                {fmt(saldoAnterior !== null ? saldoAnterior + totais.saldo : totais.saldo)}
               </div>
-              {saldoAnterior !== null && (() => {
-                const acumulado = saldoAnterior + totais.saldo
-                return (
-                  <div className="flex gap-3 mt-0.5">
-                    <span className="text-[10px] text-gray-400">Ant. <span className="text-gray-500 font-medium">{fmt(saldoAnterior)}</span></span>
-                    <span className={`text-[10px] font-semibold ${acumulado >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                      Acum. {fmt(acumulado)}
-                    </span>
-                  </div>
-                )
-              })()}
             </div>
           </div>
         </div>
