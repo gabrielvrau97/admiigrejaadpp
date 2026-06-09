@@ -1,5 +1,6 @@
 import React from 'react'
 import { X, Printer, MessageCircle, CheckCircle, FileText } from 'lucide-react'
+import html2pdf from 'html2pdf.js'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import { useAuth } from '../../contexts/AuthContext'
 import { ROLE_LABELS } from '../../lib/permissions'
@@ -233,16 +234,19 @@ export default function ReciboModal({ recibo, onClose }: Props) {
   function handleDownload() {
     const html = getHtml()
     const nomeSlug = slugify(nomeContribuinte || 'contribuinte')
-    const win = window.open('', '_blank', 'width=560,height=650')
-    if (!win) return
-    win.document.title = `Recibo_${nomeSlug}_${recibo.numero}`
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    setTimeout(() => {
-      win.print()
-      win.close()
-    }, 400)
+    const container = document.createElement('div')
+    container.innerHTML = html
+    const body = container.querySelector('body') ?? container
+    html2pdf()
+      .set({
+        margin: 0,
+        filename: `Recibo_${nomeSlug}_${recibo.numero}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' },
+      })
+      .from(body)
+      .save()
   }
 
   function handleImprimir() {
