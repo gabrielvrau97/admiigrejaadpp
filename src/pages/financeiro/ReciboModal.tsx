@@ -234,19 +234,30 @@ export default function ReciboModal({ recibo, onClose }: Props) {
   function handleDownload() {
     const html = getHtml()
     const nomeSlug = slugify(nomeContribuinte || 'contribuinte')
-    const container = document.createElement('div')
-    container.innerHTML = html
-    const body = container.querySelector('body') ?? container
+
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:148mm;height:210mm;border:none;visibility:hidden;'
+    document.body.appendChild(iframe)
+
+    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document
+    if (!iframeDoc) { document.body.removeChild(iframe); return }
+
+    iframeDoc.open()
+    iframeDoc.write(html)
+    iframeDoc.close()
+
+    const target = iframeDoc.querySelector('body') ?? iframeDoc.documentElement
     html2pdf()
       .set({
         margin: 0,
         filename: `Recibo_${nomeSlug}_${recibo.numero}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
         jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' },
       })
-      .from(body)
+      .from(target)
       .save()
+      .finally(() => document.body.removeChild(iframe))
   }
 
   function handleImprimir() {
