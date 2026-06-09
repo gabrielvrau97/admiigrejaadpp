@@ -122,14 +122,13 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
     setFornQuery('')
   }
 
-  const contribuintePreenchido = !!(memberId || memberQuery.trim())
-  // saída não exige contribuinte; entrada sim
-  const podeSalvar = !!(valor && churchId && categoriaId && formaPagamento && (tipo === 'saida' || contribuintePreenchido))
+  const membroPreenchido = !!(memberId || memberQuery.trim())
+  const podeSalvar = !!(valor && churchId && categoriaId && formaPagamento && membroPreenchido)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!valor || !churchId || !user || !categoriaId || !formaPagamento) return
-    if (tipo === 'entrada' && !contribuintePreenchido) return
+    if (!membroPreenchido) return
     const valorNum = parseFloat(valor.replace(',', '.'))
     if (isNaN(valorNum) || valorNum <= 0) return
 
@@ -273,7 +272,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
             </div>
           </div>
 
-          {/* Membro (entrada: contribuinte | saída: beneficiado) */}
+          {/* Membro (entrada: contribuinte | saída: beneficiado) — obrigatório em ambos */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {isEntrada ? 'Contribuinte' : 'Membro beneficiado'} <span className="text-red-400">*</span>
@@ -281,7 +280,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
             <div className="relative">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
-                className="form-input w-full pl-8 pr-8"
+                className={`form-input w-full pl-8 pr-8 ${!membroPreenchido && valor ? 'border-red-300 focus:border-red-400' : ''}`}
                 placeholder="Buscar membro ou digitar nome..."
                 value={memberQuery}
                 onChange={e => { setMemberQuery(e.target.value); setMemberId(''); setShowMemberDrop(true) }}
@@ -314,6 +313,12 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
                 </div>
               )}
             </div>
+            {!membroPreenchido && valor && (
+              <p className="text-xs text-red-500 mt-1">Informe o {isEntrada ? 'contribuinte' : 'membro beneficiado'} para continuar.</p>
+            )}
+            {memberQuery && !memberId && (
+              <p className="text-xs text-amber-600 mt-1">Nome digitado manualmente — sem vínculo com cadastro.</p>
+            )}
           </div>
 
           {/* Fornecedor (só saída) */}
@@ -450,6 +455,19 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
                 value={observacao}
                 onChange={e => setObservacao(e.target.value)}
               />
+            </div>
+          )}
+
+          {/* Data de registro — somente leitura */}
+          {editing?.registered_at && (
+            <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 text-xs text-gray-400">
+              Registrado em:{' '}
+              <span className="text-gray-600 font-medium">
+                {new Date(editing.registered_at).toLocaleString('pt-BR', {
+                  day: '2-digit', month: '2-digit', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </span>
             </div>
           )}
 

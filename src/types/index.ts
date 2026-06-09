@@ -276,6 +276,7 @@ export interface FinLancamento {
   created_by: string
   tesoureiro_id?: string
   observacao?: string
+  registered_at?: string
   created_at: string
   updated_at: string
   // joins opcionais

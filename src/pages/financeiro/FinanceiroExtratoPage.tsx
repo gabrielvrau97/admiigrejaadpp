@@ -197,7 +197,8 @@ export default function FinanceiroExtratoPage() {
   // ── export Excel ──────────────────────────────────────────────────────────
   function handleExport() {
     const rows = filtered.map(l => ({
-      Data: fmtDate(l.data_lancamento),
+      'Data lançamento': fmtDate(l.data_lancamento),
+      'Data registro': l.registered_at ? new Date(l.registered_at).toLocaleString('pt-BR') : '',
       Tipo: l.tipo === 'entrada' ? 'Entrada' : 'Saída',
       Categoria: l.categoria?.nome ?? '',
       Descrição: l.descricao ?? '',
@@ -491,6 +492,7 @@ export default function FinanceiroExtratoPage() {
                 <SortTh col="membro">Membro / Fornecedor</SortTh>
                 <SortTh col="valor" className="text-right">Valor</SortTh>
                 <SortTh col="lancadoPor">Lançado por</SortTh>
+                <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Registrado em</th>
                 {isMaster && (
                   <th className="px-3 py-2.5 text-xs font-semibold text-gray-500 whitespace-nowrap border-b border-gray-200">Ações</th>
                 )}
@@ -499,8 +501,6 @@ export default function FinanceiroExtratoPage() {
             <tbody className="divide-y divide-gray-100">
               {paginated.map(l => {
                 const isEntrada = l.tipo === 'entrada'
-                const memberStr = l.member?.name ?? l.member_nome_manual ?? ''
-                const secondaryStr = isEntrada ? memberStr : (l.fornecedor?.nome ?? memberStr)
                 return (
                   <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-600">{fmtDate(l.data_lancamento)}</td>
@@ -532,7 +532,17 @@ export default function FinanceiroExtratoPage() {
                       )}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap text-gray-600 text-xs">{l.church?.name ?? '—'}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-600 text-xs">{secondaryStr || <span className="text-gray-400">—</span>}</td>
+                    <td className="px-3 py-2.5 text-gray-600 text-xs max-w-[160px]">
+                      {(l.member?.name || l.member_nome_manual) && (
+                        <div className="truncate">{l.member?.name ?? l.member_nome_manual}</div>
+                      )}
+                      {l.fornecedor && (
+                        <div className="truncate text-gray-400">{l.fornecedor.nome}</div>
+                      )}
+                      {!l.member?.name && !l.member_nome_manual && !l.fornecedor && (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className={`px-3 py-2.5 whitespace-nowrap font-semibold text-right ${
                       isEntrada ? 'text-emerald-600' : 'text-red-500'
                     }`}>
@@ -540,6 +550,11 @@ export default function FinanceiroExtratoPage() {
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 text-xs">
                       {l.tesoureiro?.nome ?? l.created_by_user?.name ?? '—'}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-gray-400 text-xs">
+                      {l.registered_at
+                        ? new Date(l.registered_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : '—'}
                     </td>
                     {isMaster && (
                       <td className="px-3 py-2.5 whitespace-nowrap">

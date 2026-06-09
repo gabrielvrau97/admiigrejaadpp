@@ -51,12 +51,14 @@ export async function listFinLancamentos(filters: FinLancamentoFilters): Promise
 export async function listFinLancamentosHoje(groupId: string): Promise<FinLancamento[]> {
   const now = new Date()
   const hoje = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  // filtra por registered_at (data em que foi gravado), não por data_lancamento
   const { data, error } = await supabase
     .from('fin_lancamentos')
     .select(LANCAMENTO_COLUMNS)
     .eq('church_group_id', groupId)
-    .eq('data_lancamento', hoje)
-    .order('created_at', { ascending: false })
+    .gte('registered_at', `${hoje}T00:00:00`)
+    .lte('registered_at', `${hoje}T23:59:59`)
+    .order('registered_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as FinLancamento[]
 }
@@ -108,7 +110,7 @@ export async function getSaldoAcumuladoAte(groupId: string, dataCorte: string): 
   return entradas - saidas
 }
 
-// Resumo do dia (caixa) para um usuário
+// Resumo do dia (caixa) para um usuário — filtra por registered_at (dia de registro)
 export async function getFinCaixaDia(userId: string, groupId: string): Promise<{ entradas: number; saidas: number }> {
   const now = new Date()
   const hoje = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -117,7 +119,8 @@ export async function getFinCaixaDia(userId: string, groupId: string): Promise<{
     .select('tipo, valor')
     .eq('church_group_id', groupId)
     .eq('created_by', userId)
-    .eq('data_lancamento', hoje)
+    .gte('registered_at', `${hoje}T00:00:00`)
+    .lte('registered_at', `${hoje}T23:59:59`)
   if (error) throw error
   const rows = data ?? []
   const entradas = rows.filter(r => r.tipo === 'entrada').reduce((s, r) => s + Number(r.valor), 0)

@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Printer, MessageCircle, CheckCircle, Download } from 'lucide-react'
+import { X, Printer, MessageCircle, CheckCircle, FileText } from 'lucide-react'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import { useAuth } from '../../contexts/AuthContext'
 import { ROLE_LABELS } from '../../lib/permissions'
@@ -203,7 +203,7 @@ function buildReciboHtml(
   </div>
 
   <div class="rodape">
-    Impresso em ${dataImpressao} por ${emitidoPorEmail} (${emitidoPorRole})${nomeTesoureiro && nomeTesoureiro !== emitidoPorNome ? ` · Tesoureiro: ${nomeTesoureiro}` : ''}
+    Impresso em ${dataImpressao} por ${emitidoPorEmail} (${emitidoPorRole})${nomeTesoureiro && nomeTesoureiro !== emitidoPorNome ? ` · Tesoureiro: ${nomeTesoureiro}` : ''}${l.registered_at ? ` · Registrado em: ${new Date(l.registered_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
   </div>
 </div>
 </body>
@@ -232,16 +232,17 @@ export default function ReciboModal({ recibo, onClose }: Props) {
 
   function handleDownload() {
     const html = getHtml()
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
     const nomeSlug = slugify(nomeContribuinte || 'contribuinte')
-    a.href = url
-    a.download = `Recibo_${nomeSlug}_${recibo.numero}.html`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const win = window.open('', '_blank', 'width=560,height=650')
+    if (!win) return
+    win.document.title = `Recibo_${nomeSlug}_${recibo.numero}`
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => {
+      win.print()
+      win.close()
+    }, 400)
   }
 
   function handleImprimir() {
@@ -320,6 +321,21 @@ export default function ReciboModal({ recibo, onClose }: Props) {
               Tesoureiro: <span className="font-medium">{tesoreiroNome}</span>
             </div>
           )}
+          {(l.member?.name || l.member_nome_manual || l.fornecedor) && (
+            <div className="mt-1 text-xs text-gray-500 flex gap-3 flex-wrap">
+              {(l.member?.name || l.member_nome_manual) && (
+                <span>{isEntrada ? 'Contribuinte' : 'Beneficiado'}: <span className="font-medium">{l.member?.name ?? l.member_nome_manual}</span></span>
+              )}
+              {l.fornecedor && (
+                <span>Fornecedor: <span className="font-medium">{l.fornecedor.nome}</span></span>
+              )}
+            </div>
+          )}
+          {l.registered_at && (
+            <div className="mt-1 text-xs text-gray-400">
+              Registrado em: {new Date(l.registered_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+          )}
         </div>
 
         {/* Ações */}
@@ -332,12 +348,12 @@ export default function ReciboModal({ recibo, onClose }: Props) {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-emerald-400 bg-emerald-50 hover:bg-emerald-100 transition-all text-sm font-medium text-emerald-800"
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
-              <Download size={15} className="text-white" />
+              <FileText size={15} className="text-white" />
             </div>
             <div className="text-left">
-              <div className="font-bold text-emerald-900">Baixar recibo</div>
+              <div className="font-bold text-emerald-900">Baixar recibo em PDF</div>
               <div className="text-xs text-emerald-600">
-                Recibo_{slugify(nomeContribuinte || 'contribuinte')}_{recibo.numero}.html
+                Salvar como PDF pelo navegador
               </div>
             </div>
           </button>
