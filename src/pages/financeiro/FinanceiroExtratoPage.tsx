@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { buildExtratoHtml } from '../../lib/relatorio/buildExtratoHtml'
-import { downloadRelatorio } from '../../lib/relatorio/downloadRelatorio'
+import { previewRelatorio } from '../../lib/relatorio/downloadRelatorio'
 import { useAuth } from '../../contexts/AuthContext'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useData } from '../../contexts/DataContext'
@@ -252,7 +252,7 @@ export default function FinanceiroExtratoPage() {
         dataFim,
         filtrosTexto,
       })
-      await downloadRelatorio({
+      previewRelatorio({
         html,
         filename: `Extrato_${dataInicio}_${dataFim}`,
         formato: 'a4',
