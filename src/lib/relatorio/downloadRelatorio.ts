@@ -40,11 +40,9 @@ export async function downloadRelatorio(opts: DownloadRelatorioOptions): Promise
 
 // Abre preview em nova aba — tela toda, toolbar fixa, relatório renderizado fullscreen
 export function previewRelatorio(opts: DownloadRelatorioOptions): void {
-  const { html, filename, formato = 'a4', orientacao = 'portrait' } = opts
-  const htmlEscaped = JSON.stringify(html)
+  const { html, filename, formato: _fmt = 'a4', orientacao: _ori = 'portrait' } = opts
+  void _fmt; void _ori
 
-  // Injeta no CSS do relatório um override que remove o .page width fixo
-  // e deixa o conteúdo fluir na largura total da viewport
   const htmlPreview = html
     .replace(
       '</style>',
@@ -141,8 +139,7 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
     <span class="tb-icon">📄</span>
     <span class="tb-title">${filename}</span>
     <div class="tb-sep"></div>
-    <button class="tb-btn tb-btn-print" onclick="doPrint()">🖨️ Imprimir</button>
-    <button class="tb-btn tb-btn-pdf" id="btn-pdf" onclick="doPdf()">⬇️ Baixar PDF</button>
+    <button class="tb-btn tb-btn-print" onclick="doPrint()">🖨️ Imprimir / Salvar PDF</button>
     <button class="tb-btn tb-btn-close" onclick="window.close()">✕ Fechar</button>
   </div>
 
@@ -172,33 +169,6 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
       var pdoc = pf.contentDocument || pf.contentWindow.document;
       pdoc.open(); pdoc.write(previewHtml); pdoc.close();
       setTimeout(function() { pf.contentWindow.focus(); pf.contentWindow.print(); }, 500);
-    }
-
-    function doPdf() {
-      var btn = document.getElementById('btn-pdf');
-      btn.textContent = '⏳ Gerando...';
-      btn.disabled = true;
-      var s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      s.onload = function() {
-        var pf = getPrintFrame();
-        var pdoc = pf.contentDocument || pf.contentWindow.document;
-        pdoc.open(); pdoc.write(previewHtml); pdoc.close();
-        setTimeout(function() {
-          var target = pdoc.querySelector('body') || pdoc.documentElement;
-          html2pdf().set({
-            margin: 0,
-            filename: '${filename}.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-            jsPDF: { unit: 'mm', format: '${formato}', orientation: '${orientacao}' }
-          }).from(target).save().then(function() {
-            btn.textContent = '⬇️ Baixar PDF';
-            btn.disabled = false;
-          });
-        }, 500);
-      };
-      document.head.appendChild(s);
     }
   </script>
 </body>
