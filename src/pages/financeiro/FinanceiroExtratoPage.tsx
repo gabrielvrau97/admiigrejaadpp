@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Download, ChevronLeft, ChevronRight,
   TrendingUp, TrendingDown, Wallet, Filter, X, Pencil, Trash2,
-  ChevronsUpDown, ChevronUp, ChevronDown as ChevronDownIcon,
+  ChevronsUpDown, ChevronUp, ChevronDown as ChevronDownIcon, FileText,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { buildExtratoHtml } from '../../lib/relatorio/buildExtratoHtml'
+import { downloadRelatorio } from '../../lib/relatorio/downloadRelatorio'
 import { useAuth } from '../../contexts/AuthContext'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useData } from '../../contexts/DataContext'
@@ -70,6 +72,7 @@ export default function FinanceiroExtratoPage() {
   const [sortCol, setSortCol] = useState<SortCol>('data')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
+  const [gerandoPdf, setGerandoPdf] = useState(false)
 
   const membroResults = useMemo(() => {
     if (!membroQuery || membroId) return []
@@ -225,6 +228,41 @@ export default function FinanceiroExtratoPage() {
     XLSX.writeFile(wb, `extrato_${dataInicio}_${dataFim}.xlsx`)
   }
 
+  async function handleRelatorio() {
+    if (filtered.length === 0) return
+    setGerandoPdf(true)
+    try {
+      const filtrosTexto: string[] = []
+      if (churchId) {
+        const c = churches.find(ch => ch.id === churchId)
+        if (c) filtrosTexto.push(`Filial: ${c.name}`)
+      }
+      if (tipo) filtrosTexto.push(`Tipo: ${tipo === 'entrada' ? 'Entradas' : 'Saídas'}`)
+      if (categoriaId) {
+        const c = categorias.find(c => c.id === categoriaId)
+        if (c) filtrosTexto.push(`Categoria: ${c.nome}`)
+      }
+      if (membroQuery) filtrosTexto.push(`Membro: ${membroQuery}`)
+      if (textoBusca) filtrosTexto.push(`Busca: "${textoBusca}"`)
+
+      const html = buildExtratoHtml({
+        lancamentos: filtered,
+        saldoAnterior,
+        dataInicio,
+        dataFim,
+        filtrosTexto,
+      })
+      await downloadRelatorio({
+        html,
+        filename: `Extrato_${dataInicio}_${dataFim}`,
+        formato: 'a4',
+        orientacao: 'landscape',
+      })
+    } finally {
+      setGerandoPdf(false)
+    }
+  }
+
   async function handleDeleteLancamento(l: FinLancamento) {
     const ok = await confirm({ message: 'Excluir este lançamento permanentemente?', danger: true })
     if (!ok) return
@@ -283,14 +321,24 @@ export default function FinanceiroExtratoPage() {
             <h1 className="text-xl font-bold text-gray-900">Extrato Financeiro</h1>
             <p className="text-xs text-gray-500 mt-0.5">Histórico completo de entradas e saídas</p>
           </div>
-          <button
-            onClick={handleExport}
-            disabled={filtered.length === 0}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Download size={15} />
-            Exportar Excel
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRelatorio}
+              disabled={filtered.length === 0 || gerandoPdf}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-700 text-white rounded-xl hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileText size={15} />
+              {gerandoPdf ? 'Gerando...' : 'Relatório PDF'}
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={filtered.length === 0}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download size={15} />
+              Exportar Excel
+            </button>
+          </div>
         </div>
       </div>
 
