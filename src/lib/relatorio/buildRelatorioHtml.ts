@@ -80,15 +80,17 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-right: 1px solid #d0dde8;
-      background: #f8fafc;
+      background: #fff;
       flex-shrink: 0;
     }
     .cab-logo {
-      width: 48px;
-      height: 48px;
-      object-fit: contain;
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
     }
 
     .cab-info-col {
