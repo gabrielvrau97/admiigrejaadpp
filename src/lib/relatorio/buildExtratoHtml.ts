@@ -1,5 +1,5 @@
 import type { FinLancamento } from '../../types'
-import { buildRelatorioHtml } from './buildRelatorioHtml'
+import { buildRelatorioHtml, type Assinante } from './buildRelatorioHtml'
 
 function fmt(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -24,6 +24,7 @@ export interface ExtratoRelatorioParams {
   dataInicio: string
   dataFim: string
   filtrosTexto: string[]
+  assinantes?: Assinante[]
 }
 
 export function buildExtratoHtml(p: ExtratoRelatorioParams): string {
@@ -295,5 +296,6 @@ export function buildExtratoHtml(p: ExtratoRelatorioParams): string {
       `${sorted.length} lançamento${sorted.length !== 1 ? 's' : ''}`,
     ],
     corpo,
+    assinantes: p.assinantes,
   })
 }

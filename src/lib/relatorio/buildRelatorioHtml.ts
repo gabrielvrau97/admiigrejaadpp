@@ -1,8 +1,15 @@
+export interface Assinante {
+  cargo: string
+  nome: string
+  cpf: string
+}
+
 export interface RelatorioInfo {
   titulo: string
   subtitulo?: string
   filtros?: string[]
   corpo: string
+  assinantes?: Assinante[]
 }
 
 const LOGO_URL   = '/brand/logo.png'
@@ -234,6 +241,42 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
     }
     tfoot td.right { text-align: right; }
 
+    /* ── Assinaturas ──────────────────────────────────── */
+    .assinaturas {
+      display: flex;
+      justify-content: space-around;
+      gap: 16px;
+      margin: 12mm 0 8mm;
+      padding: 0 4mm;
+    }
+    .ass-bloco {
+      flex: 1;
+      max-width: 180px;
+      text-align: center;
+    }
+    .ass-linha {
+      border-top: 1px solid #4a6a84;
+      margin-bottom: 5px;
+    }
+    .ass-cargo {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #3a6a96;
+    }
+    .ass-nome {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1c2b3a;
+      margin-top: 2px;
+    }
+    .ass-cpf {
+      font-size: 0.72rem;
+      color: #7a9ab8;
+      margin-top: 1px;
+    }
+
     /* ── Rodapé da página — visível em tela ──────────── */
     .rodape-tela {
       margin-top: auto;
@@ -334,6 +377,18 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
   <div class="corpo">
     ${info.corpo}
   </div>
+
+  <!-- ASSINATURAS -->
+  ${info.assinantes && info.assinantes.length > 0 ? `
+  <div class="assinaturas">
+    ${info.assinantes.map(a => `
+      <div class="ass-bloco">
+        <div class="ass-linha"></div>
+        <div class="ass-cargo">${a.cargo}</div>
+        <div class="ass-nome">${a.nome}</div>
+        ${a.cpf ? `<div class="ass-cpf">CPF: ${a.cpf}</div>` : ''}
+      </div>`).join('')}
+  </div>` : ''}
 
   <!-- RODAPÉ TELA (some na impressão) -->
   <div class="rodape-tela">

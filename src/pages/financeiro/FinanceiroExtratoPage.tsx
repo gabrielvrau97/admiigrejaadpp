@@ -7,6 +7,7 @@ import {
 import * as XLSX from 'xlsx'
 import { buildExtratoHtml } from '../../lib/relatorio/buildExtratoHtml'
 import { previewRelatorio } from '../../lib/relatorio/downloadRelatorio'
+import RelatorioAssinaturaModal, { type Assinante } from './RelatorioAssinaturaModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useData } from '../../contexts/DataContext'
@@ -73,6 +74,7 @@ export default function FinanceiroExtratoPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
   const [gerandoPdf, setGerandoPdf] = useState(false)
+  const [showAssinaturaModal, setShowAssinaturaModal] = useState(false)
 
   const membroResults = useMemo(() => {
     if (!membroQuery || membroId) return []
@@ -228,8 +230,13 @@ export default function FinanceiroExtratoPage() {
     XLSX.writeFile(wb, `extrato_${dataInicio}_${dataFim}.xlsx`)
   }
 
-  async function handleRelatorio() {
+  function handleRelatorio() {
     if (filtered.length === 0) return
+    setShowAssinaturaModal(true)
+  }
+
+  function gerarRelatorioComAssinaturas(assinantes: Assinante[] | null) {
+    setShowAssinaturaModal(false)
     setGerandoPdf(true)
     try {
       const filtrosTexto: string[] = []
@@ -251,12 +258,13 @@ export default function FinanceiroExtratoPage() {
         dataInicio,
         dataFim,
         filtrosTexto,
+        assinantes: assinantes ?? undefined,
       })
       previewRelatorio({
         html,
         filename: `Extrato_${dataInicio}_${dataFim}`,
         formato: 'a4',
-        orientacao: 'landscape',
+        orientacao: 'portrait',
       })
     } finally {
       setGerandoPdf(false)
@@ -631,6 +639,14 @@ export default function FinanceiroExtratoPage() {
           </table>
         )}
       </div>
+
+      {/* Modal de assinatura */}
+      {showAssinaturaModal && (
+        <RelatorioAssinaturaModal
+          onConfirm={gerarRelatorioComAssinaturas}
+          onClose={() => setShowAssinaturaModal(false)}
+        />
+      )}
 
       {/* Modal de edição */}
       {editingLancamento && (
