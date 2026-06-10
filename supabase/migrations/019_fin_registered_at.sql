@@ -7,7 +7,7 @@ alter table fin_lancamentos
 
 -- índice para filtrar lançamentos por dia de registro (usado na tesouraria)
 create index if not exists idx_fin_lancamentos_registered_at
-  on fin_lancamentos (church_group_id, (registered_at::date));
+  on fin_lancamentos (church_group_id, registered_at);
 
 -- popula retroativamente usando created_at nos registros existentes
 update fin_lancamentos

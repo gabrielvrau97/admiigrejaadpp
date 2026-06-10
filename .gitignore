@@ -40,3 +40,5 @@ Thumbs.db
 imports/*
 !imports/.gitkeep
 !imports/README.md
+
+.vercel

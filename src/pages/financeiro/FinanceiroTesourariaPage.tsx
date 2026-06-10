@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Wallet, TrendingDown, Plus, Edit2, Trash2,
-  Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown, FileText,
+  Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown, FileText, Search, X,
 } from 'lucide-react'
 import { useTesoureiro } from '../../contexts/TesureiroContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
@@ -9,7 +9,7 @@ import {
   listFinLancamentosHoje,
   deleteFinLancamento,
 } from '../../lib/api/fin_lancamentos'
-import { listFinCategoriasByTipo } from '../../lib/api/fin_categorias'
+import { listFinCategoriasByTipo, listFinCategorias } from '../../lib/api/fin_categorias'
 import { listFinTesoureiros } from '../../lib/api/fin_tesoureiros'
 import type { FinTesoureiro } from '../../lib/api/fin_tesoureiros'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
@@ -188,6 +188,11 @@ export default function FinanceiroTesourariaPage() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false, tipo: 'entrada', editing: null })
   const [categoriasRapidas, setCategoriasRapidas] = useState<FinCategoria[]>([])
+  const [todasCategorias, setTodasCategorias] = useState<FinCategoria[]>([])
+
+  // filtros
+  const [buscaNome, setBuscaNome] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('')
 
   // tesoureiro
   const [tesoureiros, setTesoureiros] = useState<FinTesoureiro[]>([])
@@ -209,11 +214,13 @@ const loadHoje = useCallback(async () => {
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [, cats] = await Promise.all([
+      const [, cats, todas] = await Promise.all([
         loadHoje(),
         listFinCategoriasByTipo(APP_GROUP_ID, 'entrada'),
+        listFinCategorias(APP_GROUP_ID),
       ])
       setCategoriasRapidas(cats.filter(c => c.acesso_rapido && c.ativo))
+      setTodasCategorias(todas.filter(c => c.ativo).sort((a, b) => a.nome.localeCompare(b.nome)))
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar lançamentos.')
@@ -254,8 +261,25 @@ const loadHoje = useCallback(async () => {
     await loadAll()
   }
 
-  const entradasHoje = lancamentosHoje.filter(l => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0)
-  const saidasHoje = lancamentosHoje.filter(l => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0)
+  const lancamentosFiltrados = useMemo(() => {
+    let lista = lancamentosHoje
+    if (buscaNome.trim()) {
+      const q = buscaNome.trim().toLowerCase()
+      lista = lista.filter(l => {
+        const nome = (l.member?.name ?? l.member_nome_manual ?? l.fornecedor?.nome ?? '').toLowerCase()
+        return nome.includes(q)
+      })
+    }
+    if (filtroCategoria) {
+      lista = lista.filter(l => l.categoria?.id === filtroCategoria)
+    }
+    return lista
+  }, [lancamentosHoje, buscaNome, filtroCategoria])
+
+  const temFiltroAtivo = buscaNome.trim() !== '' || filtroCategoria !== ''
+
+  const entradasHoje = lancamentosFiltrados.filter(l => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0)
+  const saidasHoje = lancamentosFiltrados.filter(l => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0)
   const saldo = entradasHoje - saidasHoje
 
   // Enquanto carrega a lista de tesoureiros, mostra loader simples
@@ -371,13 +395,69 @@ const loadHoje = useCallback(async () => {
         </div>
       </div>
 
+      {/* Barra de filtros */}
+      {lancamentosHoje.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Busca por nome */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={buscaNome}
+              onChange={e => setBuscaNome(e.target.value)}
+              placeholder="Buscar membro ou fornecedor..."
+              className="w-full pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white"
+            />
+            {buscaNome && (
+              <button
+                onClick={() => setBuscaNome('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro por categoria */}
+          <div className="relative">
+            <select
+              value={filtroCategoria}
+              onChange={e => setFiltroCategoria(e.target.value)}
+              className={`pl-3 pr-8 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white appearance-none cursor-pointer ${
+                filtroCategoria ? 'border-emerald-400 text-emerald-700 font-medium' : 'border-gray-200 text-gray-600'
+              }`}
+            >
+              <option value="">Todas as categorias</option>
+              {todasCategorias.map(c => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor">
+                <path d="M0 0l5 6 5-6z"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Limpar filtros */}
+          {temFiltroAtivo && (
+            <button
+              onClick={() => { setBuscaNome(''); setFiltroCategoria('') }}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+            >
+              <X size={12} /> Limpar
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Lista do dia */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <span className="text-sm font-semibold text-gray-700">Lançamentos de hoje</span>
           {lancamentosHoje.length > 0 && (
-            <span className="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-              {lancamentosHoje.length}
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${temFiltroAtivo ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              {temFiltroAtivo ? `${lancamentosFiltrados.length} de ${lancamentosHoje.length}` : lancamentosHoje.length}
             </span>
           )}
         </div>
@@ -404,9 +484,19 @@ const loadHoje = useCallback(async () => {
                 </button>
               </div>
             </div>
+          ) : lancamentosFiltrados.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-gray-400 text-sm">Nenhum lançamento encontrado com os filtros aplicados.</p>
+              <button
+                onClick={() => { setBuscaNome(''); setFiltroCategoria('') }}
+                className="mt-2 text-xs text-emerald-600 hover:underline"
+              >
+                Limpar filtros
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
-              {lancamentosHoje.map(l => (
+              {lancamentosFiltrados.map(l => (
                 <LancamentoRow key={l.id} l={l} compact onEdit={handleEdit} onDelete={handleDelete} />
               ))}
             </div>
