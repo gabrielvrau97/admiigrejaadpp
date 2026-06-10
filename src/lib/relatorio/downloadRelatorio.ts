@@ -149,14 +149,13 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
   <iframe id="sheet-frame" scrolling="yes"></iframe>
 
   <script>
-    var reportHtml      = ${htmlEscaped};       // usado para imprimir/PDF (formato A4 original)
-    var previewHtml     = ${htmlPreviewEscaped}; // usado no iframe (fullscreen)
+    var previewHtml = ${htmlPreviewEscaped};
 
     var frame = document.getElementById('sheet-frame');
     var fdoc = frame.contentDocument || frame.contentWindow.document;
     fdoc.open(); fdoc.write(previewHtml); fdoc.close();
 
-    // iframe oculto para impressão com layout A4 original
+    // iframe oculto para impressão/PDF — usa o mesmo previewHtml
     function getPrintFrame() {
       var pf = document.getElementById('print-frame');
       if (!pf) {
@@ -171,7 +170,7 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
     function doPrint() {
       var pf = getPrintFrame();
       var pdoc = pf.contentDocument || pf.contentWindow.document;
-      pdoc.open(); pdoc.write(reportHtml); pdoc.close();
+      pdoc.open(); pdoc.write(previewHtml); pdoc.close();
       setTimeout(function() { pf.contentWindow.focus(); pf.contentWindow.print(); }, 500);
     }
 
@@ -184,7 +183,7 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
       s.onload = function() {
         var pf = getPrintFrame();
         var pdoc = pf.contentDocument || pf.contentWindow.document;
-        pdoc.open(); pdoc.write(reportHtml); pdoc.close();
+        pdoc.open(); pdoc.write(previewHtml); pdoc.close();
         setTimeout(function() {
           var target = pdoc.querySelector('body') || pdoc.documentElement;
           html2pdf().set({
