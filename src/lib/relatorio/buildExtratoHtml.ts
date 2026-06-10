@@ -177,13 +177,13 @@ export function buildExtratoHtml(p: ExtratoRelatorioParams): string {
     .data-row:nth-child(even) { background: #f7fafd; }
 
     /* ── Colunas tabela principal ── */
-    .col-data   { width: 56px;  color: #5a7a96; font-size: 0.82rem; }
-    .col-membro { width: 150px; font-size: 0.86rem; color: #1c2b3a; }
-    .col-cat    { width: 100px; font-size: 0.82rem; color: #3a6a96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
-    .col-forma  { width: 54px;  font-size: 0.8rem;  color: #5a7a96; }
-    .col-desc   { font-size: 0.84rem; color: #4a6a84; }
-    .col-val    { width: 78px;  font-size: 0.88rem; }
-    .col-saldo  { width: 84px;  font-size: 0.88rem; font-weight: 800; }
+    .col-data   { width: 52px;  color: #5a7a96; font-size: 0.82rem; white-space: nowrap; }
+    .col-membro { width: 190px; font-size: 0.86rem; color: #1c2b3a; }
+    .col-cat    { width: 88px;  font-size: 0.8rem; color: #3a6a96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88px; }
+    .col-forma  { width: 50px;  font-size: 0.79rem; color: #5a7a96; white-space: nowrap; }
+    .col-desc   { font-size: 0.83rem; color: #4a6a84; }
+    .col-val    { width: 74px;  font-size: 0.87rem; white-space: nowrap; }
+    .col-saldo  { width: 80px;  font-size: 0.87rem; font-weight: 800; white-space: nowrap; }
 
     /* ── Cores ── */
     .sc-pos { color: #1a4a8a !important; }
@@ -233,14 +233,14 @@ export function buildExtratoHtml(p: ExtratoRelatorioParams): string {
   <table>
     <thead>
       <tr>
-        <th class="center" style="width:56px">Data</th>
-        <th style="width:150px">Membro / Dest.</th>
-        <th style="width:100px">Categoria</th>
-        <th class="center" style="width:54px">Forma</th>
+        <th class="center" style="width:52px">Data</th>
+        <th style="width:190px">Membro / Dest.</th>
+        <th style="width:88px">Categoria</th>
+        <th class="center" style="width:50px">Forma</th>
         <th>Descrição / Referência</th>
-        <th class="right" style="width:78px">Entrada</th>
-        <th class="right" style="width:78px">Saída</th>
-        <th class="right" style="width:84px">Saldo</th>
+        <th class="right" style="width:74px">Entrada</th>
+        <th class="right" style="width:74px">Saída</th>
+        <th class="right" style="width:80px">Saldo</th>
       </tr>
     </thead>
     <tbody>

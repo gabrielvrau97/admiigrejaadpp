@@ -40,160 +40,214 @@ export async function downloadRelatorio(opts: DownloadRelatorioOptions): Promise
 
 // Abre preview em nova aba com barra de ações (imprimir / baixar PDF / fechar)
 export function previewRelatorio(opts: DownloadRelatorioOptions): void {
-  const { html, filename, formato = 'a4', orientacao = 'landscape' } = opts
+  const { html, filename, formato = 'a4', orientacao = 'portrait' } = opts
 
-  const pageSize = formato === 'a4'
-    ? (orientacao === 'landscape' ? 'size: A4 landscape' : 'size: A4 portrait')
-    : (orientacao === 'landscape' ? 'size: A5 landscape' : 'size: A5 portrait')
+  // Dimensões da folha em px a 96dpi (1mm ≈ 3.7795px)
+  const W = formato === 'a4'
+    ? (orientacao === 'landscape' ? '1122px' : '794px')
+    : (orientacao === 'landscape' ? '794px'  : '559px')
+  const H = formato === 'a4'
+    ? (orientacao === 'landscape' ? '794px'  : '1122px')
+    : (orientacao === 'landscape' ? '559px'  : '794px')
+
+  const htmlEscaped = JSON.stringify(html)
 
   const preview = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
-  <title>Preview — ${filename}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${filename}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #e5e7eb; font-family: Arial, sans-serif; }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
-    /* barra de ações */
+    body {
+      background: #d1d5db;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Toolbar ── */
     #toolbar {
       position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      height: 52px;
-      background: #1e3a5f;
+      inset: 0 0 auto 0;
+      z-index: 200;
+      height: 48px;
+      background: #0f2133;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.3);
-      gap: 12px;
+      gap: 10px;
+      padding: 0 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.35);
     }
-    #toolbar .title {
-      color: #cbd5e1;
-      font-size: 13px;
+    .tb-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .tb-title {
       flex: 1;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    #toolbar .actions { display: flex; gap: 8px; flex-shrink: 0; }
-    #toolbar button {
+    .tb-sep {
+      width: 1px;
+      height: 24px;
+      background: #1e3a5f;
+      flex-shrink: 0;
+    }
+    .tb-btn {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 7px 16px;
+      gap: 5px;
+      padding: 6px 14px;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 700;
       cursor: pointer;
-      transition: opacity .15s;
+      letter-spacing: 0.2px;
+      transition: filter .15s, transform .1s;
+      flex-shrink: 0;
     }
-    #toolbar button:hover { opacity: .85; }
-    #btn-print   { background: #fff;    color: #1e3a5f; }
-    #btn-pdf     { background: #2563eb; color: #fff; }
-    #btn-close   { background: transparent; color: #94a3b8; border: 1px solid #334155 !important; }
+    .tb-btn:hover  { filter: brightness(1.12); }
+    .tb-btn:active { transform: scale(.97); }
+    .tb-btn-print { background: #e8f0fb; color: #1c3d5c; }
+    .tb-btn-pdf   { background: #2563eb; color: #fff; }
+    .tb-btn-close { background: transparent; color: #64748b; border: 1px solid #1e3a5f; }
+    .tb-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-    /* área de conteúdo */
-    #content-wrap {
-      margin-top: 52px;
-      padding: 24px;
+    /* ── Área de conteúdo ── */
+    #wrap {
+      margin-top: 48px;
+      padding: 28px 20px 36px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: calc(100vh - 52px);
+      gap: 0;
     }
 
-    /* folha de papel */
-    .sheet {
+    /* ── Folha de papel ── */
+    .sheet-wrap {
+      position: relative;
+    }
+    .sheet-shadow {
+      position: absolute;
+      inset: 0;
+      box-shadow: 0 6px 32px rgba(0,0,0,.22), 0 1px 4px rgba(0,0,0,.12);
+      border-radius: 1px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    #sheet-frame {
+      display: block;
       background: #fff;
-      box-shadow: 0 4px 24px rgba(0,0,0,.18);
-      border-radius: 2px;
-      width: ${orientacao === 'landscape' ? (formato === 'a4' ? '297mm' : '210mm') : (formato === 'a4' ? '210mm' : '148mm')};
-      min-height: ${orientacao === 'landscape' ? (formato === 'a4' ? '210mm' : '148mm') : (formato === 'a4' ? '297mm' : '210mm')};
-      overflow: hidden;
-      margin-bottom: 24px;
-    }
-
-    /* esconde toolbar ao imprimir */
-    @media print {
-      #toolbar, #content-wrap { display: none !important; }
-      body { background: none; }
-      @page { ${pageSize}; margin: 0; }
-    }
-
-    /* frame do relatório ocupa tela toda ao imprimir */
-    #report-frame {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
       border: none;
-      display: none;
+      width: ${W};
+      height: ${H};
+      border-radius: 1px;
+      position: relative;
+      z-index: 0;
     }
+
+    /* ── Spinner de carregamento ── */
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      z-index: 10;
+      border-radius: 1px;
+      transition: opacity .3s;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid #dde8f2;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     @media print {
-      #report-frame { display: block; }
+      #toolbar, #wrap { display: none !important; }
     }
   </style>
 </head>
 <body>
 
+  <!-- Toolbar -->
   <div id="toolbar">
-    <span class="title">📄 ${filename}</span>
-    <div class="actions">
-      <button id="btn-print" onclick="doPrint()">🖨️ Imprimir</button>
-      <button id="btn-pdf"   onclick="doPdf()">⬇️ Baixar PDF</button>
-      <button id="btn-close" onclick="window.close()">✕ Fechar</button>
+    <span class="tb-icon">📄</span>
+    <span class="tb-title">${filename}</span>
+    <div class="tb-sep"></div>
+    <button class="tb-btn tb-btn-print" onclick="doPrint()">🖨️ Imprimir</button>
+    <button class="tb-btn tb-btn-pdf"   id="btn-pdf" onclick="doPdf()">⬇️ Baixar PDF</button>
+    <button class="tb-btn tb-btn-close" onclick="window.close()">✕ Fechar</button>
+  </div>
+
+  <!-- Folha -->
+  <div id="wrap">
+    <div class="sheet-wrap">
+      <div class="sheet-shadow"></div>
+      <div id="loading"><div class="spinner"></div></div>
+      <iframe id="sheet-frame" scrolling="auto"></iframe>
     </div>
   </div>
 
-  <div id="content-wrap">
-    <div class="sheet" id="sheet"></div>
-  </div>
-
-  <!-- iframe oculto usado para imprimir sem a toolbar -->
-  <iframe id="report-frame"></iframe>
-
   <script>
-    // injeta o HTML do relatório na folha de preview
-    var reportHtml = ${JSON.stringify(html)};
-    var sheet = document.getElementById('sheet');
-    sheet.innerHTML = '';
-    var inner = document.createElement('div');
-    inner.innerHTML = reportHtml;
-    // extrai só o conteúdo do body do relatório (sem <html>/<head>)
-    var body = inner.querySelector('body');
-    if (body) {
-      sheet.innerHTML = body.innerHTML;
-    } else {
-      sheet.innerHTML = inner.innerHTML;
+    var reportHtml = ${htmlEscaped};
+
+    // Renderiza o relatório completo (com <head>/<style>) dentro do iframe
+    var frame = document.getElementById('sheet-frame');
+    frame.addEventListener('load', function() {
+      var loading = document.getElementById('loading');
+      if (loading) { loading.style.opacity = '0'; setTimeout(function(){ loading.remove(); }, 300); }
+      // ajusta altura do iframe ao conteúdo real
+      try {
+        var h = frame.contentDocument.documentElement.scrollHeight;
+        if (h > 0) frame.style.height = h + 'px';
+      } catch(e) {}
+    });
+    var fdoc = frame.contentDocument || frame.contentWindow.document;
+    fdoc.open(); fdoc.write(reportHtml); fdoc.close();
+
+    // Iframe dedicado para impressão (oculto)
+    function getPrintFrame() {
+      var pf = document.getElementById('print-frame');
+      if (!pf) {
+        pf = document.createElement('iframe');
+        pf.id = 'print-frame';
+        pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:${W};height:${H};border:none;visibility:hidden;';
+        document.body.appendChild(pf);
+      }
+      return pf;
     }
 
     function doPrint() {
-      var frame = document.getElementById('report-frame');
-      var fdoc = frame.contentDocument || frame.contentWindow.document;
-      fdoc.open();
-      fdoc.write(reportHtml);
-      fdoc.close();
-      setTimeout(function() { frame.contentWindow.print(); }, 400);
+      var pf = getPrintFrame();
+      var pdoc = pf.contentDocument || pf.contentWindow.document;
+      pdoc.open(); pdoc.write(reportHtml); pdoc.close();
+      setTimeout(function() { pf.contentWindow.focus(); pf.contentWindow.print(); }, 500);
     }
 
     function doPdf() {
       var btn = document.getElementById('btn-pdf');
       btn.textContent = '⏳ Gerando...';
       btn.disabled = true;
-
-      // carrega html2pdf dinamicamente via CDN
-      var script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = function() {
-        var frame = document.getElementById('report-frame');
-        var fdoc = frame.contentDocument || frame.contentWindow.document;
-        fdoc.open();
-        fdoc.write(reportHtml);
-        fdoc.close();
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload = function() {
+        var pf = getPrintFrame();
+        var pdoc = pf.contentDocument || pf.contentWindow.document;
+        pdoc.open(); pdoc.write(reportHtml); pdoc.close();
         setTimeout(function() {
-          var target = fdoc.querySelector('body') || fdoc.documentElement;
+          var target = pdoc.querySelector('body') || pdoc.documentElement;
           html2pdf().set({
             margin: 0,
             filename: '${filename}.pdf',
@@ -206,7 +260,7 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
           });
         }, 400);
       };
-      document.head.appendChild(script);
+      document.head.appendChild(s);
     }
   </script>
 </body>
