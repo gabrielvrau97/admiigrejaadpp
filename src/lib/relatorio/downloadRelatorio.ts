@@ -38,19 +38,30 @@ export async function downloadRelatorio(opts: DownloadRelatorioOptions): Promise
     .finally(() => document.body.removeChild(iframe))
 }
 
-// Abre preview em nova aba com barra de ações (imprimir / baixar PDF / fechar)
+// Abre preview em nova aba — tela toda, toolbar fixa, relatório renderizado fullscreen
 export function previewRelatorio(opts: DownloadRelatorioOptions): void {
   const { html, filename, formato = 'a4', orientacao = 'portrait' } = opts
-
-  // Dimensões da folha em px a 96dpi (1mm ≈ 3.7795px)
-  const W = formato === 'a4'
-    ? (orientacao === 'landscape' ? '1122px' : '794px')
-    : (orientacao === 'landscape' ? '794px'  : '559px')
-  const H = formato === 'a4'
-    ? (orientacao === 'landscape' ? '794px'  : '1122px')
-    : (orientacao === 'landscape' ? '559px'  : '794px')
-
   const htmlEscaped = JSON.stringify(html)
+
+  // Injeta no CSS do relatório um override que remove o .page width fixo
+  // e deixa o conteúdo fluir na largura total da viewport
+  const htmlPreview = html
+    .replace(
+      '</style>',
+      `
+  /* ── PREVIEW OVERRIDE: tela toda, sem largura fixa ── */
+  html, body { width: 100% !important; background: #fff !important; }
+  .page {
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 20px 32px 24px !important;
+    margin: 0 !important;
+  }
+  .rodape-tela { display: none !important; }
+  </style>`
+    )
+
+  const htmlPreviewEscaped = JSON.stringify(htmlPreview)
 
   const preview = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -60,170 +71,98 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
   <title>${filename}</title>
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-    body {
-      background: #d1d5db;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      min-height: 100vh;
-    }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; }
 
     /* ── Toolbar ── */
     #toolbar {
       position: fixed;
       inset: 0 0 auto 0;
       z-index: 200;
-      height: 48px;
+      height: 44px;
       background: #0f2133;
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 0 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.35);
+      gap: 8px;
+      padding: 0 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.4);
     }
-    .tb-icon {
-      font-size: 16px;
-      flex-shrink: 0;
-    }
+    .tb-icon { font-size: 15px; flex-shrink: 0; }
     .tb-title {
       flex: 1;
       font-size: 12px;
       font-weight: 600;
-      color: #94a3b8;
+      color: #7a9ab8;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .tb-sep {
-      width: 1px;
-      height: 24px;
-      background: #1e3a5f;
-      flex-shrink: 0;
-    }
+    .tb-sep { width: 1px; height: 20px; background: #1e3a5f; flex-shrink: 0; margin: 0 2px; }
     .tb-btn {
       display: flex;
       align-items: center;
       gap: 5px;
-      padding: 6px 14px;
+      padding: 5px 13px;
       border: none;
       border-radius: 5px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      letter-spacing: 0.2px;
-      transition: filter .15s, transform .1s;
       flex-shrink: 0;
+      transition: filter .12s, transform .08s;
     }
-    .tb-btn:hover  { filter: brightness(1.12); }
+    .tb-btn:hover  { filter: brightness(1.1); }
     .tb-btn:active { transform: scale(.97); }
     .tb-btn-print { background: #e8f0fb; color: #1c3d5c; }
     .tb-btn-pdf   { background: #2563eb; color: #fff; }
-    .tb-btn-close { background: transparent; color: #64748b; border: 1px solid #1e3a5f; }
-    .tb-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .tb-btn-close { background: transparent; color: #64748b; border: 1px solid #243a52; }
+    .tb-btn:disabled { opacity: .45; cursor: not-allowed; }
 
-    /* ── Área de conteúdo ── */
-    #wrap {
-      margin-top: 48px;
-      padding: 28px 20px 36px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0;
-    }
-
-    /* ── Folha de papel ── */
-    .sheet-wrap {
-      position: relative;
-    }
-    .sheet-shadow {
-      position: absolute;
-      inset: 0;
-      box-shadow: 0 6px 32px rgba(0,0,0,.22), 0 1px 4px rgba(0,0,0,.12);
-      border-radius: 1px;
-      pointer-events: none;
-      z-index: 1;
-    }
+    /* ── Iframe fullscreen abaixo da toolbar ── */
     #sheet-frame {
-      display: block;
-      background: #fff;
+      position: fixed;
+      top: 44px;
+      left: 0; right: 0; bottom: 0;
+      width: 100%;
+      height: calc(100vh - 44px);
       border: none;
-      width: ${W};
-      height: ${H};
-      border-radius: 1px;
-      position: relative;
-      z-index: 0;
-    }
-
-    /* ── Spinner de carregamento ── */
-    #loading {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       background: #fff;
-      z-index: 10;
-      border-radius: 1px;
-      transition: opacity .3s;
     }
-    .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid #dde8f2;
-      border-top-color: #2563eb;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
     @media print {
-      #toolbar, #wrap { display: none !important; }
+      #toolbar { display: none !important; }
+      #sheet-frame { top: 0; height: 100vh; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Toolbar -->
   <div id="toolbar">
     <span class="tb-icon">📄</span>
     <span class="tb-title">${filename}</span>
     <div class="tb-sep"></div>
     <button class="tb-btn tb-btn-print" onclick="doPrint()">🖨️ Imprimir</button>
-    <button class="tb-btn tb-btn-pdf"   id="btn-pdf" onclick="doPdf()">⬇️ Baixar PDF</button>
+    <button class="tb-btn tb-btn-pdf" id="btn-pdf" onclick="doPdf()">⬇️ Baixar PDF</button>
     <button class="tb-btn tb-btn-close" onclick="window.close()">✕ Fechar</button>
   </div>
 
-  <!-- Folha -->
-  <div id="wrap">
-    <div class="sheet-wrap">
-      <div class="sheet-shadow"></div>
-      <div id="loading"><div class="spinner"></div></div>
-      <iframe id="sheet-frame" scrolling="auto"></iframe>
-    </div>
-  </div>
+  <iframe id="sheet-frame" scrolling="yes"></iframe>
 
   <script>
-    var reportHtml = ${htmlEscaped};
+    var reportHtml      = ${htmlEscaped};       // usado para imprimir/PDF (formato A4 original)
+    var previewHtml     = ${htmlPreviewEscaped}; // usado no iframe (fullscreen)
 
-    // Renderiza o relatório completo (com <head>/<style>) dentro do iframe
     var frame = document.getElementById('sheet-frame');
-    frame.addEventListener('load', function() {
-      var loading = document.getElementById('loading');
-      if (loading) { loading.style.opacity = '0'; setTimeout(function(){ loading.remove(); }, 300); }
-      // ajusta altura do iframe ao conteúdo real
-      try {
-        var h = frame.contentDocument.documentElement.scrollHeight;
-        if (h > 0) frame.style.height = h + 'px';
-      } catch(e) {}
-    });
     var fdoc = frame.contentDocument || frame.contentWindow.document;
-    fdoc.open(); fdoc.write(reportHtml); fdoc.close();
+    fdoc.open(); fdoc.write(previewHtml); fdoc.close();
 
-    // Iframe dedicado para impressão (oculto)
+    // iframe oculto para impressão com layout A4 original
     function getPrintFrame() {
       var pf = document.getElementById('print-frame');
       if (!pf) {
         pf = document.createElement('iframe');
         pf.id = 'print-frame';
-        pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:${W};height:${H};border:none;visibility:hidden;';
+        pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
         document.body.appendChild(pf);
       }
       return pf;
@@ -258,7 +197,7 @@ export function previewRelatorio(opts: DownloadRelatorioOptions): void {
             btn.textContent = '⬇️ Baixar PDF';
             btn.disabled = false;
           });
-        }, 400);
+        }, 500);
       };
       document.head.appendChild(s);
     }
