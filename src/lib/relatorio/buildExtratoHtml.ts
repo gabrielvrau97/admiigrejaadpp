@@ -214,12 +214,6 @@ export function buildExtratoHtml(p: ExtratoRelatorioParams): string {
       margin-top: 14px;
     }
 
-    /* ── Grade resumos ── */
-    .resumos-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
   </style>
 
   <!-- Cards de saldo -->
@@ -271,53 +265,25 @@ export function buildExtratoHtml(p: ExtratoRelatorioParams): string {
     </tfoot>
   </table>
 
-  <!-- Resumos lado a lado -->
-  <div class="resumos-grid">
-
-    <div>
-      <div class="sec-titulo">Resumo por Categoria</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Categoria</th>
-            <th class="right" style="width:80px">Entradas</th>
-            <th class="right" style="width:80px">Saídas</th>
-            <th class="right" style="width:80px">Saldo</th>
-          </tr>
-        </thead>
-        <tbody>${linhasCategoria}</tbody>
-        <tfoot>
-          <tr>
-            <td>Total</td>
-            <td class="right">${fmt(totalEntradas)}</td>
-            <td class="right">${fmt(totalSaidas)}</td>
-            <td class="right ${saldoPeriodo >= 0 ? 'sc-pos' : 'sc-neg'}">${fmt(saldoPeriodo)}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-
-    <div>
-      <div class="sec-titulo">Resumo por Forma de Pagamento</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Forma</th>
-            <th class="right" style="width:90px">Entradas</th>
-            <th class="right" style="width:90px">Saídas</th>
-          </tr>
-        </thead>
-        <tbody>${linhasForma}</tbody>
-        <tfoot>
-          <tr>
-            <td>Total</td>
-            <td class="right">${fmt(totalEntradas)}</td>
-            <td class="right">${fmt(totalSaidas)}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-
+  <div style="max-width:340px;margin-top:14px">
+    <div class="sec-titulo">Resumo por Forma de Pagamento</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Forma</th>
+          <th class="right" style="width:100px">Entradas</th>
+          <th class="right" style="width:100px">Saídas</th>
+        </tr>
+      </thead>
+      <tbody>${linhasForma}</tbody>
+      <tfoot>
+        <tr>
+          <td>Total</td>
+          <td class="right">${fmt(totalEntradas)}</td>
+          <td class="right">${fmt(totalSaidas)}</td>
+        </tr>
+      </tfoot>
+    </table>
   </div>`
 
   return buildRelatorioHtml({
