@@ -27,7 +27,7 @@ function deltaBadge(current: number, prev: number | undefined, asPp = false): st
   if (Math.abs(d) < 0.5) return '<span class="delta-eq">= ant.</span>'
   const cls = d > 0 ? 'delta-up' : 'delta-dn'
   const arrow = d > 0 ? '▲' : '▼'
-  const label = asPp ? `${Math.abs(d).toFixed(1)}pp` : `${Math.abs(d).toFixed(1)}%`
+  const label = `${Math.abs(d).toFixed(1)}%`
   return `<span class="${cls}">${arrow} ${label}</span>`
 }
 

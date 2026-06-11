@@ -490,6 +490,86 @@ export async function getEvolucaoContribuicao(groupId: string): Promise<Evolucao
   })
 }
 
+// ── evolução mensal de engajamento dízimo vs outros (12 meses) ───────────
+
+export interface EvolucaoDizimoMes {
+  label: string
+  mes: string
+  pctGeral: number
+  pctDizimo: number
+  pctOutros: number
+  qtdGeral: number
+  qtdDizimo: number
+  qtdOutros: number
+}
+
+export async function getEvolucaoDizimo(groupId: string): Promise<EvolucaoDizimoMes[]> {
+  const [cats, churches] = await Promise.all([
+    supabase
+      .from('fin_categorias')
+      .select('id')
+      .eq('church_group_id', groupId)
+      .or('nome.ilike.%dízimo%,nome.ilike.%dizimo%'),
+    supabase
+      .from('churches')
+      .select('id')
+      .eq('group_id', groupId),
+  ])
+
+  const dizimoCatIds = new Set<string>((cats.data ?? []).map((c: { id: string }) => c.id))
+  const churchIds = (churches.data ?? []).map((c: { id: string }) => c.id)
+
+  const membersData = churchIds.length > 0
+    ? await fetchAllPaged((f, t) => supabase
+        .from('members')
+        .select('id')
+        .in('church_id', churchIds)
+        .eq('status', 'ativo')
+        .range(f, t))
+    : []
+  const totalMembros = membersData.length
+
+  const months = getLast12Months()
+  const { first } = monthRange(months[0].year, months[0].month)
+  const { last } = monthRange(months[11].year, months[11].month)
+
+  const rows = await fetchAllPaged((f, t) => supabase
+    .from('fin_lancamentos')
+    .select('data_lancamento, member_id, categoria_id')
+    .eq('church_group_id', groupId)
+    .eq('tipo', 'entrada')
+    .not('member_id', 'is', null)
+    .gte('data_lancamento', first)
+    .lte('data_lancamento', last)
+    .range(f, t))
+
+  return months.map(({ year, month }) => {
+    const mesStr = `${year}-${pad(month)}`
+    const mesRows = rows.filter(r => (r.data_lancamento as string).startsWith(mesStr))
+
+    const setDizimo = new Set<string>()
+    const setOutros = new Set<string>()
+    for (const r of mesRows) {
+      if (!r.member_id) continue
+      if (dizimoCatIds.has(r.categoria_id)) setDizimo.add(r.member_id)
+      else setOutros.add(r.member_id)
+    }
+    const setGeral = new Set([...setDizimo, ...setOutros])
+
+    const pct = (n: number) => totalMembros > 0 ? (n / totalMembros) * 100 : 0
+    return {
+      label: `${MESES_CURTOS[month - 1]}/${String(year).slice(2)}`,
+      mes: mesStr,
+      pctGeral:  pct(setGeral.size),
+      pctDizimo: pct(setDizimo.size),
+      pctOutros: pct(setOutros.size),
+      qtdGeral:  setGeral.size,
+      qtdDizimo: setDizimo.size,
+      qtdOutros: setOutros.size,
+    }
+  })
+}
+
 // ── membros de um título com ranking de contribuição ─────────────────────
 
 export interface MembroDoTitulo {

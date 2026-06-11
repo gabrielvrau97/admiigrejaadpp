@@ -18,11 +18,12 @@ import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
   getContribNaoCadastrados, getEvolucaoContribuicao, getPeriodoAnteriorDatas,
-  getMembrosDoTitulo, getEvolucaoMembro, getEngajamentoCategorias,
+  getMembrosDoTitulo, getEvolucaoMembro, getEngajamentoCategorias, getEvolucaoDizimo,
   type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis,
   type FormaPagamentoStat, type CatDetalhe, type TituloStat,
   type ContribNaoCadastrado, type EvolucaoMes,
   type MembroDoTitulo, type EvolucaoMembroMes, type EngajamentoCategorias,
+  type EvolucaoDizimoMes,
 } from '../../lib/api/fin_dashboard'
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ function DeltaBadge({ current, prev, asPp = false }: { current: number; prev?: n
   const d = asPp ? (current - prev) : ((current - prev) / Math.abs(prev)) * 100
   if (Math.abs(d) < 0.5) return <span className="text-[9px] text-gray-400">= ant.</span>
   const up = d > 0
-  const label = asPp ? `${Math.abs(d).toFixed(1)}pp` : `${Math.abs(d).toFixed(1)}%`
+  const label = `${Math.abs(d).toFixed(1)}%`
   return (
     <span className={`text-[9px] font-bold ${up ? 'text-emerald-600' : 'text-red-500'}`}>
       {up ? '▲' : '▼'} {label} vs. ant.
@@ -566,6 +567,7 @@ export default function FinanceiroDashboardPage() {
   const [tituloStats, setTituloStats] = useState<TituloStat[]>([])
   const [naoCadastrados, setNaoCadastrados] = useState<ContribNaoCadastrado[]>([])
   const [evolucao, setEvolucao] = useState<EvolucaoMes[]>([])
+  const [evolucaoDizimo, setEvolucaoDizimo] = useState<EvolucaoDizimoMes[]>([])
 
   const { inicio, fim } = useMemo(() => getPeriodo(periodo, customInicio, customFim), [periodo, customInicio, customFim])
 
@@ -580,7 +582,7 @@ export default function FinanceiroDashboardPage() {
 
       const prev = getPeriodoAnteriorDatas(inicio, fim)
 
-      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa, kp, tsp, ec, ecp] = await Promise.all([
+      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa, kp, tsp, ec, ecp, ed] = await Promise.all([
         safe(getDashKpis(APP_GROUP_ID, inicio, fim), null, 'kpis'),
         safe(getFluxo12Meses(APP_GROUP_ID), [], 'fluxo'),
         safe(getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim), [], 'distEntrada'),
@@ -596,6 +598,7 @@ export default function FinanceiroDashboardPage() {
         safe(getStatsPorTitulo(APP_GROUP_ID, prev.inicio, prev.fim), [], 'titulosPrev'),
         safe(getEngajamentoCategorias(APP_GROUP_ID, inicio, fim), null, 'engajCat'),
         safe(getEngajamentoCategorias(APP_GROUP_ID, prev.inicio, prev.fim), null, 'engajCatPrev'),
+        safe(getEvolucaoDizimo(APP_GROUP_ID), [], 'evolucaoDizimo'),
       ])
 
       if (cancelled) return
@@ -604,6 +607,7 @@ export default function FinanceiroDashboardPage() {
       setTituloStatsPrev(tsp as TituloStat[])
       if (ec) setEngajCat(ec as EngajamentoCategorias)
       if (ecp) setEngajCatPrev(ecp as EngajamentoCategorias)
+      setEvolucaoDizimo(ed as EvolucaoDizimoMes[])
       setSaldoAnterior(sa as number)
       setFluxo(f as MesFluxo[])
       setDistEntrada(de as CatFatia[])
@@ -1079,6 +1083,61 @@ export default function FinanceiroDashboardPage() {
                   <Tooltip content={<ChartTooltip />} />
                   <Line type="monotone" dataKey="cadastrados" name="Cadastrados" stroke="#14b8a6" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#14b8a6', strokeWidth: 0 }} />
                   <Line type="monotone" dataKey="naoCadastrados" name="Não cadastrados" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* evolução de engajamento dízimo vs outros — 12 meses */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-semibold text-gray-700">Engajamento % — Dízimo vs Outros — 12 meses</span>
+              <div className="flex items-center gap-3 ml-auto text-[10px] text-gray-500">
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-teal-400 inline-block" /> Geral</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-indigo-500 inline-block" /> Dízimo</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-orange-400 inline-block" /> Outros</span>
+              </div>
+            </div>
+            {loading ? (
+              <div className="h-36 bg-gray-50 rounded-xl animate-pulse" />
+            ) : (
+              <ResponsiveContainer width="100%" height={160}>
+                <LineChart data={evolucaoDizimo} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tickFormatter={v => `${v.toFixed(0)}%`}
+                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={38}
+                    domain={[0, 100]}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label: lbl }: any) => {
+                      if (!active || !payload?.length) return null
+                      return (
+                        <div className="bg-gray-900 text-white rounded-xl shadow-xl p-3 text-xs">
+                          <div className="font-semibold mb-2 text-gray-300">{lbl}</div>
+                          {payload.map((p: any) => (
+                            <div key={p.name} className="flex items-center gap-2 mb-1">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                              <span className="text-gray-400">{p.name}:</span>
+                              <span className="font-bold">{Number(p.value).toFixed(1)}%</span>
+                              <span className="text-gray-500 text-[10px]">
+                                ({evolucaoDizimo.find(e => e.label === lbl)?.[
+                                  p.dataKey === 'pctGeral' ? 'qtdGeral' : p.dataKey === 'pctDizimo' ? 'qtdDizimo' : 'qtdOutros'
+                                ] ?? 0} membros)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    }}
+                  />
+                  <Line type="monotone" dataKey="pctGeral" name="Geral" stroke="#14b8a6" strokeWidth={2} strokeDasharray="5 3" dot={false} activeDot={{ r: 4, fill: '#14b8a6', strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="pctDizimo" name="Dízimo" stroke="#6366f1" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#6366f1', strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="pctOutros" name="Outros" stroke="#f97316" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#f97316', strokeWidth: 0 }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
