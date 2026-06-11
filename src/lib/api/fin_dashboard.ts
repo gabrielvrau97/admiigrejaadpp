@@ -535,6 +535,20 @@ export async function getEvolucaoMembro(
   })
 }
 
+// ── Utilitário: período anterior de mesma duração ────────────────────────
+
+export function getPeriodoAnteriorDatas(inicio: string, fim: string): { inicio: string; fim: string } {
+  const d1 = new Date(inicio + 'T12:00:00')
+  const d2 = new Date(fim + 'T12:00:00')
+  const dias = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1
+  const prevFim    = new Date(d1.getTime() - 86400000)
+  const prevInicio = new Date(prevFim.getTime() - (dias - 1) * 86400000)
+  return {
+    inicio: prevInicio.toISOString().slice(0, 10),
+    fim:    prevFim.toISOString().slice(0, 10),
+  }
+}
+
 // ── KPIs do período ───────────────────────────────────────────────────────
 
 export interface DashKpis {

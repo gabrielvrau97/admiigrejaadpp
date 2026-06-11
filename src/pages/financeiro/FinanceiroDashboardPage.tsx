@@ -12,10 +12,12 @@ import { useData } from '../../contexts/DataContext'
 import { getSaldoAcumuladoAte } from '../../lib/api/fin_lancamentos'
 import { buildConsolidadoHtml } from '../../lib/relatorio/buildConsolidadoHtml'
 import { previewRelatorio } from '../../lib/relatorio/downloadRelatorio'
+import RelatorioAssinaturaModal from './RelatorioAssinaturaModal'
+import type { Assinante } from './RelatorioAssinaturaModal'
 import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
-  getContribNaoCadastrados, getEvolucaoContribuicao,
+  getContribNaoCadastrados, getEvolucaoContribuicao, getPeriodoAnteriorDatas,
   getMembrosDoTitulo, getEvolucaoMembro,
   type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis,
   type FormaPagamentoStat, type CatDetalhe, type TituloStat,
@@ -44,6 +46,21 @@ function formaPagLabel(f?: string, p?: number) {
   if (f === 'cartao_debito') return 'Débito'
   if (f === 'cartao_credito') return `Crédito${p && p > 1 ? ` ${p}x` : ''}`
   return f
+}
+
+// ── delta badge ──────────────────────────────────────────────────────────
+
+function DeltaBadge({ current, prev, asPp = false }: { current: number; prev?: number; asPp?: boolean }) {
+  if (prev === undefined || prev === 0) return null
+  const d = asPp ? (current - prev) : ((current - prev) / Math.abs(prev)) * 100
+  if (Math.abs(d) < 0.5) return <span className="text-[9px] text-gray-400">= ant.</span>
+  const up = d > 0
+  const label = asPp ? `${Math.abs(d).toFixed(1)}pp` : `${Math.abs(d).toFixed(1)}%`
+  return (
+    <span className={`text-[9px] font-bold ${up ? 'text-emerald-600' : 'text-red-500'}`}>
+      {up ? '▲' : '▼'} {label} vs. ant.
+    </span>
+  )
 }
 
 // ── count-up hook ─────────────────────────────────────────────────────────
@@ -369,8 +386,8 @@ function MembroEvolucaoDrawer({
 // ── Título clicável com ranking de membros ────────────────────────────────
 
 function TituloExpandable({
-  titulo, totalMembros, contribuiram, totalContribuido, periodo,
-}: TituloStat & { periodo: { inicio: string; fim: string } }) {
+  titulo, totalMembros, contribuiram, totalContribuido, periodo, prevContribuiram,
+}: TituloStat & { periodo: { inicio: string; fim: string }; prevContribuiram?: number }) {
   const [open, setOpen] = useState(false)
   const [membros, setMembros] = useState<MembroDoTitulo[]>([])
   const [loading, setLoading] = useState(false)
@@ -415,8 +432,15 @@ function TituloExpandable({
               <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                 <div className="h-full rounded-full bg-teal-400 transition-all duration-700" style={{ width: `${pct}%` }} />
               </div>
-              <span className="text-[10px] text-gray-500 flex-shrink-0 w-28 text-right">
-                {contribuiram}/{totalMembros} membros · {pct}%
+              <span className="text-[10px] text-gray-500 flex-shrink-0 text-right flex flex-col items-end gap-0.5">
+                <span>{contribuiram}/{totalMembros} · {pct}%</span>
+                {prevContribuiram !== undefined && (
+                  <DeltaBadge
+                    current={totalMembros > 0 ? (contribuiram / totalMembros) * 100 : 0}
+                    prev={totalMembros > 0 ? (prevContribuiram / totalMembros) * 100 : 0}
+                    asPp
+                  />
+                )}
               </span>
             </div>
           </div>
@@ -517,6 +541,9 @@ export default function FinanceiroDashboardPage() {
   const [pessoasShowTitulos, setPessoasShowTitulos] = useState(false)
 
   const [kpis, setKpis] = useState<DashKpis | null>(null)
+  const [kpisPrev, setKpisPrev] = useState<DashKpis | null>(null)
+  const [tituloStatsPrev, setTituloStatsPrev] = useState<TituloStat[]>([])
+  const [showConsolidadoModal, setShowConsolidadoModal] = useState(false)
   const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
   const [fluxo, setFluxo] = useState<MesFluxo[]>([])
   const [distEntrada, setDistEntrada] = useState<CatFatia[]>([])
@@ -539,7 +566,9 @@ export default function FinanceiroDashboardPage() {
         return p.catch(e => { console.error(`[dashboard] ${label}:`, e); return fallback })
       }
 
-      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa] = await Promise.all([
+      const prev = getPeriodoAnteriorDatas(inicio, fim)
+
+      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa, kp, tsp] = await Promise.all([
         safe(getDashKpis(APP_GROUP_ID, inicio, fim), null, 'kpis'),
         safe(getFluxo12Meses(APP_GROUP_ID), [], 'fluxo'),
         safe(getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim), [], 'distEntrada'),
@@ -551,10 +580,14 @@ export default function FinanceiroDashboardPage() {
         safe(getContribNaoCadastrados(APP_GROUP_ID, inicio, fim), [], 'naoCadastrados'),
         safe(getEvolucaoContribuicao(APP_GROUP_ID), [], 'evolucao'),
         safe(getSaldoAcumuladoAte(APP_GROUP_ID, inicio), 0, 'saldoAnterior'),
+        safe(getDashKpis(APP_GROUP_ID, prev.inicio, prev.fim), null, 'kpisPrev'),
+        safe(getStatsPorTitulo(APP_GROUP_ID, prev.inicio, prev.fim), [], 'titulosPrev'),
       ])
 
       if (cancelled) return
       if (k) setKpis(k)
+      if (kp) setKpisPrev(kp as DashKpis)
+      setTituloStatsPrev(tsp as TituloStat[])
       setSaldoAnterior(sa as number)
       setFluxo(f as MesFluxo[])
       setDistEntrada(de as CatFatia[])
@@ -587,6 +620,12 @@ export default function FinanceiroDashboardPage() {
 
   const lancTotal = kpis?.qtdLancamentos ?? 0
 
+  // mapa título → prev para delta
+  const prevTituloMap = useMemo(
+    () => new Map<string, TituloStat>(tituloStatsPrev.map(t => [t.titulo, t])),
+    [tituloStatsPrev]
+  )
+
   // títulos filtrados
   const titulosFiltrados = useMemo(() => {
     if (!pessoasFiltroTitulo.trim()) return tituloStats
@@ -594,29 +633,47 @@ export default function FinanceiroDashboardPage() {
     return tituloStats.filter(t => t.titulo.toLowerCase().includes(q))
   }, [tituloStats, pessoasFiltroTitulo])
 
+  const prevPctContrib = kpisPrev && membrosAtivos.length > 0
+    ? Math.min(100, (kpisPrev.qtdCadastrados / membrosAtivos.length) * 100)
+    : undefined
+
   const periodoObj = { inicio, fim }
 
   function gerarConsolidado() {
     if (!kpis) return
+    setShowConsolidadoModal(true)
+  }
+
+  function gerarConsolidadoComAssinatura(assinantes: Assinante[] | null) {
+    setShowConsolidadoModal(false)
+    if (!kpis) return
     const html = buildConsolidadoHtml({
       kpis,
+      kpisPrev: kpisPrev ?? undefined,
       saldoAnterior: saldoAnterior ?? 0,
       distEntrada,
       distSaida,
       formaEntrada,
       formaSaida,
       tituloStats,
-      naoCadastrados,
+      tituloStatsPrev,
       membrosAtivosTotal: membrosAtivos.length,
       dataInicio: inicio,
       dataFim: fim,
       periodoLabel: periodoLabel[periodo],
+      assinantes: assinantes ?? undefined,
     })
     previewRelatorio({ html, filename: `Consolidado_Financeiro_${inicio}_${fim}` })
   }
 
   return (
     <div className="min-h-full bg-gray-50">
+      {showConsolidadoModal && (
+        <RelatorioAssinaturaModal
+          onConfirm={gerarConsolidadoComAssinatura}
+          onClose={() => setShowConsolidadoModal(false)}
+        />
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4 sticky top-0 z-10">
@@ -853,14 +910,17 @@ export default function FinanceiroDashboardPage() {
             <div className="bg-teal-50 rounded-xl p-3 text-center">
               <div className="text-2xl font-black text-teal-700">{kpis?.qtdCadastrados ?? 0}</div>
               <div className="text-[10px] text-teal-600 mt-0.5">Cadastrados contrib.</div>
+              <div className="mt-1"><DeltaBadge current={kpis?.qtdCadastrados ?? 0} prev={kpisPrev?.qtdCadastrados} /></div>
             </div>
             <div className="bg-blue-50 rounded-xl p-3 text-center">
               <div className="text-2xl font-black text-blue-700">{pctContrib}%</div>
               <div className="text-[10px] text-blue-600 mt-0.5">Engajamento</div>
+              <div className="mt-1"><DeltaBadge current={pctContrib} prev={prevPctContrib} asPp /></div>
             </div>
             <div className="bg-amber-50 rounded-xl p-3 text-center">
               <div className="text-2xl font-black text-amber-700">{kpis?.qtdNaoCadastrados ?? 0}</div>
               <div className="text-[10px] text-amber-600 mt-0.5">Não cadastrados</div>
+              <div className="mt-1"><DeltaBadge current={kpis?.qtdNaoCadastrados ?? 0} prev={kpisPrev?.qtdNaoCadastrados} /></div>
             </div>
           </div>
 
@@ -974,7 +1034,12 @@ export default function FinanceiroDashboardPage() {
               ) : (
                 <div className="space-y-2">
                   {titulosFiltrados.map(t => (
-                    <TituloExpandable key={t.titulo} {...t} periodo={periodoObj} />
+                    <TituloExpandable
+                      key={t.titulo}
+                      {...t}
+                      periodo={periodoObj}
+                      prevContribuiram={prevTituloMap.get(t.titulo)?.contribuiram}
+                    />
                   ))}
                 </div>
               )}
