@@ -245,19 +245,19 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
 
     /* ── Assinaturas ──────────────────────────────────── */
     .assinaturas {
-      margin: 10mm 0 6mm;
+      margin: 14mm 0 8mm;
       padding: 0 2mm;
       display: flex;
       flex-direction: column;
-      gap: 10mm;
+      gap: 14mm;
     }
     .ass-linha-row {
       display: flex;
-      gap: 12mm;
+      gap: 14mm;
       justify-content: center;
     }
     /* Linha 1: 2 blocos mais largos */
-    .ass-linha-row.ass-row-direcao .ass-bloco { flex: 1; max-width: 200px; }
+    .ass-linha-row.ass-row-direcao .ass-bloco { flex: 1; max-width: 210px; }
     /* Linha 2: 3 blocos menores */
     .ass-linha-row.ass-row-conselho .ass-bloco { flex: 1; max-width: 150px; }
 
