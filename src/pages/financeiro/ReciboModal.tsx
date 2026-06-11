@@ -1,6 +1,5 @@
 import React from 'react'
-import { X, Printer, MessageCircle, CheckCircle, FileText } from 'lucide-react'
-import html2pdf from 'html2pdf.js'
+import { X, Printer, MessageCircle, CheckCircle, Download } from 'lucide-react'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import { useAuth } from '../../contexts/AuthContext'
 import { ROLE_LABELS } from '../../lib/permissions'
@@ -231,44 +230,87 @@ export default function ReciboModal({ recibo, onClose }: Props) {
     return buildReciboHtml(recibo, emitidoPorNome, emitidoPorEmail, emitidoPorRole, tesoreiroNome)
   }
 
-  function handleDownload() {
+  function abrirPreview(autoPrint = false) {
     const html = getHtml()
     const nomeSlug = slugify(nomeContribuinte || 'contribuinte')
+    const filename = `Recibo_${nomeSlug}_${recibo.numero}`
 
-    const iframe = document.createElement('iframe')
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:148mm;height:210mm;border:none;visibility:hidden;'
-    document.body.appendChild(iframe)
+    const htmlEscaped = JSON.stringify(html)
+    const autoStr = autoPrint ? 'true' : 'false'
 
-    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document
-    if (!iframeDoc) { document.body.removeChild(iframe); return }
+    const preview = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${filename}</title>
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: Arial, sans-serif; background: #fff; }
+    #toolbar {
+      position: fixed; inset: 0 0 auto 0; z-index: 200;
+      height: 44px; background: #0f2133;
+      display: flex; align-items: center; gap: 8px; padding: 0 14px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.4);
+    }
+    .tb-title { flex:1; font-size:12px; font-weight:600; color:#7a9ab8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tb-sep { width:1px; height:20px; background:#1e3a5f; flex-shrink:0; margin:0 2px; }
+    .tb-btn {
+      display:flex; align-items:center; gap:5px; padding:5px 13px;
+      border:none; border-radius:5px; font-size:12px; font-weight:700;
+      cursor:pointer; flex-shrink:0; transition:filter .12s, transform .08s;
+    }
+    .tb-btn:hover { filter:brightness(1.1); }
+    .tb-btn:active { transform:scale(.97); }
+    .tb-btn-print { background:#e8f0fb; color:#1c3d5c; }
+    .tb-btn-close { background:transparent; color:#64748b; border:1px solid #243a52; }
+    #sheet-frame {
+      position:fixed; top:44px; left:0; right:0; bottom:0;
+      width:100%; height:calc(100vh - 44px); border:none; background:#fff;
+    }
+    @media print {
+      #toolbar { display:none !important; }
+      #sheet-frame { top:0; height:100vh; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span style="font-size:15px">🧾</span>
+    <span class="tb-title">${filename}</span>
+    <div class="tb-sep"></div>
+    <button class="tb-btn tb-btn-print" onclick="doPrint()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="tb-btn tb-btn-close" onclick="window.close()">✕ Fechar</button>
+  </div>
+  <iframe id="sheet-frame" scrolling="yes"></iframe>
+  <script>
+    var html = ${htmlEscaped};
+    var frame = document.getElementById('sheet-frame');
+    var fdoc = frame.contentDocument || frame.contentWindow.document;
+    fdoc.open(); fdoc.write(html); fdoc.close();
 
-    iframeDoc.open()
-    iframeDoc.write(html)
-    iframeDoc.close()
+    function doPrint() {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }
 
-    const target = iframeDoc.querySelector('body') ?? iframeDoc.documentElement
-    html2pdf()
-      .set({
-        margin: 0,
-        filename: `Recibo_${nomeSlug}_${recibo.numero}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' },
-      })
-      .from(target)
-      .save()
-      .finally(() => document.body.removeChild(iframe))
-  }
+    if (${autoStr}) {
+      setTimeout(doPrint, 600);
+    }
+  </script>
+</body>
+</html>`
 
-  function handleImprimir() {
-    const html = getHtml()
-    const win = window.open('', '_blank', 'width=560,height=650')
+    const win = window.open('', '_blank')
     if (!win) return
-    win.document.write(html)
+    win.document.open()
+    win.document.write(preview)
     win.document.close()
     win.focus()
-    setTimeout(() => { win.print() }, 400)
   }
+
+  function handleDownload() { abrirPreview(false) }
+  function handleImprimir() { abrirPreview(true) }
 
   function handleWhatsApp() {
     const raw = whatsPhone.replace(/\D/g, '')
@@ -363,12 +405,12 @@ export default function ReciboModal({ recibo, onClose }: Props) {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-emerald-400 bg-emerald-50 hover:bg-emerald-100 transition-all text-sm font-medium text-emerald-800"
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
-              <FileText size={15} className="text-white" />
+              <Download size={15} className="text-white" />
             </div>
             <div className="text-left">
               <div className="font-bold text-emerald-900">Baixar recibo em PDF</div>
               <div className="text-xs text-emerald-600">
-                Salvar como PDF pelo navegador
+                Abre preview — salve como PDF pelo navegador
               </div>
             </div>
           </button>
