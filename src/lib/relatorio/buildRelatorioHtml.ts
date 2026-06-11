@@ -245,15 +245,23 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
 
     /* ── Assinaturas ──────────────────────────────────── */
     .assinaturas {
+      margin: 10mm 0 6mm;
+      padding: 0 2mm;
       display: flex;
-      justify-content: space-around;
-      gap: 16px;
-      margin: 12mm 0 8mm;
-      padding: 0 4mm;
+      flex-direction: column;
+      gap: 10mm;
     }
+    .ass-linha-row {
+      display: flex;
+      gap: 12mm;
+      justify-content: center;
+    }
+    /* Linha 1: 2 blocos mais largos */
+    .ass-linha-row.ass-row-direcao .ass-bloco { flex: 1; max-width: 200px; }
+    /* Linha 2: 3 blocos menores */
+    .ass-linha-row.ass-row-conselho .ass-bloco { flex: 1; max-width: 150px; }
+
     .ass-bloco {
-      flex: 1;
-      max-width: 180px;
       text-align: center;
     }
     .ass-linha {
@@ -261,7 +269,7 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
       margin-bottom: 5px;
     }
     .ass-cargo {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -381,16 +389,26 @@ export function buildRelatorioHtml(info: RelatorioInfo): string {
   </div>
 
   <!-- ASSINATURAS -->
-  ${info.assinantes && info.assinantes.length > 0 ? `
-  <div class="assinaturas">
-    ${info.assinantes.map(a => `
-      <div class="ass-bloco">
+  ${info.assinantes && info.assinantes.length > 0 ? (() => {
+    // Separa: "Direção" = Pastor + Tesoureiro(s), "Conselho" = os demais
+    const CONSELHO_KEYS = ['Conselho Fiscal 1', 'Conselho Fiscal 2', 'Conselho Fiscal 3']
+    const direcao  = info.assinantes!.filter(a => !CONSELHO_KEYS.includes(a.cargo))
+    const conselho = info.assinantes!.filter(a =>  CONSELHO_KEYS.includes(a.cargo))
+
+    function bloco(a: Assinante) {
+      return `<div class="ass-bloco">
         <div class="ass-linha"></div>
         <div class="ass-cargo">${a.cargo}</div>
         <div class="ass-nome">${a.nome}</div>
         ${a.cpf ? `<div class="ass-cpf">CPF: ${a.cpf}</div>` : ''}
-      </div>`).join('')}
-  </div>` : ''}
+      </div>`
+    }
+
+    return `<div class="assinaturas">
+      ${direcao.length > 0 ? `<div class="ass-linha-row ass-row-direcao">${direcao.map(bloco).join('')}</div>` : ''}
+      ${conselho.length > 0 ? `<div class="ass-linha-row ass-row-conselho">${conselho.map(bloco).join('')}</div>` : ''}
+    </div>`
+  })() : ''}
 
   <!-- RODAPÉ TELA (some na impressão) -->
   <div class="rodape-tela">
