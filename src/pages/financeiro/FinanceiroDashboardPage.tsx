@@ -5,11 +5,13 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Users, Receipt, RefreshCw,
-  ChevronDown, ChevronUp, X, UserCheck, UserX,
+  ChevronDown, ChevronUp, X, UserCheck, UserX, FileText,
 } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { useData } from '../../contexts/DataContext'
 import { getSaldoAcumuladoAte } from '../../lib/api/fin_lancamentos'
+import { buildConsolidadoHtml } from '../../lib/relatorio/buildConsolidadoHtml'
+import { previewRelatorio } from '../../lib/relatorio/downloadRelatorio'
 import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
@@ -594,6 +596,25 @@ export default function FinanceiroDashboardPage() {
 
   const periodoObj = { inicio, fim }
 
+  function gerarConsolidado() {
+    if (!kpis) return
+    const html = buildConsolidadoHtml({
+      kpis,
+      saldoAnterior: saldoAnterior ?? 0,
+      distEntrada,
+      distSaida,
+      formaEntrada,
+      formaSaida,
+      tituloStats,
+      naoCadastrados,
+      membrosAtivosTotal: membrosAtivos.length,
+      dataInicio: inicio,
+      dataFim: fim,
+      periodoLabel: periodoLabel[periodo],
+    })
+    previewRelatorio({ html, filename: `Consolidado_Financeiro_${inicio}_${fim}` })
+  }
+
   return (
     <div className="min-h-full bg-gray-50">
 
@@ -620,6 +641,15 @@ export default function FinanceiroDashboardPage() {
                 <input type="date" value={customFim} onChange={e => setCustomFim(e.target.value)} className="form-input text-xs py-1.5 px-2" />
               </div>
             )}
+            <button
+              onClick={gerarConsolidado}
+              disabled={loading || !kpis}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="Gerar relatório consolidado"
+            >
+              <FileText size={13} />
+              Relatório
+            </button>
             <button onClick={() => setRefreshKey(k => k + 1)} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
