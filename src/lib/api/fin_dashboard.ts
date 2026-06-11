@@ -247,13 +247,76 @@ export async function getLancamentosByCategoria(
   }))
 }
 
+// ── engajamento geral por tipo de categoria (dízimo vs outros) ───────────
+
+export interface EngajamentoCategorias {
+  qtdGeral: number
+  qtdDizimo: number
+  qtdOutros: number
+  totalDizimo: number
+  totalOutros: number
+}
+
+export async function getEngajamentoCategorias(
+  groupId: string,
+  dataInicio: string,
+  dataFim: string,
+): Promise<EngajamentoCategorias> {
+  const { data: cats } = await supabase
+    .from('fin_categorias')
+    .select('id')
+    .eq('church_group_id', groupId)
+    .or('nome.ilike.%dízimo%,nome.ilike.%dizimo%')
+
+  const dizimoCatIds = new Set<string>((cats ?? []).map((c: { id: string }) => c.id))
+
+  const rows = await fetchAllPaged((f, t) => supabase
+    .from('fin_lancamentos')
+    .select('member_id, valor, categoria_id')
+    .eq('church_group_id', groupId)
+    .eq('tipo', 'entrada')
+    .not('member_id', 'is', null)
+    .gte('data_lancamento', dataInicio)
+    .lte('data_lancamento', dataFim)
+    .range(f, t))
+
+  const memberMap = new Map<string, { hasDizimo: boolean; hasOutros: boolean; totalDizimo: number; totalOutros: number }>()
+
+  for (const r of rows) {
+    if (!r.member_id) continue
+    const isDizimo = dizimoCatIds.has(r.categoria_id)
+    const prev = memberMap.get(r.member_id) ?? { hasDizimo: false, hasOutros: false, totalDizimo: 0, totalOutros: 0 }
+    memberMap.set(r.member_id, {
+      hasDizimo:   prev.hasDizimo || isDizimo,
+      hasOutros:   prev.hasOutros || !isDizimo,
+      totalDizimo: prev.totalDizimo + (isDizimo ? Number(r.valor) : 0),
+      totalOutros: prev.totalOutros + (!isDizimo ? Number(r.valor) : 0),
+    })
+  }
+
+  let qtdGeral = 0, qtdDizimo = 0, qtdOutros = 0, totalDizimo = 0, totalOutros = 0
+  for (const m of memberMap.values()) {
+    qtdGeral++
+    if (m.hasDizimo) qtdDizimo++
+    if (m.hasOutros) qtdOutros++
+    totalDizimo += m.totalDizimo
+    totalOutros += m.totalOutros
+  }
+
+  return { qtdGeral, qtdDizimo, qtdOutros, totalDizimo, totalOutros }
+}
+
 // ── stats por título de membro (Pessoas & Contribuição) ───────────────────
 
 export interface TituloStat {
   titulo: string
   totalMembros: number
   contribuiram: number
+  contribuiramDizimo: number
+  contribuiramOutros: number
   totalContribuido: number
+  totalDizimo: number
+  totalOutros: number
 }
 
 export async function getStatsPorTitulo(
@@ -261,10 +324,19 @@ export async function getStatsPorTitulo(
   dataInicio: string,
   dataFim: string,
 ): Promise<TituloStat[]> {
-  // busca lançamentos de entrada com member_id no período
+  // busca categorias de dízimo para o split
+  const { data: dizimoCats } = await supabase
+    .from('fin_categorias')
+    .select('id')
+    .eq('church_group_id', groupId)
+    .or('nome.ilike.%dízimo%,nome.ilike.%dizimo%')
+
+  const dizimoCatIds = new Set<string>((dizimoCats ?? []).map((c: { id: string }) => c.id))
+
+  // busca lançamentos de entrada com member_id no período (inclui categoria_id para split)
   const lancs = await fetchAllPaged((f, t) => supabase
     .from('fin_lancamentos')
-    .select('member_id, valor')
+    .select('member_id, valor, categoria_id')
     .eq('church_group_id', groupId)
     .eq('tipo', 'entrada')
     .not('member_id', 'is', null)
@@ -303,27 +375,42 @@ export async function getStatsPorTitulo(
         .range(f, t))
     : []
 
-  // IDs que contribuíram + total
-  const contribMap = new Map<string, number>()
+  // IDs que contribuíram + split dízimo/outros
+  const contribMap = new Map<string, { total: number; totalDizimo: number; totalOutros: number; hasDizimo: boolean; hasOutros: boolean }>()
   for (const l of (lancs ?? [])) {
     if (!l.member_id) continue
-    contribMap.set(l.member_id, (contribMap.get(l.member_id) ?? 0) + Number(l.valor))
+    const isDizimo = dizimoCatIds.has(l.categoria_id)
+    const prev = contribMap.get(l.member_id) ?? { total: 0, totalDizimo: 0, totalOutros: 0, hasDizimo: false, hasOutros: false }
+    contribMap.set(l.member_id, {
+      total:       prev.total + Number(l.valor),
+      totalDizimo: prev.totalDizimo + (isDizimo ? Number(l.valor) : 0),
+      totalOutros: prev.totalOutros + (!isDizimo ? Number(l.valor) : 0),
+      hasDizimo:   prev.hasDizimo || isDizimo,
+      hasOutros:   prev.hasOutros || !isDizimo,
+    })
   }
 
   // agrupa por título — apenas membros ativos do grupo
-  const map = new Map<string, { totalMembros: number; contribuiram: number; totalContribuido: number }>()
+  const map = new Map<string, {
+    totalMembros: number; contribuiram: number; contribuiramDizimo: number; contribuiramOutros: number;
+    totalContribuido: number; totalDizimo: number; totalOutros: number;
+  }>()
 
   for (const m of (ministerios ?? [])) {
     if (!activeMemberIds.has(m.member_id)) continue
     const titles: string[] = (m.titles as string[]) ?? []
     for (const t of titles) {
       if (!t) continue
-      const prev = map.get(t) ?? { totalMembros: 0, contribuiram: 0, totalContribuido: 0 }
-      const contrib = contribMap.get(m.member_id) ?? 0
+      const prev = map.get(t) ?? { totalMembros: 0, contribuiram: 0, contribuiramDizimo: 0, contribuiramOutros: 0, totalContribuido: 0, totalDizimo: 0, totalOutros: 0 }
+      const c = contribMap.get(m.member_id) ?? { total: 0, totalDizimo: 0, totalOutros: 0, hasDizimo: false, hasOutros: false }
       map.set(t, {
-        totalMembros: prev.totalMembros + 1,
-        contribuiram: prev.contribuiram + (contrib > 0 ? 1 : 0),
-        totalContribuido: prev.totalContribuido + contrib,
+        totalMembros:       prev.totalMembros + 1,
+        contribuiram:       prev.contribuiram + (c.total > 0 ? 1 : 0),
+        contribuiramDizimo: prev.contribuiramDizimo + (c.hasDizimo ? 1 : 0),
+        contribuiramOutros: prev.contribuiramOutros + (c.hasOutros ? 1 : 0),
+        totalContribuido:   prev.totalContribuido + c.total,
+        totalDizimo:        prev.totalDizimo + c.totalDizimo,
+        totalOutros:        prev.totalOutros + c.totalOutros,
       })
     }
   }

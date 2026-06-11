@@ -1,5 +1,5 @@
 import { buildRelatorioHtml, type Assinante } from './buildRelatorioHtml'
-import type { DashKpis, CatFatia, FormaPagamentoStat, TituloStat } from '../api/fin_dashboard'
+import type { DashKpis, CatFatia, FormaPagamentoStat, TituloStat, EngajamentoCategorias } from '../api/fin_dashboard'
 
 function fmt(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -46,6 +46,8 @@ export interface ConsolidadoParams {
   dataFim: string
   periodoLabel: string
   assinantes?: Assinante[]
+  engajCat?: EngajamentoCategorias
+  engajCatPrev?: EngajamentoCategorias
 }
 
 export function buildConsolidadoHtml(p: ConsolidadoParams): string {
@@ -165,17 +167,42 @@ export function buildConsolidadoHtml(p: ConsolidadoParams): string {
     </div>`
   }
 
+  const pctDizimo = p.membrosAtivosTotal > 0 && p.engajCat
+    ? (p.engajCat.qtdDizimo / p.membrosAtivosTotal) * 100
+    : 0
+  const pctOutros = p.membrosAtivosTotal > 0 && p.engajCat
+    ? (p.engajCat.qtdOutros / p.membrosAtivosTotal) * 100
+    : 0
+  const pctDizimoPrev = p.membrosAtivosTotal > 0 && p.engajCatPrev
+    ? (p.engajCatPrev.qtdDizimo / p.membrosAtivosTotal) * 100
+    : undefined
+  const pctOutrosPrev = p.membrosAtivosTotal > 0 && p.engajCatPrev
+    ? (p.engajCatPrev.qtdOutros / p.membrosAtivosTotal) * 100
+    : undefined
+
   const engajSection = `
   <div class="sec-titulo azul">Contribuintes — Engajamento Geral</div>
   <div class="eng-cards">
     ${engCard(String(p.membrosAtivosTotal), 'Membros ativos', '')}
-    ${engCard(String(p.kpis.qtdCadastrados), 'Cadastrados contribuíram', 'destaque-verde',
+    ${engCard(String(p.kpis.qtdCadastrados), 'Geral contribuíram', 'destaque-verde',
         deltaBadge(p.kpis.qtdCadastrados, p.kpisPrev?.qtdCadastrados))}
-    ${engCard(pctStr(p.kpis.qtdCadastrados, p.membrosAtivosTotal), 'Taxa de engajamento', 'destaque-azul',
+    ${engCard(pctStr(p.kpis.qtdCadastrados, p.membrosAtivosTotal), 'Engajamento geral', 'destaque-azul',
         deltaBadge(pctEngaj, pctEngajPrev, true))}
+    ${p.engajCat ? engCard(
+        pctStr(p.engajCat.qtdDizimo, p.membrosAtivosTotal),
+        `Eng. dízimo (${p.engajCat.qtdDizimo} membros)`, 'destaque-indigo',
+        deltaBadge(pctDizimo, pctDizimoPrev, true)) : ''}
+    ${p.engajCat ? engCard(
+        pctStr(p.engajCat.qtdOutros, p.membrosAtivosTotal),
+        `Eng. outros (${p.engajCat.qtdOutros} membros)`, 'destaque-amber2',
+        deltaBadge(pctOutros, pctOutrosPrev, true)) : ''}
+  </div>
+  <div class="eng-cards" style="margin-top:4px">
     ${engCard(fmt(p.kpis.totalCadastrados), 'Total contribuído (cadastrados)', 'destaque-verde2',
         deltaBadge(p.kpis.totalCadastrados, p.kpisPrev?.totalCadastrados))}
-    ${engCard(String(p.kpis.qtdNaoCadastrados), 'Contribuintes não cadastrados', 'destaque-amber',
+    ${p.engajCat ? engCard(fmt(p.engajCat.totalDizimo), 'Total em dízimos', 'destaque-indigo', '') : ''}
+    ${p.engajCat ? engCard(fmt(p.engajCat.totalOutros), 'Total em outros', 'destaque-amber2', '') : ''}
+    ${engCard(String(p.kpis.qtdNaoCadastrados), 'Não cadastrados', 'destaque-amber',
         deltaBadge(p.kpis.qtdNaoCadastrados, p.kpisPrev?.qtdNaoCadastrados))}
   </div>`
 
@@ -190,6 +217,8 @@ export function buildConsolidadoHtml(p: ConsolidadoParams): string {
     ? `<tr><td colspan="${temDeltaTitulo ? 6 : 5}" class="dim center">Sem dados</td></tr>`
     : p.tituloStats.map(t => {
         const pctT = t.totalMembros > 0 ? (t.contribuiram / t.totalMembros) * 100 : 0
+        const pctD = t.totalMembros > 0 ? (t.contribuiramDizimo / t.totalMembros) * 100 : 0
+        const pctO = t.totalMembros > 0 ? (t.contribuiramOutros / t.totalMembros) * 100 : 0
         const barW = Math.max(0, Math.min(100, pctT))
         const prev = prevTituloMap.get(t.titulo)
         const prevPctT = prev && t.totalMembros > 0
@@ -197,6 +226,9 @@ export function buildConsolidadoHtml(p: ConsolidadoParams): string {
           : undefined
         const deltaEngaj = temDeltaTitulo
           ? `<td class="center">${deltaBadge(pctT, prevPctT, true) || '<span class="delta-eq">—</span>'}</td>`
+          : ''
+        const dizOutrosSub = (t.contribuiramDizimo > 0 || t.contribuiramOutros > 0)
+          ? `<div class="diz-split"><span class="diz-tag">D: ${pctD.toFixed(0)}%</span> · <span class="out-tag">O: ${pctO.toFixed(0)}%</span></div>`
           : ''
         return `
     <tr>
@@ -208,6 +240,7 @@ export function buildConsolidadoHtml(p: ConsolidadoParams): string {
           <div class="bar-fill" style="width:${barW}%"></div>
           <span class="bar-label">${pctT.toFixed(1)}%</span>
         </div>
+        ${dizOutrosSub}
       </td>
       ${deltaEngaj}
       <td class="right fw6">${fmt(t.totalContribuido)}</td>
@@ -273,6 +306,12 @@ export function buildConsolidadoHtml(p: ConsolidadoParams): string {
     .eng-card.destaque-verde2 { background:#f0fdf4; border-color:#86efac; }
     .eng-card.destaque-azul   { background:#eff6ff; border-color:#bfdbfe; }
     .eng-card.destaque-amber  { background:#fffbeb; border-color:#fde68a; }
+    .eng-card.destaque-indigo { background:#eef2ff; border-color:#c7d2fe; }
+    .eng-card.destaque-amber2 { background:#fff7ed; border-color:#fed7aa; }
+
+    .diz-split { font-size:0.6rem; color:#6b7280; margin-top:2px; text-align:center; }
+    .diz-tag   { color:#6366f1; font-weight:700; }
+    .out-tag   { color:#ea580c; font-weight:700; }
     .eng-num   { font-size:1.05rem; font-weight:900; color:#1c2b3a; line-height:1; }
     .eng-delta { font-size:0.62rem; margin-top:2px; }
     .eng-lab   { font-size:0.62rem; color:#7a9ab8; margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }

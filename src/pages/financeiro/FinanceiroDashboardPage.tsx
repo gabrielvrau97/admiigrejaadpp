@@ -18,11 +18,11 @@ import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
   getDistribuicaoFormaPagamento, getLancamentosByCategoria, getStatsPorTitulo,
   getContribNaoCadastrados, getEvolucaoContribuicao, getPeriodoAnteriorDatas,
-  getMembrosDoTitulo, getEvolucaoMembro,
+  getMembrosDoTitulo, getEvolucaoMembro, getEngajamentoCategorias,
   type MesFluxo, type CatFatia, type TopContribuinte, type DashKpis,
   type FormaPagamentoStat, type CatDetalhe, type TituloStat,
   type ContribNaoCadastrado, type EvolucaoMes,
-  type MembroDoTitulo, type EvolucaoMembroMes,
+  type MembroDoTitulo, type EvolucaoMembroMes, type EngajamentoCategorias,
 } from '../../lib/api/fin_dashboard'
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -386,7 +386,8 @@ function MembroEvolucaoDrawer({
 // ── Título clicável com ranking de membros ────────────────────────────────
 
 function TituloExpandable({
-  titulo, totalMembros, contribuiram, totalContribuido, periodo, prevContribuiram,
+  titulo, totalMembros, contribuiram, contribuiramDizimo, contribuiramOutros,
+  totalContribuido, periodo, prevContribuiram,
 }: TituloStat & { periodo: { inicio: string; fim: string }; prevContribuiram?: number }) {
   const [open, setOpen] = useState(false)
   const [membros, setMembros] = useState<MembroDoTitulo[]>([])
@@ -443,6 +444,15 @@ function TituloExpandable({
                 )}
               </span>
             </div>
+            {(contribuiramDizimo > 0 || contribuiramOutros > 0) && (
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[9px] text-indigo-500 font-semibold">
+                  Dízimo: {totalMembros > 0 ? Math.round((contribuiramDizimo / totalMembros) * 100) : 0}%
+                  <span className="text-gray-300 mx-1">·</span>
+                  <span className="text-orange-400">Outros: {totalMembros > 0 ? Math.round((contribuiramOutros / totalMembros) * 100) : 0}%</span>
+                </span>
+              </div>
+            )}
           </div>
           <span className="text-gray-400 group-hover:text-gray-600 ml-2 flex-shrink-0">
             {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -543,6 +553,8 @@ export default function FinanceiroDashboardPage() {
   const [kpis, setKpis] = useState<DashKpis | null>(null)
   const [kpisPrev, setKpisPrev] = useState<DashKpis | null>(null)
   const [tituloStatsPrev, setTituloStatsPrev] = useState<TituloStat[]>([])
+  const [engajCat, setEngajCat] = useState<EngajamentoCategorias | null>(null)
+  const [engajCatPrev, setEngajCatPrev] = useState<EngajamentoCategorias | null>(null)
   const [showConsolidadoModal, setShowConsolidadoModal] = useState(false)
   const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
   const [fluxo, setFluxo] = useState<MesFluxo[]>([])
@@ -568,7 +580,7 @@ export default function FinanceiroDashboardPage() {
 
       const prev = getPeriodoAnteriorDatas(inicio, fim)
 
-      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa, kp, tsp] = await Promise.all([
+      const [k, f, de, ds, tc, fe, fs, ts, nc, ev, sa, kp, tsp, ec, ecp] = await Promise.all([
         safe(getDashKpis(APP_GROUP_ID, inicio, fim), null, 'kpis'),
         safe(getFluxo12Meses(APP_GROUP_ID), [], 'fluxo'),
         safe(getDistribuicaoCategoria(APP_GROUP_ID, 'entrada', inicio, fim), [], 'distEntrada'),
@@ -582,12 +594,16 @@ export default function FinanceiroDashboardPage() {
         safe(getSaldoAcumuladoAte(APP_GROUP_ID, inicio), 0, 'saldoAnterior'),
         safe(getDashKpis(APP_GROUP_ID, prev.inicio, prev.fim), null, 'kpisPrev'),
         safe(getStatsPorTitulo(APP_GROUP_ID, prev.inicio, prev.fim), [], 'titulosPrev'),
+        safe(getEngajamentoCategorias(APP_GROUP_ID, inicio, fim), null, 'engajCat'),
+        safe(getEngajamentoCategorias(APP_GROUP_ID, prev.inicio, prev.fim), null, 'engajCatPrev'),
       ])
 
       if (cancelled) return
       if (k) setKpis(k)
       if (kp) setKpisPrev(kp as DashKpis)
       setTituloStatsPrev(tsp as TituloStat[])
+      if (ec) setEngajCat(ec as EngajamentoCategorias)
+      if (ecp) setEngajCatPrev(ecp as EngajamentoCategorias)
       setSaldoAnterior(sa as number)
       setFluxo(f as MesFluxo[])
       setDistEntrada(de as CatFatia[])
@@ -662,6 +678,8 @@ export default function FinanceiroDashboardPage() {
       dataFim: fim,
       periodoLabel: periodoLabel[periodo],
       assinantes: assinantes ?? undefined,
+      engajCat: engajCat ?? undefined,
+      engajCatPrev: engajCatPrev ?? undefined,
     })
     previewRelatorio({ html, filename: `Consolidado_Financeiro_${inicio}_${fim}` })
   }
@@ -924,33 +942,93 @@ export default function FinanceiroDashboardPage() {
             </div>
           </div>
 
-          {/* barra cadastrados vs não cadastrados */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
-                <UserCheck size={12} className="text-teal-500" />
-                <span className="text-xs text-gray-600">Cadastrados</span>
+          {/* barras de engajamento: geral + dízimo + outros */}
+          <div className="space-y-3">
+            {/* Linha separadora por tipo */}
+            {(() => {
+              const total = membrosAtivos.length
+              const pctDizimo = total > 0 && engajCat ? Math.round((engajCat.qtdDizimo / total) * 100) : 0
+              const pctOutros = total > 0 && engajCat ? Math.round((engajCat.qtdOutros / total) * 100) : 0
+              const prevPctDizimo = total > 0 && engajCatPrev ? (engajCatPrev.qtdDizimo / total) * 100 : undefined
+              const prevPctOutros = total > 0 && engajCatPrev ? (engajCatPrev.qtdOutros / total) * 100 : undefined
+              return (
+                <>
+                  {/* Geral */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                      <UserCheck size={12} className="text-teal-500" />
+                      <span className="text-xs text-gray-600">Geral</span>
+                    </div>
+                    <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-1000"
+                        style={{ width: `${pctContrib}%` }} />
+                    </div>
+                    <span className="text-xs font-bold text-teal-700 w-24 text-right flex-shrink-0 flex flex-col items-end">
+                      <span>{kpis?.qtdCadastrados ?? 0}/{total} · {pctContrib}%</span>
+                      <DeltaBadge current={pctContrib} prev={prevPctContrib} asPp />
+                    </span>
+                  </div>
+                  {/* Dízimo */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                      <span className="w-3 h-3 rounded-full bg-indigo-400 flex-shrink-0 inline-block" />
+                      <span className="text-xs text-gray-600">Dízimo</span>
+                    </div>
+                    <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-violet-500 transition-all duration-1000"
+                        style={{ width: `${pctDizimo}%` }} />
+                    </div>
+                    <span className="text-xs font-bold text-indigo-600 w-24 text-right flex-shrink-0 flex flex-col items-end">
+                      <span>{engajCat?.qtdDizimo ?? 0}/{total} · {pctDizimo}%</span>
+                      {prevPctDizimo !== undefined && <DeltaBadge current={pctDizimo} prev={prevPctDizimo} asPp />}
+                    </span>
+                  </div>
+                  {/* Outros */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                      <span className="w-3 h-3 rounded-full bg-orange-400 flex-shrink-0 inline-block" />
+                      <span className="text-xs text-gray-600">Outros</span>
+                    </div>
+                    <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-400 transition-all duration-1000"
+                        style={{ width: `${pctOutros}%` }} />
+                    </div>
+                    <span className="text-xs font-bold text-orange-600 w-24 text-right flex-shrink-0 flex flex-col items-end">
+                      <span>{engajCat?.qtdOutros ?? 0}/{total} · {pctOutros}%</span>
+                      {prevPctOutros !== undefined && <DeltaBadge current={pctOutros} prev={prevPctOutros} asPp />}
+                    </span>
+                  </div>
+                </>
+              )
+            })()}
+
+            {/* Barra de origem dos valores (cadastrados vs não cadastrados) */}
+            <div className="pt-1 border-t border-gray-100">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-2">Origem das entradas</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                    <UserCheck size={12} className="text-teal-500" />
+                    <span className="text-xs text-gray-600">Cadastrados</span>
+                  </div>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-1000"
+                      style={{ width: `${(kpis?.totalEntradas ?? 0) > 0 ? ((kpis?.totalCadastrados ?? 0) / (kpis?.totalEntradas ?? 1)) * 100 : 0}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-teal-700 w-24 text-right flex-shrink-0">{fmt(kpis?.totalCadastrados ?? 0)}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
+                    <UserX size={12} className="text-amber-500" />
+                    <span className="text-xs text-gray-600">Não cadastrados</span>
+                  </div>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all duration-1000"
+                      style={{ width: `${(kpis?.totalEntradas ?? 0) > 0 ? ((kpis?.totalNaoCadastrados ?? 0) / (kpis?.totalEntradas ?? 1)) * 100 : 0}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-amber-700 w-24 text-right flex-shrink-0">{fmt(kpis?.totalNaoCadastrados ?? 0)}</span>
+                </div>
               </div>
-              <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-1000"
-                  style={{ width: `${(kpis?.totalEntradas ?? 0) > 0 ? ((kpis?.totalCadastrados ?? 0) / (kpis?.totalEntradas ?? 1)) * 100 : 0}%` }}
-                />
-              </div>
-              <span className="text-xs font-bold text-teal-700 w-24 text-right flex-shrink-0">{fmt(kpis?.totalCadastrados ?? 0)}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-32 flex-shrink-0">
-                <UserX size={12} className="text-amber-500" />
-                <span className="text-xs text-gray-600">Não cadastrados</span>
-              </div>
-              <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all duration-1000"
-                  style={{ width: `${(kpis?.totalEntradas ?? 0) > 0 ? ((kpis?.totalNaoCadastrados ?? 0) / (kpis?.totalEntradas ?? 1)) * 100 : 0}%` }}
-                />
-              </div>
-              <span className="text-xs font-bold text-amber-700 w-24 text-right flex-shrink-0">{fmt(kpis?.totalNaoCadastrados ?? 0)}</span>
             </div>
           </div>
 
