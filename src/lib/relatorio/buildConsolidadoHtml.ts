@@ -75,17 +75,13 @@ export function buildConsolidadoHtml(p: ConsolidadoParams): string {
 
   const kpiSection = `
   <div class="kpi-row">
-    ${kpiCard('Entradas', fmt(totalEntradas), '#16a34a', '#f0fdf4',
-        deltaBadge(totalEntradas, p.kpisPrev?.totalEntradas))}
-    ${kpiCard('Saídas', fmt(totalSaidas), '#dc2626', '#fff5f5',
-        deltaBadge(totalSaidas, p.kpisPrev?.totalSaidas))}
+    ${kpiCard('Entradas', fmt(totalEntradas), '#16a34a', '#f0fdf4')}
+    ${kpiCard('Saídas', fmt(totalSaidas), '#dc2626', '#fff5f5')}
     ${kpiCard('Saldo do Período', fmt(saldoPeriodo),
         saldoPeriodo >= 0 ? '#2563eb' : '#ea580c',
-        saldoPeriodo >= 0 ? '#eff6ff' : '#fff7ed',
-        deltaBadge(saldoPeriodo, p.kpisPrev?.saldo))}
+        saldoPeriodo >= 0 ? '#eff6ff' : '#fff7ed')}
     ${kpiCard('Saldo Acumulado', fmt(saldoAcumulado), '#7c3aed', '#faf5ff')}
-    ${kpiCard('Lançamentos', String(p.kpis.qtdLancamentos), '#0891b2', '#ecfeff',
-        deltaBadge(p.kpis.qtdLancamentos, p.kpisPrev?.qtdLancamentos))}
+    ${kpiCard('Lançamentos', String(p.kpis.qtdLancamentos), '#0891b2', '#ecfeff')}
   </div>`
 
   // ── Categorias (2 colunas) ──────────────────────────────────────────────────
