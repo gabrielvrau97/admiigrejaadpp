@@ -4,6 +4,7 @@ import {
   Loader2, ArrowUpRight, ArrowDownRight, Users, ChevronDown, FileText, Search, X,
 } from 'lucide-react'
 import { useTesoureiro } from '../../contexts/TesureiroContext'
+import { useAuth } from '../../contexts/AuthContext'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import {
   listFinLancamentosHoje,
@@ -181,8 +182,11 @@ function SelecionarTesureiroModal({
 
 export default function FinanceiroTesourariaPage() {
   const { tesoureiro, setTesoureiro } = useTesoureiro()
+  const { user } = useAuth()
   const toast = useToast()
   const confirm = useConfirm()
+
+  const isTesoureiro = user?.role === 'tesoureiro'
 
   const [lancamentosHoje, setLancamentosHoje] = useState<FinLancamento[]>([])
   const [loading, setLoading] = useState(true)
@@ -206,10 +210,14 @@ export default function FinanceiroTesourariaPage() {
       .finally(() => setLoadingTes(false))
   }, [])
 
-const loadHoje = useCallback(async () => {
+  const loadHoje = useCallback(async () => {
     const lanc = await listFinLancamentosHoje(APP_GROUP_ID)
-    setLancamentosHoje(lanc)
-  }, [])
+    // tesoureiro vê apenas seus próprios lançamentos do dia
+    const filtrados = isTesoureiro && user?.id
+      ? lanc.filter(l => l.created_by === user.id)
+      : lanc
+    setLancamentosHoje(filtrados)
+  }, [isTesoureiro, user?.id])
 
   const loadAll = useCallback(async () => {
     setLoading(true)

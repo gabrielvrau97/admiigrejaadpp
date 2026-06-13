@@ -95,12 +95,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    if (user) void reload()
-    else {
+    if (!user) {
       setMembers([]); setVisitantes([]); setSeminarios([])
       setMatriculas([]); setCarteirinhas([]); setCertificados([])
       setEventosCalendario([])
       setLoading(false)
+      return
+    }
+    if (user.role === 'tesoureiro') {
+      // tesoureiro só precisa de membros (para autocomplete no modal de lançamento)
+      setLoading(true)
+      MembersApi.listMembers()
+        .then(m => {
+          setMembers(m.filter(x => x.member_type !== 'visitante'))
+          setVisitantes(m.filter(x => x.member_type === 'visitante'))
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false))
+    } else {
+      void reload()
     }
   }, [user])
 
