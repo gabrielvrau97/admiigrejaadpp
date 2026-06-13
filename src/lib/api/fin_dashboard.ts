@@ -716,6 +716,85 @@ export function getPeriodoAnteriorDatas(inicio: string, fim: string): { inicio: 
   }
 }
 
+// ── Extrato anual de contribuições por membro ────────────────────────────
+
+export interface ContribuicaoMembro {
+  memberId: string
+  nome: string
+  meses: Record<string, number>  // chave: '2025-01', valor: total do mês
+  total: number
+}
+
+export interface ContribuicoesPorMembroResult {
+  meses: string[]          // ['2025-01', '2025-02', ...]
+  membros: ContribuicaoMembro[]
+  totaisMes: Record<string, number>
+  totalGeral: number
+}
+
+export async function getContribuicoesPorMembroAnual(
+  groupId: string,
+  year: number,
+  categoriasIds: string[] | null,  // null = todas as entradas
+): Promise<ContribuicoesPorMembroResult> {
+  const inicio = `${year}-01-01`
+  const fim    = `${year}-12-31`
+
+  const rows = await fetchAllPaged((f, t) => {
+    let q = supabase
+      .from('fin_lancamentos')
+      .select('member_id, valor, data_lancamento, categoria_id, member:members!member_id(id, name)')
+      .eq('church_group_id', groupId)
+      .eq('tipo', 'entrada')
+      .not('member_id', 'is', null)
+      .gte('data_lancamento', inicio)
+      .lte('data_lancamento', fim)
+    if (categoriasIds && categoriasIds.length > 0) {
+      q = q.in('categoria_id', categoriasIds)
+    }
+    return q.range(f, t) as unknown as PromiseLike<{ data: any[] | null; error: any }>
+  })
+
+  // meses do ano
+  const meses: string[] = []
+  for (let m = 1; m <= 12; m++) {
+    meses.push(`${year}-${pad(m)}`)
+  }
+
+  // agrupa por membro
+  const map = new Map<string, { nome: string; meses: Record<string, number> }>()
+
+  for (const r of rows) {
+    if (!r.member_id) continue
+    const nome = (r.member as any)?.name ?? 'Desconhecido'
+    const mesKey = (r.data_lancamento as string).slice(0, 7)
+    const prev = map.get(r.member_id) ?? { nome, meses: {} as Record<string, number> }
+    prev.meses[mesKey] = (prev.meses[mesKey] ?? 0) + Number(r.valor)
+    map.set(r.member_id, prev)
+  }
+
+  // total por mês (todos os membros)
+  const totaisMes: Record<string, number> = {}
+  for (const mes of meses) totaisMes[mes] = 0
+
+  const membros: ContribuicaoMembro[] = []
+  for (const [memberId, v] of map.entries()) {
+    let total = 0
+    for (const mes of meses) {
+      const val = v.meses[mes] ?? 0
+      total += val
+      totaisMes[mes] = (totaisMes[mes] ?? 0) + val
+    }
+    membros.push({ memberId, nome: v.nome, meses: v.meses, total })
+  }
+
+  membros.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+
+  const totalGeral = membros.reduce((s, m) => s + m.total, 0)
+
+  return { meses, membros, totaisMes, totalGeral }
+}
+
 // ── KPIs do período ───────────────────────────────────────────────────────
 
 export interface DashKpis {

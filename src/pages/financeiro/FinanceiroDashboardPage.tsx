@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Wallet, Users, Receipt, RefreshCw,
-  ChevronDown, ChevronUp, X, UserCheck, UserX, FileText,
+  ChevronDown, ChevronUp, X, UserCheck, UserX, FileText, FileSpreadsheet,
 } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { useData } from '../../contexts/DataContext'
@@ -13,6 +13,7 @@ import { getSaldoAcumuladoAte } from '../../lib/api/fin_lancamentos'
 import { buildConsolidadoHtml } from '../../lib/relatorio/buildConsolidadoHtml'
 import { previewRelatorio } from '../../lib/relatorio/downloadRelatorio'
 import RelatorioAssinaturaModal from './RelatorioAssinaturaModal'
+import RelatorioContribuicoesModal from './RelatorioContribuicoesModal'
 import type { Assinante } from './RelatorioAssinaturaModal'
 import {
   getFluxo12Meses, getDashKpis, getDistribuicaoCategoria, getTopContribuintes,
@@ -557,6 +558,7 @@ export default function FinanceiroDashboardPage() {
   const [engajCat, setEngajCat] = useState<EngajamentoCategorias | null>(null)
   const [engajCatPrev, setEngajCatPrev] = useState<EngajamentoCategorias | null>(null)
   const [showConsolidadoModal, setShowConsolidadoModal] = useState(false)
+  const [showContribuicoesModal, setShowContribuicoesModal] = useState(false)
   const [saldoAnterior, setSaldoAnterior] = useState<number | null>(null)
   const [fluxo, setFluxo] = useState<MesFluxo[]>([])
   const [distEntrada, setDistEntrada] = useState<CatFatia[]>([])
@@ -694,6 +696,12 @@ export default function FinanceiroDashboardPage() {
         <RelatorioAssinaturaModal
           onConfirm={gerarConsolidadoComAssinatura}
           onClose={() => setShowConsolidadoModal(false)}
+        />
+      )}
+
+      {showContribuicoesModal && (
+        <RelatorioContribuicoesModal
+          onClose={() => setShowContribuicoesModal(false)}
         />
       )}
 
@@ -914,6 +922,12 @@ export default function FinanceiroDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowContribuicoesModal(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-medium transition-colors"
+              >
+                <FileSpreadsheet size={13} /> Extrato anual
+              </button>
               <button
                 onClick={() => setPessoasShowTitulos(v => !v)}
                 className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${pessoasShowTitulos ? 'bg-teal-50 border-teal-300 text-teal-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
