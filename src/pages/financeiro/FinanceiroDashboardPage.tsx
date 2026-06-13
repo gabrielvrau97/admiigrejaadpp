@@ -1111,7 +1111,7 @@ export default function FinanceiroDashboardPage() {
                     axisLine={false}
                     tickLine={false}
                     width={38}
-                    domain={([dataMin, dataMax]: [number, number]) => {
+                    domain={([dataMin, dataMax]: readonly [number, number]) => {
                       const pad = Math.max((dataMax - dataMin) * 0.25, 3)
                       return [Math.max(0, Math.floor(dataMin - pad)), Math.min(100, Math.ceil(dataMax + pad))]
                     }}
