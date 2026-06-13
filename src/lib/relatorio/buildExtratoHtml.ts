@@ -1,22 +1,6 @@
 import type { FinLancamento } from '../../types'
 import { buildRelatorioHtml, type Assinante } from './buildRelatorioHtml'
-
-function fmt(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-function fmtDate(s: string) {
-  if (!s) return ''
-  const [y, m, d] = s.slice(0, 10).split('-')
-  return `${d}/${m}/${y}`
-}
-function formaPagLabel(f?: string) {
-  if (!f) return '—'
-  if (f === 'dinheiro')       return 'Dinheiro'
-  if (f === 'pix')            return 'Pix'
-  if (f === 'cartao_debito')  return 'Débito'
-  if (f === 'cartao_credito') return 'Crédito'
-  return f
-}
+import { fmt, fmtDate, formaPagLabel } from './_utils'
 
 export interface ExtratoRelatorioParams {
   lancamentos: FinLancamento[]

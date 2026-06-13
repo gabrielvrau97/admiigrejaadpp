@@ -17,6 +17,7 @@ export async function fetchAllPaged<T = any>(
   build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
   pageSize = 1000,
 ): Promise<T[]> {
+  pageSize = Math.min(pageSize, 1000)
   let all: T[] = []
   let from = 0
   for (;;) {

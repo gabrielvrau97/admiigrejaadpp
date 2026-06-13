@@ -570,16 +570,35 @@ export default function FinanceiroDashboardPage() {
   const [naoCadastrados, setNaoCadastrados] = useState<ContribNaoCadastrado[]>([])
   const [evolucao, setEvolucao] = useState<EvolucaoMes[]>([])
   const [evolucaoDizimo, setEvolucaoDizimo] = useState<EvolucaoDizimoMes[]>([])
+  const [errosCarregamento, setErrosCarregamento] = useState<string[]>([])
 
   const { inicio, fim } = useMemo(() => getPeriodo(periodo, customInicio, customFim), [periodo, customInicio, customFim])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setKpis(null)
+    setKpisPrev(null)
+    setEngajCat(null)
+    setEngajCatPrev(null)
+    setSaldoAnterior(null)
+    setFluxo([])
+    setDistEntrada([])
+    setDistSaida([])
+    setTopContrib([])
+    setFormaEntrada([])
+    setFormaSaida([])
+    setTituloStats([])
+    setTituloStatsPrev([])
+    setNaoCadastrados([])
+    setEvolucao([])
+    setEvolucaoDizimo([])
+    setErrosCarregamento([])
 
     async function load() {
+      const erros: string[] = []
       function safe<T>(p: Promise<T>, fallback: T, label: string): Promise<T> {
-        return p.catch(e => { console.error(`[dashboard] ${label}:`, e); return fallback })
+        return p.catch(e => { console.error(`[dashboard] ${label}:`, e); erros.push(label); return fallback })
       }
 
       const prev = getPeriodoAnteriorDatas(inicio, fim)
@@ -620,6 +639,7 @@ export default function FinanceiroDashboardPage() {
       setTituloStats(ts as TituloStat[])
       setNaoCadastrados(nc as ContribNaoCadastrado[])
       setEvolucao(ev as EvolucaoMes[])
+      if (erros.length > 0) setErrosCarregamento(erros)
     }
 
     load().finally(() => { if (!cancelled) setLoading(false) })
@@ -639,8 +659,6 @@ export default function FinanceiroDashboardPage() {
 
   const grandTotalEntrada = distEntrada.reduce((s, c) => s + c.total, 0)
   const grandTotalSaida = distSaida.reduce((s, c) => s + c.total, 0)
-
-  const lancTotal = kpis?.qtdLancamentos ?? 0
 
   // mapa título → prev para delta
   const prevTituloMap = useMemo(
@@ -745,6 +763,16 @@ export default function FinanceiroDashboardPage() {
       </div>
 
       <div className="px-4 sm:px-6 py-5 space-y-5">
+
+        {/* ── Aviso de erros de carregamento ──────────────────────── */}
+        {errosCarregamento.length > 0 && (
+          <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs text-amber-700">
+            <span>Alguns dados não puderam ser carregados. As informações podem estar incompletas.</span>
+            <button onClick={() => setErrosCarregamento([])} className="text-amber-500 hover:text-amber-700 flex-shrink-0">
+              <X size={13} />
+            </button>
+          </div>
+        )}
 
         {/* ── KPIs hero ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

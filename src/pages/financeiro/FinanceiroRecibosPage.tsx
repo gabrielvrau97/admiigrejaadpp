@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileText, Printer, X, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Search } from 'lucide-react'
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { listFinRecibos, anularFinRecibo, type FinReciboComLancamento } from '../../lib/api/fin_recibos'
@@ -84,17 +84,18 @@ export default function FinanceiroRecibosPage() {
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE))
 
-  const filtered = busca.trim()
-    ? recibos.filter(r => {
-        const q = busca.toLowerCase()
-        const l = r.lancamento
-        return r.numero.toLowerCase().includes(q)
-          || l.member?.name?.toLowerCase().includes(q)
-          || l.member_nome_manual?.toLowerCase().includes(q)
-          || l.categoria?.nome?.toLowerCase().includes(q)
-          || l.descricao?.toLowerCase().includes(q)
-      })
-    : recibos
+  const filtered = useMemo(() => {
+    if (!busca.trim()) return recibos
+    const q = busca.toLowerCase()
+    return recibos.filter(r => {
+      const l = r.lancamento
+      return r.numero.toLowerCase().includes(q)
+        || l.member?.name?.toLowerCase().includes(q)
+        || l.member_nome_manual?.toLowerCase().includes(q)
+        || l.categoria?.nome?.toLowerCase().includes(q)
+        || l.descricao?.toLowerCase().includes(q)
+    })
+  }, [recibos, busca])
 
   return (
     <div className="flex flex-col h-full">

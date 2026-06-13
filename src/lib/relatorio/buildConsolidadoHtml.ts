@@ -1,23 +1,10 @@
 import { buildRelatorioHtml, type Assinante } from './buildRelatorioHtml'
 import type { DashKpis, CatFatia, FormaPagamentoStat, TituloStat, EngajamentoCategorias } from '../api/fin_dashboard'
+import { fmt, fmtDate, formaPagLabel } from './_utils'
 
-function fmt(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
 function pctStr(val: number, total: number) {
   if (total <= 0) return '0,0%'
   return ((val / total) * 100).toFixed(1).replace('.', ',') + '%'
-}
-function fmtDate(iso: string) {
-  const [y, m, d] = iso.slice(0, 10).split('-')
-  return `${d}/${m}/${y}`
-}
-function formaPagLabel(f: string) {
-  if (f === 'dinheiro') return 'Dinheiro'
-  if (f === 'pix') return 'Pix'
-  if (f === 'cartao_debito') return 'Débito'
-  if (f === 'cartao_credito') return 'Crédito'
-  return f
 }
 
 // Retorna HTML do badge de delta ou '' se não há comparativo

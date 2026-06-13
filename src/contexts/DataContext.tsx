@@ -104,18 +104,34 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
     if (user.role === 'tesoureiro') {
       // tesoureiro só precisa de membros (para autocomplete no modal de lançamento)
+      let cancelled = false
       setLoading(true)
       MembersApi.listMembers()
         .then(m => {
+          if (cancelled) return
           setMembers(m.filter(x => x.member_type !== 'visitante'))
           setVisitantes(m.filter(x => x.member_type === 'visitante'))
         })
         .catch(console.error)
-        .finally(() => setLoading(false))
+        .finally(() => { if (!cancelled) setLoading(false) })
+      return () => { cancelled = true }
     } else {
       void reload()
     }
   }, [user])
+
+  // ── Helper interno para os saves com padrão prepend ──────────────────
+  function makeSave<T extends { id: string }>(
+    updateFn: (id: string, data: any) => Promise<T>,
+    createFn: (data: any) => Promise<T>,
+    setState: React.Dispatch<React.SetStateAction<T[]>>,
+  ) {
+    return async (data: Partial<T> & { id?: string }): Promise<T> => {
+      const saved = data.id ? await updateFn(data.id, data) : await createFn(data)
+      setState(prev => [saved, ...prev.filter(x => x.id !== saved.id)])
+      return saved
+    }
+  }
 
   // ── Members ────────────────────────────────────────────────────────────
   const saveMember = async (m: Partial<Member> & { id?: string }): Promise<Member> => {
@@ -144,64 +160,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }
 
   // ── Seminários ─────────────────────────────────────────────────────────
-  const saveSeminario = async (s: Partial<Seminario> & { id?: string }): Promise<Seminario> => {
-    const saved = s.id
-      ? await SeminariosApi.updateSeminario(s.id, s)
-      : await SeminariosApi.createSeminario(s as Omit<Seminario, 'id' | 'created_at' | 'updated_at'>)
-    setSeminarios(prev => {
-      const without = prev.filter(x => x.id !== saved.id)
-      return [saved, ...without]
-    })
-    return saved
-  }
+  const saveSeminario = makeSave(SeminariosApi.updateSeminario, SeminariosApi.createSeminario, setSeminarios)
   const removeSeminario = async (id: string) => {
     await SeminariosApi.deleteSeminario(id)
     setSeminarios(prev => prev.filter(x => x.id !== id))
   }
 
   // ── Matriculas ─────────────────────────────────────────────────────────
-  const saveMatricula = async (m: Partial<Matricula> & { id?: string }): Promise<Matricula> => {
-    const saved = m.id
-      ? await MatriculasApi.updateMatricula(m.id, m)
-      : await MatriculasApi.createMatricula(m as Omit<Matricula, 'id' | 'created_at' | 'updated_at'>)
-    setMatriculas(prev => {
-      const without = prev.filter(x => x.id !== saved.id)
-      return [saved, ...without]
-    })
-    return saved
-  }
+  const saveMatricula = makeSave(MatriculasApi.updateMatricula, MatriculasApi.createMatricula, setMatriculas)
   const removeMatricula = async (id: string) => {
     await MatriculasApi.deleteMatricula(id)
     setMatriculas(prev => prev.filter(x => x.id !== id))
   }
 
   // ── Carteirinhas ──────────────────────────────────────────────────────
-  const saveCarteirinha = async (c: Partial<Carteirinha> & { id?: string }): Promise<Carteirinha> => {
-    const saved = c.id
-      ? await CarteirinhasApi.updateCarteirinha(c.id, c)
-      : await CarteirinhasApi.createCarteirinha(c as Omit<Carteirinha, 'id' | 'created_at'>)
-    setCarteirinhas(prev => {
-      const without = prev.filter(x => x.id !== saved.id)
-      return [saved, ...without]
-    })
-    return saved
-  }
+  const saveCarteirinha = makeSave(CarteirinhasApi.updateCarteirinha, CarteirinhasApi.createCarteirinha, setCarteirinhas)
   const removeCarteirinha = async (id: string) => {
     await CarteirinhasApi.deleteCarteirinha(id)
     setCarteirinhas(prev => prev.filter(x => x.id !== id))
   }
 
   // ── Certificados ──────────────────────────────────────────────────────
-  const saveCertificado = async (c: Partial<Certificado> & { id?: string }): Promise<Certificado> => {
-    const saved = c.id
-      ? await CertificadosApi.updateCertificado(c.id, c)
-      : await CertificadosApi.createCertificado(c as Omit<Certificado, 'id' | 'created_at'>)
-    setCertificados(prev => {
-      const without = prev.filter(x => x.id !== saved.id)
-      return [saved, ...without]
-    })
-    return saved
-  }
+  const saveCertificado = makeSave(CertificadosApi.updateCertificado, CertificadosApi.createCertificado, setCertificados)
   const removeCertificado = async (id: string) => {
     await CertificadosApi.deleteCertificado(id)
     setCertificados(prev => prev.filter(x => x.id !== id))

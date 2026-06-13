@@ -1,15 +1,14 @@
 import { buildRelatorioHtml } from './buildRelatorioHtml'
 import type { ContribuicoesPorMembroResult } from '../api/fin_dashboard'
+import { fmt as fmtCurrency } from './_utils'
 
 const MESES_CURTOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
+// Retorna '—' para zero; usado nas células mensais
 function fmt(v: number) {
-  if (v === 0) return '—'
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return v === 0 ? '—' : fmtCurrency(v)
 }
-function fmtTotal(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
+const fmtTotal = fmtCurrency
 
 export interface ContribuicoesParams {
   resultado: ContribuicoesPorMembroResult

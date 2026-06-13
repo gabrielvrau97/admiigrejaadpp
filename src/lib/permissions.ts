@@ -67,8 +67,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   visualizador: 'Visualizador (legado)',
 }
 
-/** Mapeia uma rota completa pra área correspondente. Retorna null se rota
- * desconhecida (libera por padrão — fail-open). */
+/** Mapeia uma rota completa pra área correspondente. Retorna null se rota desconhecida. */
 export function routeToArea(pathname: string): Area | null {
   if (pathname.startsWith('/dashboard')) return 'dashboard'
   if (pathname === '/' || pathname === '') return 'dashboard'
@@ -98,7 +97,7 @@ export function canAccessArea(role: UserRole | undefined, area: Area): boolean {
 
 export function canAccessRoute(role: UserRole | undefined, pathname: string): boolean {
   const area = routeToArea(pathname)
-  if (!area) return true  // rota desconhecida — libera (fail-open pra não quebrar)
+  if (!area) return false  // rota desconhecida — nega (fail-closed)
   // tesouraria: aceita quem tem 'financeiro-tesouraria' OU 'financeiro'
   if (area === 'financeiro-tesouraria') {
     return canAccessArea(role, 'financeiro-tesouraria') || canAccessArea(role, 'financeiro')

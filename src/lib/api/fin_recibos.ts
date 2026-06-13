@@ -59,11 +59,12 @@ export async function createFinRecibo(lancamentoId: string, emitidoPor: string):
   const { data: numData, error: numErr } = await supabase
     .rpc('gen_fin_recibo_numero', { p_group_id: APP_GROUP_ID })
   if (numErr) throw numErr
+  if (!numData || typeof numData !== 'string') throw new Error('Número de recibo inválido')
 
   const { data, error } = await supabase
     .from('fin_recibos')
     .insert({
-      numero: numData as string,
+      numero: numData,
       lancamento_id: lancamentoId,
       church_group_id: APP_GROUP_ID,
       emitido_por: emitidoPor,
