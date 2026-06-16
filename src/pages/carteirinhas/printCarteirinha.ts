@@ -60,7 +60,7 @@ const styles = `
     line-height:1;
     color:#000;
   }
-  .fld.nome{font-size:12pt;font-weight:bold;text-transform:uppercase;letter-spacing:.2pt}
+  .fld.nome{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.2pt;white-space:normal;max-width:9.5cm;line-height:1.1}
   .fld.codigo{font-family:'Courier New',monospace;font-weight:bold;font-size:9.5pt}
   .fld.sig img{height:12mm;width:auto;object-fit:contain;display:block}
 
