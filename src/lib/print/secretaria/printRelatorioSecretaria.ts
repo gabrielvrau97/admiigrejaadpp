@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { openPrintWindow } from '../../print'
+import type { Assinante } from '../../relatorio/buildRelatorioHtml'
 
 // ── Tipos dos dados de entrada (montados na GraficosPage) ──────────────────
 export interface RelatorioSecretariaData {
@@ -26,6 +27,8 @@ export interface RelatorioSecretariaData {
   accompCounts: { comAcomp: number; semAcomp: number; comDiscip: number; semDiscip: number }
   acompanhantesRanking: { name: string; count: number }[]
   discipuladoresRanking: { name: string; count: number }[]
+  /** Assinantes selecionados (opcional). Sem isso, o relatório sai sem assinaturas. */
+  assinantes?: Assinante[]
 }
 
 const COR = '#2563eb'
@@ -157,24 +160,23 @@ export function printRelatorioSecretaria(d: RelatorioSecretariaData) {
       </div>
     </div>`)
 
-  const assinaturas = `
+  const assinaturas = (d.assinantes && d.assinantes.length > 0) ? `
     <div class="assinatura-section">
       <div class="section-title">Conferência e Assinaturas</div>
       <p class="declaracao">
         Declaro que as informações constantes neste relatório refletem os dados cadastrais
         da secretaria na data de emissão.
       </p>
-      <div class="ass-pastor">
-        <img src="${origin}/brand/assinatura-pastor.png" alt="" onerror="this.style.display='none'"/>
-        <div class="ass-linha"></div>
-        <div class="ass-label"><strong>Gilson Marcos S. da Silva</strong><br/>Pastor Presidente</div>
+      <div class="ass-grid">
+        ${d.assinantes.map(a => `
+          <div class="ass-campo">
+            <div class="ass-linha"></div>
+            <div class="ass-cargo">${a.cargo}</div>
+            ${a.nome ? `<div class="ass-nome">${a.nome}</div>` : ''}
+            ${a.cpf ? `<div class="ass-cpf">CPF: ${a.cpf}</div>` : ''}
+          </div>`).join('')}
       </div>
-      <div class="ass-grid3">
-        <div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Secretário(a)</div></div>
-        <div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Secretário(a)</div></div>
-        <div class="ass-campo"><div class="ass-linha"></div><div class="ass-label">Secretário(a)</div></div>
-      </div>
-    </div>`
+    </div>` : ''
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -229,15 +231,13 @@ export function printRelatorioSecretaria(d: RelatorioSecretariaData) {
   .duas-colunas{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
   .assinatura-section{margin-top:30px;page-break-inside:avoid}
-  .declaracao{font-size:10px;color:#374151;margin:8px 0 18px}
-  .ass-pastor{width:62mm;margin:0 auto 22px;text-align:center;position:relative}
-  .ass-pastor img{max-height:15mm;max-width:55mm;object-fit:contain;position:absolute;left:50%;bottom:14px;transform:translateX(-50%)}
-  .ass-linha{border-bottom:1px solid #374151;height:30px}
-  .ass-label{font-size:9.5px;color:#4b5563;margin-top:4px}
-  .ass-label strong{color:#111;font-size:10.5px}
-  .ass-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:6px}
-  .ass-campo{text-align:center}
-  .ass-campo .ass-linha{height:34px}
+  .declaracao{font-size:10px;color:#374151;margin:8px 0 22px}
+  .ass-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:18px 28px}
+  .ass-campo{text-align:center;flex:1;min-width:150px;max-width:200px}
+  .ass-linha{border-bottom:1px solid #374151;height:34px;margin-bottom:5px}
+  .ass-cargo{font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;color:#2563eb}
+  .ass-nome{font-size:10px;color:#111;margin-top:2px;font-weight:600}
+  .ass-cpf{font-size:8.5px;color:#6b7280;margin-top:1px}
 
   .footer{margin-top:18px;font-size:9px;color:#9ca3af;text-align:right;border-top:1px solid #f3f4f6;padding-top:6px}
 

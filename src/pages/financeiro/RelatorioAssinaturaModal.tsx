@@ -15,6 +15,12 @@ export interface Assinante {
 interface Props {
   onConfirm: (assinantes: Assinante[] | null) => void
   onClose: () => void
+  /** Lista de cargos disponíveis para assinar. Default: cargos financeiros. */
+  cargos?: { key: string; label: string }[]
+  /** Carrega tesoureiros para pré-seleção (default true — usado no financeiro). */
+  incluirTesoureiros?: boolean
+  /** Título do modal. */
+  titulo?: string
 }
 
 function fmtCpf(raw: string) {
@@ -32,6 +38,14 @@ const CARGOS = [
   { key: 'conselho1',   label: 'Conselho Fiscal 1' },
   { key: 'conselho2',   label: 'Conselho Fiscal 2' },
   { key: 'conselho3',   label: 'Conselho Fiscal 3' },
+]
+
+// Cargos para o relatório da secretaria
+export const CARGOS_SECRETARIA = [
+  { key: 'pastor',      label: 'Pastor Presidente' },
+  { key: 'secretario1', label: 'Secretário(a) 1' },
+  { key: 'secretario2', label: 'Secretário(a) 2' },
+  { key: 'secretario3', label: 'Secretário(a) 3' },
 ]
 
 interface Slot {
@@ -118,10 +132,15 @@ function MemberAutoComplete({
   )
 }
 
-export default function RelatorioAssinaturaModal({ onConfirm, onClose }: Props) {
+export default function RelatorioAssinaturaModal({
+  onConfirm, onClose,
+  cargos = CARGOS,
+  incluirTesoureiros = true,
+  titulo = 'Gerar Relatório',
+}: Props) {
   const [semAssinatura, setSemAssinatura] = useState(false)
   const [slots, setSlots] = useState<Slot[]>(
-    CARGOS.map(c => ({ ...c, checked: false, nome: '', cpf: '' }))
+    cargos.map(c => ({ ...c, checked: false, nome: '', cpf: '' }))
   )
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
@@ -129,22 +148,23 @@ export default function RelatorioAssinaturaModal({ onConfirm, onClose }: Props) 
   useEffect(() => {
     async function load() {
       try {
-        const [churches, tesoureiros, allMembers] = await Promise.all([
+        const [churches, allMembers] = await Promise.all([
           listChurches(),
-          listFinTesoureiros(APP_GROUP_ID),
           listMembers(),
         ])
-
         setMembers(allMembers)
 
         const sede = churches.find(c => c.type === 'sede') ?? churches[0]
         const pastorNome = sede?.pastor?.name ?? ''
-        const tesAtivos = tesoureiros.filter(t => t.ativo)
+
+        const tesAtivos = incluirTesoureiros
+          ? (await listFinTesoureiros(APP_GROUP_ID)).filter(t => t.ativo)
+          : []
 
         setSlots(prev => prev.map(s => {
           if (s.key === 'pastor') return { ...s, nome: pastorNome, checked: !!pastorNome }
-          if (s.key === 'tesoureiro1' && tesAtivos[0]) return { ...s, nome: tesAtivos[0].nome, checked: true }
-          if (s.key === 'tesoureiro2' && tesAtivos[1]) return { ...s, nome: tesAtivos[1].nome, checked: false }
+          if (incluirTesoureiros && s.key === 'tesoureiro1' && tesAtivos[0]) return { ...s, nome: tesAtivos[0].nome, checked: true }
+          if (incluirTesoureiros && s.key === 'tesoureiro2' && tesAtivos[1]) return { ...s, nome: tesAtivos[1].nome, checked: false }
           return s
         }))
       } finally {
@@ -152,7 +172,7 @@ export default function RelatorioAssinaturaModal({ onConfirm, onClose }: Props) 
       }
     }
     load()
-  }, [])
+  }, [incluirTesoureiros])
 
   function toggleSlot(key: string) {
     setSlots(prev => prev.map(s => s.key === key ? { ...s, checked: !s.checked } : s))
@@ -182,7 +202,7 @@ export default function RelatorioAssinaturaModal({ onConfirm, onClose }: Props) 
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <FileText size={17} className="text-blue-700" />
-            <span className="text-sm font-bold text-gray-800">Gerar Relatório</span>
+            <span className="text-sm font-bold text-gray-800">{titulo}</span>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
             <X size={15} />

@@ -13,6 +13,7 @@ import {
 import { useData } from '../../contexts/DataContext'
 import { useChurch } from '../../contexts/ChurchContext'
 import { printRelatorioSecretaria } from '../../lib/print/secretaria/printRelatorioSecretaria'
+import RelatorioAssinaturaModal, { CARGOS_SECRETARIA, type Assinante } from '../financeiro/RelatorioAssinaturaModal'
 
 const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16']
 const MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -145,6 +146,7 @@ export default function GraficosPage() {
   const { members, visitantes } = useData()
   const { selectedChurch, churches } = useChurch()
   const [yearFilter, setYearFilter] = useState<number>(currentYear)
+  const [assinaturaModalOpen, setAssinaturaModalOpen] = useState(false)
 
   const allPeople = useMemo(() => {
     const pool = [...members, ...visitantes]
@@ -316,7 +318,10 @@ export default function GraficosPage() {
   , [activeBase])
 
   // ── Geração de relatório imprimível ────────────────────────────────────────
-  const handleGerarRelatorio = () => {
+  // Abre o modal de assinaturas (selecionável e opcional, igual ao financeiro)
+  const handleGerarRelatorio = () => setAssinaturaModalOpen(true)
+
+  const gerarComAssinantes = (assinantes: Assinante[] | null) => {
     printRelatorioSecretaria({
       churchLabel: selectedChurch ? selectedChurch.name : 'Todas as Igrejas (Campo)',
       totalActive,
@@ -340,7 +345,9 @@ export default function GraficosPage() {
       accompCounts,
       acompanhantesRanking: acompanhantesRanking.map(r => ({ name: r.name, count: r.count })),
       discipuladoresRanking: discipuladoresRanking.map(r => ({ name: r.name, count: r.count })),
+      assinantes: assinantes ?? undefined,
     })
+    setAssinaturaModalOpen(false)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -820,6 +827,16 @@ export default function GraficosPage() {
           </ChartCard>
         </div>
       </div>
+
+      {assinaturaModalOpen && (
+        <RelatorioAssinaturaModal
+          titulo="Gerar Relatório da Secretaria"
+          cargos={CARGOS_SECRETARIA}
+          incluirTesoureiros={false}
+          onConfirm={gerarComAssinantes}
+          onClose={() => setAssinaturaModalOpen(false)}
+        />
+      )}
     </div>
   )
 }

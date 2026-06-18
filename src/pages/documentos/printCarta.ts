@@ -129,8 +129,7 @@ export function printCarta(d: CartaData) {
 
   /* Assinatura */
   .assinatura{text-align:center;margin-top:auto;position:relative}
-  .assinatura img{max-height:16mm;max-width:60mm;object-fit:contain;position:absolute;left:50%;bottom:11mm;transform:translateX(-50%)}
-  .assinatura .linha{width:80mm;margin:0 auto;border-bottom:1px solid #1a1a1a}
+  .assinatura .linha{width:80mm;margin:14mm auto 0;border-bottom:1px solid #1a1a1a}
   .assinatura .nome{font-size:11.5pt;font-weight:bold;color:#111;margin-top:1.5mm}
   .assinatura .cargo{font-size:10pt;color:#444}
 
@@ -179,9 +178,8 @@ export function printCarta(d: CartaData) {
 
     <div class="local-data">Piracanjuba, ${dataExt}.</div>
 
-    <!-- Assinatura -->
+    <!-- Assinatura (espaço para assinatura física) -->
     <div class="assinatura">
-      <img src="${origin}/brand/assinatura-pastor.png" alt="" onerror="this.style.display='none'"/>
       <div class="linha"></div>
       <div class="nome">Pr. ${IGREJA.pastor}</div>
       <div class="cargo">Presidente da AD Piracanjuba</div>
