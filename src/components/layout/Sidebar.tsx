@@ -41,6 +41,7 @@ const academicoItems: NavItem[] = [
 
 const documentosItems: NavItem[] = [
   { label: 'Credenciais', path: '/carteirinhas', icon: <IdCard size={14} />, area: 'carteirinhas' },
+  { label: 'Cartas', path: '/documentos/cartas', icon: <FileText size={14} />, area: 'cartas' },
 ]
 
 const financeiroItems: NavItem[] = [

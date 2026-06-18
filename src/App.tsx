@@ -28,6 +28,7 @@ const SeminariosPage = lazy(() => import('./pages/seminarios/SeminariosPage'))
 const SeminarioDetailPage = lazy(() => import('./pages/seminarios/SeminarioDetailPage'))
 const CarteirinhasPage = lazy(() => import('./pages/carteirinhas/CarteirinhasPage'))
 const CertificadosPage = lazy(() => import('./pages/certificados/CertificadosPage'))
+const CartasPage = lazy(() => import('./pages/documentos/CartasPage'))
 const FinanceiroPage = lazy(() => import('./pages/financeiro/FinanceiroPage'))
 const FinanceiroConfigPage = lazy(() => import('./pages/financeiro/FinanceiroConfigPage'))
 const FinanceiroTesourariaPage = lazy(() => import('./pages/financeiro/FinanceiroTesourariaPage'))
@@ -124,6 +125,9 @@ function AppRoutes() {
         {/* Carteirinhas e Certificados */}
         <Route path="/carteirinhas" element={<Suspense fallback={<PageLoader />}><CarteirinhasPage /></Suspense>} />
         <Route path="/certificados" element={<Suspense fallback={<PageLoader />}><CertificadosPage /></Suspense>} />
+
+        {/* Documentos */}
+        <Route path="/documentos/cartas" element={<Suspense fallback={<PageLoader />}><CartasPage /></Suspense>} />
 
         {/* Financeiro */}
         <Route path="/financeiro" element={<Suspense fallback={<PageLoader />}><FinanceiroPage /></Suspense>} />

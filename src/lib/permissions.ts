@@ -20,6 +20,7 @@ export type Area =
   | 'seminarios'              // seminarios, seminarios/:id
   | 'certificados'
   | 'carteirinhas'            // credenciais
+  | 'cartas'                  // documentos: cartas de recomendação e mudança
   | 'igrejas'
   | 'usuarios'                // gestão de usuários (master only)
   | 'backup'
@@ -30,11 +31,11 @@ export type Area =
 
 export const ROLE_AREAS: Record<UserRole, Set<Area>> = {
   master: new Set<Area>([
-    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas',
+    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas', 'cartas',
     'igrejas', 'usuarios', 'backup', 'meu-perfil', 'financeiro', 'financeiro-config',
   ]),
   admin_secretaria: new Set<Area>([
-    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas',
+    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas', 'cartas',
     'igrejas', 'meu-perfil',
   ]),
   admin_financeiro: new Set<Area>([
@@ -45,11 +46,11 @@ export const ROLE_AREAS: Record<UserRole, Set<Area>> = {
   ]),
   // Legados (papéis antigos) — mantidos por compatibilidade, equivalem a admin_secretaria
   admin: new Set<Area>([
-    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas',
+    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas', 'cartas',
     'igrejas', 'meu-perfil',
   ]),
   secretaria: new Set<Area>([
-    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas',
+    'dashboard', 'secretaria', 'seminarios', 'certificados', 'carteirinhas', 'cartas',
     'meu-perfil',
   ]),
   visualizador: new Set<Area>([
@@ -75,6 +76,7 @@ export function routeToArea(pathname: string): Area | null {
   if (pathname.startsWith('/seminarios')) return 'seminarios'
   if (pathname.startsWith('/certificados')) return 'certificados'
   if (pathname.startsWith('/carteirinhas')) return 'carteirinhas'
+  if (pathname.startsWith('/documentos/cartas')) return 'cartas'
   if (pathname.startsWith('/financeiro/configuracoes')) return 'financeiro-config'
   if (pathname.startsWith('/financeiro/extrato')) return 'financeiro'
   if (pathname.startsWith('/financeiro/dashboard')) return 'financeiro'
