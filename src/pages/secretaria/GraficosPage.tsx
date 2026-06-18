@@ -8,10 +8,11 @@ import {
 import { differenceInYears, getYear, getMonth } from 'date-fns'
 import {
   Users, Church, Droplets, Heart, TrendingUp, BarChart2,
-  MapPin, UserCheck, Sparkles, ChevronDown,
+  MapPin, UserCheck, Sparkles, ChevronDown, FileText,
 } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import { useChurch } from '../../contexts/ChurchContext'
+import { printRelatorioSecretaria } from '../../lib/print/secretaria/printRelatorioSecretaria'
 
 const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16']
 const MONTH_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -314,12 +315,40 @@ export default function GraficosPage() {
       .slice(0, 20)
   , [activeBase])
 
+  // ── Geração de relatório imprimível ────────────────────────────────────────
+  const handleGerarRelatorio = () => {
+    printRelatorioSecretaria({
+      churchLabel: selectedChurch ? selectedChurch.name : 'Todas as Igrejas (Campo)',
+      totalActive,
+      totalCadastros: base.length,
+      totalVisitantes,
+      novosConvertidos: visitantes.filter(v => v.novo_convertido).length,
+      batizadosAguas: activeBase.filter(m => m.baptism).length,
+      batizadosEspirito: activeBase.filter(m => m.baptism_spirit).length,
+      convertidos: activeBase.filter(m => m.conversion).length,
+      igrejasTotal: churches.length,
+      igrejasSede: churches.filter(c => c.type === 'sede').length,
+      igrejasFilial: churches.filter(c => c.type === 'filial').length,
+      byChurch: byChurch.map(c => ({ name: c.name, total: c.total, ativos: c.ativos, visitantes: c.visitantes })),
+      byCity,
+      ageGroups,
+      baptismByYear,
+      civilData,
+      ministryData,
+      titlesData,
+      genderData,
+      accompCounts,
+      acompanhantesRanking: acompanhantesRanking.map(r => ({ name: r.name, count: r.count })),
+      discipuladoresRanking: discipuladoresRanking.map(r => ({ name: r.name, count: r.count })),
+    })
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
 
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
             <BarChart2 size={18} className="text-blue-600" />
@@ -336,6 +365,13 @@ export default function GraficosPage() {
             </p>
           </div>
         </div>
+        <button
+          onClick={handleGerarRelatorio}
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm shrink-0 transition-colors"
+          title="Gerar relatório detalhado para impressão"
+        >
+          <FileText size={15} /> Gerar relatório
+        </button>
       </div>
 
       {/* KPIs */}
