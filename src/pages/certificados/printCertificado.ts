@@ -200,15 +200,15 @@ const certStyles = `
     min-width: 60mm;
   }
   .signature .sign-img {
-    height: 14mm;
+    height: 26mm;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     margin-bottom: 1mm;
   }
   .signature .sign-img img {
-    max-height: 13mm;
-    max-width: 58mm;
+    max-height: 26mm;
+    max-width: 90mm;
     object-fit: contain;
   }
   .sign-line {

@@ -62,7 +62,7 @@ const styles = `
   }
   .fld.nome{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.2pt;white-space:normal;max-width:9.5cm;line-height:1.1}
   .fld.codigo{font-family:'Courier New',monospace;font-weight:bold;font-size:9.5pt}
-  .fld.sig img{height:12mm;width:auto;object-fit:contain;display:block}
+  .fld.sig img{height:18mm;width:auto;object-fit:contain;display:block}
 
   /* Linhas de corte */
   .sep{
