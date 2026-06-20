@@ -13,6 +13,7 @@ const fmt = (d?: string | null) => fmtDate(d) || ''
 
 const X = {
   nome:       1.5,
+  funcao:     3.5,
   filiacao:   11,
   emissao:    11,
   igreja:     11,
@@ -25,6 +26,7 @@ const X = {
 
 const Y: Record<keyof typeof X, [number, number, number, number]> = {
   nome:       [6.2, 12.6, 19.1, 25.6],
+  funcao:     [5,   11.5, 18,   24.5],
   filiacao:   [3.2, 9.6,  16.2, 22.8],
   emissao:    [5.2, 11.7, 18.2, 24.7],
   igreja:     [6.5, 13,   19.5, 26],
@@ -62,6 +64,7 @@ const styles = `
   }
   .fld.nome{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.2pt;white-space:normal;max-width:9.5cm;line-height:1.1}
   .fld.codigo{font-family:'Courier New',monospace;font-weight:bold;font-size:9.5pt}
+  .fld.funcao{font-weight:bold;text-transform:uppercase;letter-spacing:.2pt}
   .fld.sig img{height:18mm;width:auto;object-fit:contain;display:block}
 
   /* Linhas de corte */
@@ -91,6 +94,7 @@ const styles = `
 // Gera o overlay de UMA credencial na posição `i` (0..3) da folha
 function buildCredencial(c: Carteirinha, m: Member, i: number, origin: string): string {
   const filiacao = [m.family?.mother_name, m.family?.father_name].filter(Boolean).join('<br>')
+  const funcao = m.ministry?.functions?.[0] ?? m.ministry?.titles?.[0] ?? ''
   const assinaturaUrl = `${origin}/brand/assinatura-pastor.png`
 
   const campo = (cls: keyof typeof X, valor: string) =>
@@ -100,6 +104,7 @@ function buildCredencial(c: Carteirinha, m: Member, i: number, origin: string): 
 
   return [
     campo('nome',       m.name ?? ''),
+    campo('funcao',     funcao),
     campo('filiacao',   filiacao),
     campo('emissao',    fmt(c.emitida_em)),
     campo('igreja',     m.church?.name ?? ''),
