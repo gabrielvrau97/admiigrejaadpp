@@ -4,19 +4,68 @@ import { openPrintWindow } from '../../lib/print'
 
 export type TipoCarta = 'recomendacao' | 'mudanca'
 
-export interface CartaData {
-  tipo: TipoCarta
-  nomeMembro: string
-  data: string // ISO yyyy-mm-dd
-  // Recomendação
-  funcao?: string
-  cidadeDestino?: string
-  ufDestino?: string
-  // Mudança
-  igrejaDestino?: string
-  ministerioDestino?: string
-  // Tratamento (recebido/recebida)
-  sexo?: 'masculino' | 'feminino'
+// ── Templates editáveis ──────────────────────────────────────────────────────
+// O texto usa variáveis no formato {chave} que são substituídas pelos dados da
+// secretaria na hora de gerar. Para alterar o texto padrão, edite aqui — ou
+// edite direto na tela de Cartas (a edição fica salva no navegador).
+
+export const CARTA_TEMPLATES: Record<TipoCarta, { titulo: string; texto: string }> = {
+  recomendacao: {
+    titulo: 'CARTA DE RECOMENDAÇÃO',
+    texto:
+`Saudações em Cristo Jesus.
+
+Temos a satisfação de apresentar à Igreja Evangélica Assembleia de Deus na cidade de {cidade} — {uf}, {nome}, que exerce a função de {funcao}, e que faz parte deste campo, encontrando-se em plena comunhão, servindo a Deus em nosso Templo Sede há tempos.
+
+Portanto, recomendamos que seja {tratamento} no Senhor, como costumam fazer os santos.
+
+Com os votos de elevada estima e consideração.
+
+Fraternalmente,`,
+  },
+  mudanca: {
+    titulo: 'CARTA DE MUDANÇA',
+    texto:
+`Saudações em Cristo Jesus.
+
+Temos a satisfação de apresentar à {igreja}, ministério {ministerio}, o membro {nome}, que se encontra em plena comunhão, servindo a Deus em nosso Templo Sede há tempos.
+
+Portanto, recomendamos que seja {tratamento} no Senhor, como costumam fazer os santos.
+
+Com os votos de elevada estima e consideração.
+
+Fraternalmente,`,
+  },
+}
+
+// Variáveis disponíveis por tipo (para a legenda/chips na tela)
+export const CARTA_VARIAVEIS: Record<TipoCarta, { token: string; desc: string }[]> = {
+  recomendacao: [
+    { token: '{nome}', desc: 'Nome do membro' },
+    { token: '{funcao}', desc: 'Função / título' },
+    { token: '{cidade}', desc: 'Cidade de destino' },
+    { token: '{uf}', desc: 'UF de destino' },
+    { token: '{tratamento}', desc: 'recebido / recebida' },
+  ],
+  mudanca: [
+    { token: '{nome}', desc: 'Nome do membro' },
+    { token: '{igreja}', desc: 'Igreja de destino' },
+    { token: '{ministerio}', desc: 'Ministério de destino' },
+    { token: '{tratamento}', desc: 'recebido / recebida' },
+  ],
+}
+
+// Substitui {chave} pelos valores. Chaves conhecidas (mesmo vazias) viram o
+// valor; chaves desconhecidas permanecem como estão para sinalizar erro de digitação.
+export function aplicarVariaveis(texto: string, vars: Record<string, string>): string {
+  return texto.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m))
+}
+
+export interface CartaPrint {
+  titulo: string
+  nomeMembro: string       // usado no título da janela/aba
+  corpoParagrafos: string[] // já com as variáveis substituídas
+  data: string             // ISO yyyy-mm-dd (para "Piracanjuba, {data}.")
 }
 
 // Dados fixos da igreja (cabeçalho/rodapé)
@@ -37,54 +86,22 @@ function dataPorExtenso(iso: string): string {
   return partes.join(' ')
 }
 
-function corpoCarta(d: CartaData): { titulo: string; paragrafos: string[] } {
-  const recebido = d.sexo === 'feminino' ? 'recebida' : 'recebido'
-
-  if (d.tipo === 'recomendacao') {
-    const destino = [d.cidadeDestino, d.ufDestino].filter(Boolean).join(' — ')
-    return {
-      titulo: 'CARTA DE RECOMENDAÇÃO',
-      paragrafos: [
-        'Saudações em Cristo Jesus.',
-        `Temos a satisfação de apresentar à Igreja Evangélica Assembleia de Deus${destino ? ` na cidade de ${destino}` : ''}, ${d.nomeMembro}${d.funcao ? `, que exerce a função de ${d.funcao}` : ''}, e que faz parte deste campo, encontrando-se em plena comunhão, servindo a Deus em nosso Templo Sede há tempos.`,
-        `Portanto, recomendamos que seja ${recebido} no Senhor, como costumam fazer os santos.`,
-        'Com os votos de elevada estima e consideração.',
-        'Fraternalmente,',
-      ],
-    }
-  }
-
-  // mudança
-  const destino = [d.igrejaDestino, d.ministerioDestino ? `ministério ${d.ministerioDestino}` : '']
-    .filter(Boolean).join(', ')
-  return {
-    titulo: 'CARTA DE MUDANÇA',
-    paragrafos: [
-      'Saudações em Cristo Jesus.',
-      `Temos a satisfação de apresentar à ${destino || 'igreja de destino'}, o membro ${d.nomeMembro}, que se encontra em plena comunhão, servindo a Deus em nosso Templo Sede há tempos.`,
-      `Portanto, recomendamos que seja ${recebido} no Senhor, como costumam fazer os santos.`,
-      'Com os votos de elevada estima e consideração.',
-      'Fraternalmente,',
-    ],
-  }
-}
-
-export function printCarta(d: CartaData) {
+export function printCarta(p: CartaPrint) {
   const origin = window.location.origin
-  const { titulo, paragrafos } = corpoCarta(d)
-  const dataExt = dataPorExtenso(d.data)
+  const { titulo, corpoParagrafos: paragrafos } = p
+  const dataExt = dataPorExtenso(p.data)
 
-  const paragrafosHtml = paragrafos.map((p, i) => {
-    // "Saudações..." e "Fraternalmente," centralizados/sem recuo; demais justificados
-    const semRecuo = i === 0 || p === 'Fraternalmente,'
-    return `<p class="par${semRecuo ? ' sem-recuo' : ''}">${p}</p>`
+  const paragrafosHtml = paragrafos.map((par, i) => {
+    // 1º parágrafo (saudação) e "Fraternalmente," sem recuo; demais justificados com recuo
+    const semRecuo = i === 0 || /^fraternalmente/i.test(par.trim())
+    return `<p class="par${semRecuo ? ' sem-recuo' : ''}">${par}</p>`
   }).join('')
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<title>${titulo} — ${d.nomeMembro}</title>
+<title>${titulo} — ${p.nomeMembro}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{font-family:'Times New Roman',Georgia,serif;background:#e8e8e8;color:#1a1a1a}
@@ -193,5 +210,5 @@ export function printCarta(d: CartaData) {
 </body>
 </html>`
 
-  openPrintWindow(html, `${titulo} — ${d.nomeMembro}`)
+  openPrintWindow(html, `${titulo} — ${p.nomeMembro}`)
 }

@@ -1,13 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
-  FileText, Search, Check, UserCheck, X, Mail, MapPin, Building2, Printer,
+  FileText, Search, Check, UserCheck, X, MapPin, Building2, Printer, RotateCcw, Plus,
 } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import { useToast } from '../../components/ui/UIProvider'
 import type { Member } from '../../types'
-import { printCarta, type TipoCarta } from './printCarta'
+import {
+  printCarta, aplicarVariaveis, CARTA_TEMPLATES, CARTA_VARIAVEIS, type TipoCarta,
+} from './printCarta'
 
 const hoje = () => new Date().toISOString().split('T')[0]
+
+const tplKey = (t: TipoCarta) => `carta-template-${t}`
+function loadTemplate(t: TipoCarta): string {
+  try { const s = localStorage.getItem(tplKey(t)); if (s != null) return s } catch { /* ignore */ }
+  return CARTA_TEMPLATES[t].texto
+}
 
 export default function CartasPage() {
   const { members } = useData()
@@ -24,6 +32,32 @@ export default function CartasPage() {
   const [ufDestino, setUfDestino] = useState('')
   const [igrejaDestino, setIgrejaDestino] = useState('')
   const [ministerioDestino, setMinisterioDestino] = useState('')
+
+  // Templates editáveis (persistem no navegador)
+  const [templates, setTemplates] = useState<Record<TipoCarta, string>>(() => ({
+    recomendacao: loadTemplate('recomendacao'),
+    mudanca: loadTemplate('mudanca'),
+  }))
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const setTemplate = (t: TipoCarta, txt: string) => {
+    setTemplates(prev => ({ ...prev, [t]: txt }))
+    try { localStorage.setItem(tplKey(t), txt) } catch { /* ignore */ }
+  }
+  const restaurarPadrao = () => setTemplate(tipo, CARTA_TEMPLATES[tipo].texto)
+
+  const inserirVar = (token: string) => {
+    const ta = textareaRef.current
+    const txt = templates[tipo]
+    if (!ta) { setTemplate(tipo, txt + token); return }
+    const start = ta.selectionStart, end = ta.selectionEnd
+    const novo = txt.slice(0, start) + token + txt.slice(end)
+    setTemplate(tipo, novo)
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.selectionStart = ta.selectionEnd = start + token.length
+    })
+  }
 
   const membersFiltered = useMemo(() => {
     if (!memberSearch.trim()) return [] as Member[]
@@ -63,16 +97,24 @@ export default function CartasPage() {
       toast.error('Informe a igreja de destino.')
       return
     }
+    // Substitui as variáveis pelos dados da secretaria
+    const vars: Record<string, string> = {
+      nome: selected.name,
+      funcao: funcao.trim(),
+      cidade: cidadeDestino.trim(),
+      uf: ufDestino.trim().toUpperCase(),
+      igreja: igrejaDestino.trim(),
+      ministerio: ministerioDestino.trim(),
+      tratamento: selected.sex === 'feminino' ? 'recebida' : 'recebido',
+    }
+    const textoFinal = aplicarVariaveis(templates[tipo], vars)
+    const corpoParagrafos = textoFinal.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean)
+
     printCarta({
-      tipo,
+      titulo: CARTA_TEMPLATES[tipo].titulo,
       nomeMembro: selected.name,
-      sexo: selected.sex,
+      corpoParagrafos,
       data,
-      funcao: funcao.trim() || undefined,
-      cidadeDestino: cidadeDestino.trim() || undefined,
-      ufDestino: ufDestino.trim().toUpperCase() || undefined,
-      igrejaDestino: igrejaDestino.trim() || undefined,
-      ministerioDestino: ministerioDestino.trim() || undefined,
     })
   }
 
@@ -217,8 +259,46 @@ export default function CartasPage() {
             <input type="date" value={data} onChange={e => setData(e.target.value)} className="form-input w-full mt-1" />
           </div>
 
-          <div className="flex items-center gap-2 pt-1 text-xs text-gray-400">
-            <Mail size={13} /> O cabeçalho, marca d'água e rodapé da igreja são aplicados automaticamente.
+          {/* Editor do texto (template) */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Texto da carta</label>
+              <button
+                onClick={restaurarPadrao}
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600"
+                title="Voltar ao texto padrão"
+              >
+                <RotateCcw size={12} /> Restaurar texto padrão
+              </button>
+            </div>
+
+            {/* Variáveis disponíveis */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className="text-[11px] text-gray-400">Inserir dado:</span>
+              {CARTA_VARIAVEIS[tipo].map(v => (
+                <button
+                  key={v.token}
+                  onClick={() => inserirVar(v.token)}
+                  className="inline-flex items-center gap-1 text-[11px] bg-blue-50 text-blue-700 border border-blue-100 rounded-full px-2 py-0.5 hover:bg-blue-100"
+                  title={v.desc}
+                >
+                  <Plus size={10} /> {v.token}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              ref={textareaRef}
+              value={templates[tipo]}
+              onChange={e => setTemplate(tipo, e.target.value)}
+              rows={11}
+              className="form-input w-full mt-2 font-mono text-xs leading-relaxed"
+              spellCheck
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Use os marcadores acima (ex: <code>{'{nome}'}</code>) — serão trocados pelos dados ao gerar.
+              O cabeçalho, marca d'água, data, assinatura e rodapé são aplicados automaticamente. Suas alterações ficam salvas neste navegador.
+            </p>
           </div>
 
           <div className="flex justify-end pt-2 border-t border-gray-100">
