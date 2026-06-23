@@ -39,19 +39,27 @@ Fraternalmente,`,
 }
 
 // Variáveis disponíveis por tipo (para a legenda/chips na tela)
+// Dados do membro (puxados da secretaria, iguais aos da credencial) + dados de destino.
+const VARS_MEMBRO = [
+  { token: '{nome}', desc: 'Nome do membro' },
+  { token: '{funcao}', desc: 'Função / título' },
+  { token: '{filiacao}', desc: 'Filiação (mãe e pai)' },
+  { token: '{nascimento}', desc: 'Data de nascimento' },
+  { token: '{cpf}', desc: 'CPF' },
+  { token: '{igreja_membro}', desc: 'Igreja cadastrada do membro' },
+  { token: '{tratamento}', desc: 'recebido / recebida' },
+]
+
 export const CARTA_VARIAVEIS: Record<TipoCarta, { token: string; desc: string }[]> = {
   recomendacao: [
-    { token: '{nome}', desc: 'Nome do membro' },
-    { token: '{funcao}', desc: 'Função / título' },
+    ...VARS_MEMBRO,
     { token: '{cidade}', desc: 'Cidade de destino' },
     { token: '{uf}', desc: 'UF de destino' },
-    { token: '{tratamento}', desc: 'recebido / recebida' },
   ],
   mudanca: [
-    { token: '{nome}', desc: 'Nome do membro' },
+    ...VARS_MEMBRO,
     { token: '{igreja}', desc: 'Igreja de destino' },
     { token: '{ministerio}', desc: 'Ministério de destino' },
-    { token: '{tratamento}', desc: 'recebido / recebida' },
   ],
 }
 

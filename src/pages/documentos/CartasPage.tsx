@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import { useToast } from '../../components/ui/UIProvider'
+import { fmtDate } from '../../lib/format'
 import type { Member } from '../../types'
 import {
   printCarta, aplicarVariaveis, CARTA_TEMPLATES, CARTA_VARIAVEIS, type TipoCarta,
@@ -98,14 +99,22 @@ export default function CartasPage() {
       return
     }
     // Substitui as variáveis pelos dados da secretaria
+    const filiacao = [selected.family?.mother_name, selected.family?.father_name]
+      .filter(Boolean).join(' e ')
     const vars: Record<string, string> = {
+      // Dados do membro (iguais aos da credencial)
       nome: selected.name,
       funcao: funcao.trim(),
+      filiacao,
+      nascimento: selected.birth_date ? fmtDate(selected.birth_date) : '',
+      cpf: selected.cpf ?? '',
+      igreja_membro: selected.church?.name ?? '',
+      tratamento: selected.sex === 'feminino' ? 'recebida' : 'recebido',
+      // Dados de destino
       cidade: cidadeDestino.trim(),
       uf: ufDestino.trim().toUpperCase(),
       igreja: igrejaDestino.trim(),
       ministerio: ministerioDestino.trim(),
-      tratamento: selected.sex === 'feminino' ? 'recebida' : 'recebido',
     }
     const textoFinal = aplicarVariaveis(templates[tipo], vars)
     const corpoParagrafos = textoFinal.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean)
