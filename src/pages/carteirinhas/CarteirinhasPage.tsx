@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { differenceInDays } from 'date-fns'
-import { fmtDate } from '../../lib/format'
+import { fmtDate, toISODateLocal } from '../../lib/format'
 import { IdCard, Plus, Search, Printer, Trash2, Clock, AlertCircle, CheckCircle, Layers, RefreshCw, CheckCircle2, X } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import type { Carteirinha, CarteirinhaMotivo, Member } from '../../types'
@@ -158,8 +158,8 @@ export default function CarteirinhasPage() {
         member_id: memberId,
         numero: novoNumero,
         motivo,
-        emitida_em: hoje.toISOString().split('T')[0],
-        valida_ate: validaAte.toISOString().split('T')[0],
+        emitida_em: toISODateLocal(hoje),
+        valida_ate: toISODateLocal(validaAte),
         emitida_por: 'Secretaria Admin',
         status: 'ativa',
       })
@@ -183,8 +183,8 @@ export default function CarteirinhasPage() {
     const hoje = new Date()
     const validaAte = new Date(hoje)
     validaAte.setFullYear(validaAte.getFullYear() + validadeAnos)
-    const hojeISO = hoje.toISOString().split('T')[0]
-    const validaAteISO = validaAte.toISOString().split('T')[0]
+    const hojeISO = toISODateLocal(hoje)
+    const validaAteISO = toISODateLocal(validaAte)
     const baseSeq = carteirinhas.length
 
     try {
@@ -256,8 +256,8 @@ export default function CarteirinhasPage() {
       const hoje = new Date()
       const validaAte = new Date(hoje)
       validaAte.setFullYear(validaAte.getFullYear() + validadeAnos)
-      const hojeISO = hoje.toISOString().split('T')[0]
-      const validaAteISO = validaAte.toISOString().split('T')[0]
+      const hojeISO = toISODateLocal(hoje)
+      const validaAteISO = toISODateLocal(validaAte)
       const baseSeq = carteirinhas.length
 
       // Substitui credenciais ativas anteriores

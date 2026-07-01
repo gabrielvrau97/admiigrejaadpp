@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Award, Search, Printer, Trash2, Plus, Layers, CheckCircle2, RefreshCw, X } from 'lucide-react'
-import { fmtDate } from '../../lib/format'
+import { fmtDate, toISODateLocal, hojeISO as getHojeISO } from '../../lib/format'
 import { useData } from '../../contexts/DataContext'
 import type { Certificado } from '../../types'
 import CertificadoGerarModal from './CertificadoGerarModal'
@@ -93,7 +93,7 @@ export default function CertificadosPage() {
 
   const handleGenerateLote = async (matriculaIds: string[]) => {
     const hoje = new Date()
-    const hojeISO = hoje.toISOString().split('T')[0]
+    const hojeISO = toISODateLocal(hoje)
     const ano = hoje.getFullYear()
     const baseSeq = certificados.length
 
@@ -360,7 +360,7 @@ export default function CertificadosPage() {
             if (!mat) return
             const sem = seminarios.find(s => s.id === mat.seminario_id)
             if (!sem) return
-            const hoje = new Date().toISOString().split('T')[0]
+            const hoje = getHojeISO()
             try {
               const novo = await saveCertificado({
                 matricula_id: mat.id,

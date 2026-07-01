@@ -4,6 +4,7 @@ import type { Member, MemberMinistry } from '../../../types'
 import { useConfig } from '../../../contexts/ConfigContext'
 import MemberSearch from '../MemberSearch'
 import { useData } from '../../../contexts/DataContext'
+import { hojeISO } from '../../../lib/format'
 
 interface Props {
   ministry: Partial<MemberMinistry>
@@ -50,7 +51,7 @@ export default function TabMinisterio({ ministry, onChange, form, onChangeForm, 
   const { members, visitantes } = useData()
   const pool = [...members, ...visitantes]
   const set = (key: keyof MemberMinistry, value: unknown) => onChange({ ...ministry, [key]: value })
-  const today = new Date().toISOString().split('T')[0]
+  const today = hojeISO()
 
   // Quando edita um membro existente, vamos resolver o nome do discipler/companion
   // a partir do ID pra mostrar bonito no input

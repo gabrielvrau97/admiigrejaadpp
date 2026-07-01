@@ -3,6 +3,7 @@ import { FileText, Printer, X, ChevronLeft, ChevronRight, TrendingUp, TrendingDo
 import { APP_GROUP_ID } from '../../lib/supabase'
 import { listFinRecibos, anularFinRecibo, type FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
+import { hojeISO } from '../../lib/format'
 import ReciboModal from './ReciboModal'
 
 const PAGE_SIZE = 50
@@ -39,7 +40,7 @@ export default function FinanceiroRecibosPage() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [dataInicio, setDataInicio] = useState(firstDayOfMonth())
-  const [dataFim, setDataFim] = useState(new Date().toISOString().slice(0, 10))
+  const [dataFim, setDataFim] = useState(hojeISO())
   const [busca, setBusca] = useState('')
   const [reciboImpressao, setReciboImpressao] = useState<FinReciboComLancamento | null>(null)
 

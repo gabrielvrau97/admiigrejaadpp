@@ -8,7 +8,7 @@ import {
 import { useData } from '../../contexts/DataContext'
 import type { Matricula, MatriculaSituacao } from '../../types'
 import MatriculaModal from './MatriculaModal'
-import { fmtDate, fmtIdade } from '../../lib/format'
+import { fmtDate, fmtIdade, hojeISO } from '../../lib/format'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import { useMemberQuickView } from '../../contexts/MemberQuickViewContext'
 import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
@@ -324,7 +324,7 @@ export default function SeminarioDetailPage() {
           situacao: data.situacao ?? 'cursando',
           nota_final: data.nota_final,
           frequencia: data.frequencia,
-          data_matricula: data.data_matricula ?? new Date().toISOString().split('T')[0],
+          data_matricula: data.data_matricula ?? hojeISO(),
           data_conclusao: data.data_conclusao,
           observacoes: data.observacoes,
         })
@@ -360,8 +360,8 @@ export default function SeminarioDetailPage() {
         nome_aluno: m.nome,
         nome_seminario: seminario.nome,
         carga_horaria: seminario.carga_horaria,
-        data_conclusao: m.data_conclusao ?? new Date().toISOString().split('T')[0],
-        emitido_em: new Date().toISOString().split('T')[0],
+        data_conclusao: m.data_conclusao ?? hojeISO(),
+        emitido_em: hojeISO(),
         emitido_por: 'Secretaria Admin',
         status: 'emitido',
       })

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Preview — Credencial (overlay 4/folha)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;background:#e8e8e8;color:#000;padding:16px}
+
+  .bar{
+    max-width:210mm;margin:0 auto 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:10px 14px;font-size:13px
+  }
+  .bar strong{color:#92400e}
+  .bar label{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#444;cursor:pointer}
+  .bar button{background:#1d4ed8;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;margin-left:auto}
+
+  .sheet{
+    position:relative;
+    width:210mm;height:297mm;
+    background:#fff;
+    overflow:hidden;
+    margin:0 auto;
+    box-shadow:0 4px 16px rgba(0,0,0,.15);
+    outline:1px solid #e2e8f0;
+  }
+
+  /* Régua de 1cm (sobreposta, só pra conferência) */
+  .grid{position:absolute;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      repeating-linear-gradient(to right, rgba(0,120,255,.10) 0, rgba(0,120,255,.10) 0.2mm, transparent 0.2mm, transparent 1cm),
+      repeating-linear-gradient(to bottom, rgba(0,120,255,.10) 0, rgba(0,120,255,.10) 0.2mm, transparent 0.2mm, transparent 1cm);
+  }
+  .grid.hide{display:none}
+
+  .fld{position:absolute;white-space:nowrap;font-size:10pt;line-height:1;color:#000;z-index:2}
+  .fld.nome{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.2pt;white-space:normal;max-width:9.5cm;line-height:1.1}
+  .fld.codigo{font-family:'Courier New',monospace;font-weight:bold;font-size:9.5pt}
+  .fld.funcao{font-weight:bold;text-transform:uppercase;letter-spacing:.2pt}
+
+  .sep{position:absolute;left:8mm;right:8mm;border-top:0.3mm dashed #c7c7c7;z-index:1}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .bar{display:none!important}
+    .sheet{box-shadow:none;outline:none;margin:0}
+    .grid{display:none!important}
+    @page{size:A4 portrait;margin:0}
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span>⚠️ <strong>Preview</strong> — dados de exemplo sobre a folha A4. A grade azul é de 1&nbsp;cm (só para conferência).</span>
+  <label><input type="checkbox" id="gridToggle" checked/> Mostrar grade 1cm</label>
+  <button onclick="window.print()">Imprimir / Salvar PDF</button>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+  const X = { nome:1.5, funcao:3.5, filiacao:11, emissao:11, igreja:11, validade:14, codigo:17.5, nascimento:1.5, cpf:7.5, assinatura:13.5 };
+  const Y = {
+    nome:       [6.2,12.6,19.1,25.6],
+    funcao:     [5,11.5,18,24.5],
+    filiacao:   [3.2,9.6,16.2,22.8],
+    emissao:    [5.2,11.7,18.2,24.7],
+    igreja:     [6.5,13,19.5,26],
+    validade:   [5.2,11.7,18.2,24.7],
+    codigo:     [5.2,11.7,18.2,24.7],
+    nascimento: [7.5,14,20.5,27],
+    cpf:        [7.5,14,20.5,27],
+    assinatura: [7,13.5,20.2,27],
+  };
+  const SEP = [8.5,15,21.5];
+
+  const exemplos = [
+    { nome:'Maria Aparecida da Silva Santos do Nascimento', funcao:'Diaconisa', filiacao:'Ana Pereira<br>João da Silva', emissao:'14/06/2026', igreja:'ADP Sede Piracanjuba', validade:'14/06/2028', codigo:'ADP-2026-0001', nascimento:'05/03/1985', cpf:'123.456.789-00' },
+    { nome:'José Carlos Ferreira',     funcao:'Pastor',    filiacao:'Rita Souza<br>Pedro Ferreira',  emissao:'14/06/2026', igreja:'ADP Congregação Centro', validade:'14/06/2028', codigo:'ADP-2026-0002', nascimento:'22/11/1990', cpf:'987.654.321-00' },
+    { nome:'Ana Beatriz Rodrigues',    funcao:'Evangelista', filiacao:'Lúcia Lima<br>Carlos Rodrigues', emissao:'14/06/2026', igreja:'ADP Sede Piracanjuba', validade:'14/06/2028', codigo:'ADP-2026-0003', nascimento:'10/07/1995', cpf:'456.123.789-00' },
+    { nome:'Paulo Henrique Gomes',     funcao:'Presbítero', filiacao:'Marta Dias<br>Antônio Gomes',   emissao:'14/06/2026', igreja:'ADP Bairro Novo', validade:'14/06/2028', codigo:'ADP-2026-0004', nascimento:'30/01/1978', cpf:'321.654.987-00' },
+  ];
+
+  const sheet = document.getElementById('sheet');
+
+  SEP.forEach(cm => {
+    const d = document.createElement('div');
+    d.className = 'sep'; d.style.top = cm + 'cm';
+    sheet.appendChild(d);
+  });
+
+  exemplos.forEach((ex, i) => {
+    const add = (cls, val) => {
+      const d = document.createElement('div');
+      d.className = 'fld ' + cls;
+      d.style.left = X[cls] + 'cm';
+      d.style.top = Y[cls][i] + 'cm';
+      if (cls === 'filiacao') d.innerHTML = val; else d.textContent = val;
+      sheet.appendChild(d);
+    };
+    add('nome', ex.nome);
+    add('funcao', ex.funcao);
+    add('filiacao', ex.filiacao);
+    add('emissao', ex.emissao);
+    add('igreja', ex.igreja);
+    add('validade', ex.validade);
+    add('codigo', ex.codigo);
+    add('nascimento', ex.nascimento);
+    add('cpf', ex.cpf);
+    // assinatura: marcador (na impressão real é a imagem assinatura-pastor.png)
+    const sig = document.createElement('div');
+    sig.className = 'fld'; sig.style.left = X.assinatura + 'cm'; sig.style.top = Y.assinatura[i] + 'cm';
+    sig.style.fontStyle = 'italic'; sig.style.color = '#1d4ed8'; sig.style.fontSize = '11pt';
+    sig.textContent = '✍ (assinatura)';
+    sheet.appendChild(sig);
+  });
+
+  document.getElementById('gridToggle').addEventListener('change', e => {
+    document.getElementById('grid').classList.toggle('hide', !e.target.checked);
+  });
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { useData } from '../../contexts/DataContext'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useToast } from '../../components/ui/UIProvider'
 import { useModalUX } from '../../hooks/useModalUX'
+import { hojeISO } from '../../lib/format'
 
 interface Props {
   matricula: Matricula | null
@@ -22,7 +23,7 @@ export default function MatriculaModal({ matricula, onClose, onSave }: Props) {
   const [form, setForm] = useState<Partial<Matricula>>(matricula ?? {
     nome: '',
     situacao: 'cursando',
-    data_matricula: new Date().toISOString().split('T')[0],
+    data_matricula: hojeISO(),
   })
 
   // Buscar membros que correspondem à query

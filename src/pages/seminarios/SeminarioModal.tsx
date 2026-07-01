@@ -5,6 +5,7 @@ import type { Seminario } from '../../types'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useModalUX } from '../../hooks/useModalUX'
 import { seminarioFormSchema, type SeminarioFormData } from '../../schemas/seminario'
+import { hojeISO } from '../../lib/format'
 
 interface Props {
   seminario: Seminario | null
@@ -36,7 +37,7 @@ export default function SeminarioModal({ seminario, onClose, onSave }: Props) {
       nome: '',
       status: 'planejado',
       carga_horaria: 0,
-      data_inicio: new Date().toISOString().split('T')[0],
+      data_inicio: hojeISO(),
     },
   })
 

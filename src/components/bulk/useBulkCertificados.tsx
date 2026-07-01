@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react'
 import { useData } from '../../contexts/DataContext'
 import { useToast } from '../ui/UIProvider'
+import { hojeISO } from '../../lib/format'
 import { runBulkAction } from '../../lib/bulk/runBulkAction'
 import BulkConfirmDialog from './BulkConfirmDialog'
 import BulkGenericStatusModal from './BulkGenericStatusModal'
@@ -67,7 +68,7 @@ export function useBulkCertificados({ selectedIds, certificados, onClear, onDone
         nome_seminario: orig.nome_seminario,
         carga_horaria: orig.carga_horaria,
         data_conclusao: orig.data_conclusao,
-        emitido_em: new Date().toISOString().split('T')[0],
+        emitido_em: hojeISO(),
         emitido_por: orig.emitido_por,
         status: 'emitido',
       })

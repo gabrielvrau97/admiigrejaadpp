@@ -4,13 +4,13 @@ import {
 } from 'lucide-react'
 import { useData } from '../../contexts/DataContext'
 import { useToast } from '../../components/ui/UIProvider'
-import { fmtDate } from '../../lib/format'
+import { fmtDate, hojeISO } from '../../lib/format'
 import type { Member } from '../../types'
 import {
   printCarta, aplicarVariaveis, CARTA_TEMPLATES, CARTA_VARIAVEIS, type TipoCarta,
 } from './printCarta'
 
-const hoje = () => new Date().toISOString().split('T')[0]
+const hoje = () => hojeISO()
 
 const tplKey = (t: TipoCarta) => `carta-template-${t}`
 function loadTemplate(t: TipoCarta): string {

@@ -60,3 +60,20 @@ export function fmtIdade(s: string | null | undefined): string {
   const age = getAge(s)
   return age === null ? '—' : `${age} anos`
 }
+
+/**
+ * Converte um Date para "YYYY-MM-DD" no fuso LOCAL.
+ * Evita o bug de `date.toISOString()` que devolve UTC — em GMT-3, após
+ * as ~21h a data UTC já é o dia seguinte, fazendo o registro "pular" de dia.
+ */
+export function toISODateLocal(d: Date): string {
+  return format(d, 'yyyy-MM-dd')
+}
+
+/**
+ * Data de HOJE no fuso local em formato "YYYY-MM-DD".
+ * Use no lugar de `new Date().toISOString().slice(0, 10)`.
+ */
+export function hojeISO(): string {
+  return toISODateLocal(new Date())
+}

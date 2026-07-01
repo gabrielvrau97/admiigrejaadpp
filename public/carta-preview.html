@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Preview — Carta de Recomendação</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-family:'Times New Roman',Georgia,serif;background:#e8e8e8;color:#1a1a1a}
+
+  .bar{max-width:210mm;margin:0 auto 10px;display:flex;gap:10px;align-items:center;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:8px 12px;font-size:12px;font-family:Arial,sans-serif}
+  .bar strong{color:#92400e}
+  .bar button{margin-left:auto;background:#1a3a6b;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px}
+
+  .page{position:relative;width:210mm;min-height:297mm;background:#fff;margin:0 auto;padding:22mm 24mm 20mm;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+
+  .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:150mm;height:150mm;object-fit:contain;opacity:0.05;filter:grayscale(100%);pointer-events:none;z-index:0}
+
+  .content{position:relative;z-index:1;flex:1;display:flex;flex-direction:column}
+
+  .cab{display:flex;align-items:center;gap:6mm;border-bottom:2px solid #1a3a6b;padding-bottom:5mm;margin-bottom:2mm}
+  .cab img{height:24mm;width:auto;object-fit:contain;flex-shrink:0}
+  .cab .logo-ph{height:24mm;width:24mm;border:1px dashed #cbd5e1;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:8px;font-family:Arial;text-align:center;flex-shrink:0}
+  .cab .txt{flex:1;text-align:center}
+  .cab .nome{font-size:13pt;font-weight:bold;color:#1a3a6b;letter-spacing:.3pt;line-height:1.2}
+  .cab .min{font-size:9.5pt;font-weight:bold;color:#333;margin-top:1mm}
+  .cab .slogan{font-size:9pt;font-style:italic;color:#c9a84c;margin-top:1mm}
+  .cab .meta{font-size:8pt;color:#555;margin-top:1.5mm;line-height:1.4}
+
+  .titulo{text-align:center;font-size:15pt;font-weight:bold;color:#1a3a6b;letter-spacing:1pt;text-transform:uppercase;margin:14mm 0 10mm}
+  .titulo::after{content:"";display:block;width:36mm;height:.6mm;background:#c9a84c;margin:3mm auto 0}
+  .par{font-size:12.5pt;line-height:1.9;text-align:justify;text-indent:12mm;margin-bottom:5mm}
+  .par.sem-recuo{text-indent:0}
+
+  .local-data{font-size:12.5pt;margin:6mm 0 18mm;text-align:left}
+
+  .assinatura{text-align:center;margin-top:auto;position:relative}
+  .assinatura .linha{width:80mm;margin:14mm auto 0;border-bottom:1px solid #1a1a1a}
+  .assinatura .nome{font-size:11.5pt;font-weight:bold;color:#111;margin-top:1.5mm}
+  .assinatura .cargo{font-size:10pt;color:#444}
+
+  .rodape{position:relative;z-index:1;text-align:center;border-top:1.5px solid #1a3a6b;margin-top:10mm;padding-top:3mm;font-size:8.5pt;color:#555}
+
+  @media print{body{background:#fff}.bar{display:none!important}.page{box-shadow:none;margin:0}@page{size:A4 portrait;margin:0}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span>⚠️ <strong>Preview</strong> — carta de recomendação (exemplo). No sistema o membro e os dados de destino vêm da secretaria.</span>
+  <button onclick="window.print()">🖨️ Imprimir / PDF</button>
+</div>
+
+<div class="page">
+  <img class="watermark" src="brand/logo.png" alt="" onerror="this.style.display='none'"/>
+
+  <div class="content">
+    <div class="cab">
+      <img src="brand/logo.png" alt="ADP" onerror="this.outerHTML='<div class=&quot;logo-ph&quot;>[ logo ]</div>'"/>
+      <div class="txt">
+        <div class="nome">IGREJA EVANGÉLICA ASSEMBLEIA DE DEUS</div>
+        <div class="min">MINISTÉRIO MADUREIRA — CAMPO DE PIRACANJUBA</div>
+        <div class="slogan">Lugar de Famílias Abençoadas</div>
+        <div class="meta">CNPJ: 37.261.666/0001-03<br/>Pastor Presidente: Gilson Marcos Soares da Silva</div>
+      </div>
+    </div>
+
+    <div class="titulo">Carta de Recomendação</div>
+
+    <p class="par sem-recuo">Saudações em Cristo Jesus.</p>
+    <p class="par">Temos a satisfação de apresentar à Igreja Evangélica Assembleia de Deus na cidade de Aparecida de Goiânia — GO, Nadir Viana da Silva, que exerce a função de Diaconisa, e que faz parte deste campo, encontrando-se em plena comunhão, servindo a Deus em nosso Templo Sede há tempos.</p>
+    <p class="par">Portanto, recomendamos que seja recebida no Senhor, como costumam fazer os santos.</p>
+    <p class="par">Com os votos de elevada estima e consideração.</p>
+    <p class="par sem-recuo">Fraternalmente,</p>
+
+    <div class="local-data">Piracanjuba, 08 de Março de 2026.</div>
+
+    <div class="assinatura">
+      <div class="linha"></div>
+      <div class="nome">Pr. Gilson Marcos Soares da Silva</div>
+      <div class="cargo">Presidente da AD Piracanjuba</div>
+    </div>
+  </div>
+
+  <div class="rodape">Av. Noêmia Honorato, 161 — Setor Oeste, Piracanjuba — GO</div>
+</div>
+
+</body>
+</html>

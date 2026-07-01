@@ -12,6 +12,7 @@ import { createFinLancamento, updateFinLancamento } from '../../lib/api/fin_lanc
 import { createFinRecibo, getFinReciboByLancamento } from '../../lib/api/fin_recibos'
 import type { FinReciboComLancamento } from '../../lib/api/fin_recibos'
 import type { FinCategoria, FinFornecedor, FinFormaPagamento, FinLancamento, FinTipo } from '../../types'
+import { hojeISO } from '../../lib/format'
 import ReciboModal from './ReciboModal'
 
 interface Props {
@@ -35,7 +36,7 @@ export default function LancamentoModal({ tipo, editing, categoriaPreSelecionada
   const [descricao, setDescricao] = useState(editing?.descricao ?? '')
   const [referenciaCulto, setReferenciaCulto] = useState(editing?.referencia_culto ?? '')
   const [dataLancamento, setDataLancamento] = useState(
-    editing?.data_lancamento ?? new Date().toISOString().slice(0, 10)
+    editing?.data_lancamento ?? hojeISO()
   )
   const [observacao, setObservacao] = useState(editing?.observacao ?? '')
   const [formaPagamento, setFormaPagamento] = useState<FinFormaPagamento | ''>(editing?.forma_pagamento ?? '')

@@ -6,6 +6,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { useData } from '../../contexts/DataContext'
+import { hojeISO } from '../../lib/format'
 import { useToast } from '../ui/UIProvider'
 import { runBulkAction } from '../../lib/bulk/runBulkAction'
 import BulkConfirmDialog from './BulkConfirmDialog'
@@ -118,8 +119,8 @@ export function useBulkMatriculas({
         nome_aluno: m.nome,
         nome_seminario: seminario.nome,
         carga_horaria: seminario.carga_horaria,
-        data_conclusao: m.data_conclusao ?? new Date().toISOString().split('T')[0],
-        emitido_em: new Date().toISOString().split('T')[0],
+        data_conclusao: m.data_conclusao ?? hojeISO(),
+        emitido_em: hojeISO(),
         emitido_por: 'Secretaria Admin',
         status: 'emitido',
       })

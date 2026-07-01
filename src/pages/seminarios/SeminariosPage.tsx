@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useData } from '../../contexts/DataContext'
 import type { Seminario, SeminarioStatus } from '../../types'
 import SeminarioModal from './SeminarioModal'
-import { fmtDate } from '../../lib/format'
+import { fmtDate, hojeISO } from '../../lib/format'
 import { useToast, useConfirm } from '../../components/ui/UIProvider'
 import BulkActionBar, { type BulkAction } from '../../components/bulk/BulkActionBar'
 import { useBulkSeminarios } from '../../components/bulk/useBulkSeminarios'
@@ -101,7 +101,7 @@ export default function SeminariosPage() {
           nome: data.nome ?? 'Novo seminário',
           descricao: data.descricao,
           instrutor: data.instrutor,
-          data_inicio: data.data_inicio ?? new Date().toISOString().split('T')[0],
+          data_inicio: data.data_inicio ?? hojeISO(),
           data_fim: data.data_fim,
           carga_horaria: data.carga_horaria ?? 0,
           local: data.local,

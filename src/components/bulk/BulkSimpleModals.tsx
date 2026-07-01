@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { X, Check } from 'lucide-react'
 import { useChurch } from '../../contexts/ChurchContext'
 import { useModalUX } from '../../hooks/useModalUX'
+import { hojeISO } from '../../lib/format'
 import type { MemberStatus } from '../../types'
 
 interface BaseProps {
@@ -244,7 +245,7 @@ export function BulkSpiritualModal({ count, onClose, onPick }: BulkSpiritualProp
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 className="form-input"
-                max={new Date().toISOString().slice(0, 10)}
+                max={hojeISO()}
               />
               <p className="text-[10px] text-gray-400 mt-1">
                 Se preenchida, aplica a mesma data a todos.

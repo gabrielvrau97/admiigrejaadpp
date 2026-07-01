@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useModalUX } from '../../hooks/useModalUX'
+import { hojeISO } from '../../lib/format'
 import type { MatriculaSituacao } from '../../types'
 
 interface BaseProps {
@@ -170,7 +171,7 @@ interface DataConclusaoProps extends BaseProps {
 
 export function BulkDataConclusaoModal({ count, onClose, onPick }: DataConclusaoProps) {
   const containerRef = useModalUX({ onClose })
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(hojeISO())
 
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center sm:p-4 bg-black/50">
@@ -188,7 +189,7 @@ export function BulkDataConclusaoModal({ count, onClose, onPick }: DataConclusao
             value={date}
             onChange={e => setDate(e.target.value)}
             className="form-input"
-            max={new Date().toISOString().slice(0, 10)}
+            max={hojeISO()}
           />
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 bg-gray-50">
